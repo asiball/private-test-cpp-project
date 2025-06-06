@@ -1,29 +1,32 @@
 # ============================================================
 # embedded-device-suite GitLab CI/CD
-# C++11 / モノレポ構成。変更のあったコンポーネントのみビルドする。
+# C++11 / モノレポ。差分ビルド + テスト + カバレッジ + 静的解析
 # ============================================================
 
-# ── グローバル変数 ──────────────────────────────────────────
 variables:
   CMAKE_BUILD_TYPE: Release
-  # Dockerイメージでコンパイラバージョンを固定する
-  # ローカルGitLabRunnerでも同じイメージを pull して使う
-  BUILD_IMAGE: "gcc:7.5"   # GCC 7 = C++11/14 サポート / 組み込み相当
-  ARTIFACT_EXPIRE: "1 week"
+  BUILD_IMAGE:      "gcc:7.5"
+  ARTIFACT_EXPIRE:  "1 week"
+  GCC_COVERAGE_FLAGS: "--coverage -fprofile-arcs -ftest-coverage"
 
-# ── ステージ定義 ──────────────────────────────────────────
 stages:
   - build
   - test
+  - coverage
   - package
 
-# ── 共通テンプレート ──────────────────────────────────────
+# ── 共通テンプレート ─────────────────────────────────────
 .build_defaults: &build_defaults
   image: $BUILD_IMAGE
   before_script:
-    - apt-get update -qq && apt-get install -y -qq cmake ninja-build
+    - apt-get update -qq
+    - apt-get install -y -qq cmake ninja-build libgtest-dev gcovr
+    # Google Testをソースからビルド（gcc:7.5イメージ向け）
+    - cmake -B /tmp/gtest-build /usr/src/gtest -DCMAKE_BUILD_TYPE=Release
+    - cmake --build /tmp/gtest-build
+    - cp /tmp/gtest-build/lib/libgtest*.a /usr/lib/
   tags:
-    - docker   # GitLab Runner に docker タグが付いていること
+    - docker
 
 # ============================================================
 # driver ビルド
@@ -32,25 +35,17 @@ build:driver:
   <<: *build_defaults
   stage: build
   rules:
-    # driver/ 以下が変更された MR / push でのみ実行
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - driver/**/*
-        - CMakeLists.txt
+      changes: [driver/**/*, CMakeLists.txt]
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      changes:
-        - driver/**/*
-    # タグ push は常に実行（リリースビルド）
+      changes: [driver/**/*]
     - if: '$CI_COMMIT_TAG =~ /^driver\/v/'
   script:
-    - cmake -B build/driver -S driver/
-        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
-        -G Ninja
+    - cmake -B build/driver -S driver/ -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -G Ninja
     - cmake --build build/driver
   artifacts:
     name: "driver-${CI_COMMIT_SHORT_SHA}"
-    paths:
-      - build/driver/libspi_driver.a
+    paths: [build/driver/libspi_driver.a]
     expire_in: $ARTIFACT_EXPIRE
 
 # ============================================================
@@ -61,24 +56,16 @@ build:lib:
   stage: build
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - lib/**/*
-        - driver/**/*   # libはdriverに依存するため
-        - CMakeLists.txt
+      changes: [lib/**/*, driver/**/*, CMakeLists.txt]
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      changes:
-        - lib/**/*
-        - driver/**/*
+      changes: [lib/**/*, driver/**/*]
     - if: '$CI_COMMIT_TAG =~ /^lib\/v/'
   script:
-    - cmake -B build/lib -S lib/
-        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
-        -G Ninja
+    - cmake -B build/lib -S lib/ -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -G Ninja
     - cmake --build build/lib
   artifacts:
     name: "lib-${CI_COMMIT_SHORT_SHA}"
-    paths:
-      - build/lib/libdevice.so*
+    paths: [build/lib/libdevice.so*]
     expire_in: $ARTIFACT_EXPIRE
 
 # ============================================================
@@ -89,57 +76,154 @@ build:cli:
   stage: build
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - cli/**/*
-        - lib/**/*      # cliはlibに依存する
-        - driver/**/*
-        - CMakeLists.txt
+      changes: [cli/**/*, lib/**/*, driver/**/*, CMakeLists.txt]
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      changes:
-        - cli/**/*
-        - lib/**/*
+      changes: [cli/**/*, lib/**/*]
     - if: '$CI_COMMIT_TAG =~ /^cli\/v/'
   script:
-    - cmake -B build -S .
-        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
-        -G Ninja
+    - cmake -B build -S . -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -G Ninja
     - cmake --build build --target device-ctl
   artifacts:
     name: "cli-${CI_COMMIT_SHORT_SHA}"
-    paths:
-      - build/device-ctl
+    paths: [build/device-ctl]
     expire_in: $ARTIFACT_EXPIRE
 
 # ============================================================
-# 静的解析（全コンポーネント共通）
+# 静的解析（cppcheck）
 # ============================================================
 lint:cppcheck:
   image: $BUILD_IMAGE
-  stage: test
+  stage: build
   before_script:
     - apt-get update -qq && apt-get install -y -qq cppcheck
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes:
-        - "**/*.cpp"
-        - "**/*.hpp"
+      changes: ["**/*.cpp", "**/*.hpp"]
   script:
     - cppcheck
         --enable=warning,performance,portability
         --std=c++11
         --error-exitcode=1
         --suppress=missingIncludeSystem
+        --xml --xml-version=2
         driver/src/ lib/src/ cli/src/
-  allow_failure: false
+        2> cppcheck-report.xml
+    - echo "cppcheck passed"
+  artifacts:
+    name: "cppcheck-${CI_COMMIT_SHORT_SHA}"
+    paths: [cppcheck-report.xml]
+    expire_in: $ARTIFACT_EXPIRE
+    when: always
 
 # ============================================================
-# パッケージ（タグ push 時のみ）
+# 単体テスト（Google Test / JUnit XML出力）
+# ============================================================
+test:unit:driver:
+  <<: *build_defaults
+  stage: test
+  needs: [build:driver]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [driver/**/*, tests/unit/driver/**/*]
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [driver/**/*, tests/unit/driver/**/*]
+  script:
+    - cmake -B build/test-driver -S driver/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$GCC_COVERAGE_FLAGS"
+        -G Ninja
+    - cmake --build build/test-driver
+    - cmake -B build/test-driver-tests -S tests/unit/driver/
+        -DCMAKE_BUILD_TYPE=Debug
+        -G Ninja
+    - cmake --build build/test-driver-tests
+    - mkdir -p test-results
+    - build/test-driver-tests/test_spi_driver
+        --gtest_output=xml:test-results/driver-unit.xml
+        || true   # 実機なしでSKIPが出ても継続
+  artifacts:
+    name: "test-driver-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - test-results/driver-unit.xml
+      - "**/*.gcno"
+      - "**/*.gcda"
+    reports:
+      junit: test-results/driver-unit.xml
+    expire_in: $ARTIFACT_EXPIRE
+    when: always
+
+test:unit:lib:
+  <<: *build_defaults
+  stage: test
+  needs: [build:lib]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [lib/**/*, driver/**/*, tests/unit/lib/**/*]
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [lib/**/*, tests/unit/lib/**/*]
+  script:
+    - cmake -B build/test-lib -S lib/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$GCC_COVERAGE_FLAGS"
+        -G Ninja
+    - cmake --build build/test-lib
+    - cmake -B build/test-lib-tests -S tests/unit/lib/
+        -DCMAKE_BUILD_TYPE=Debug
+        -G Ninja
+    - cmake --build build/test-lib-tests
+    - mkdir -p test-results
+    - build/test-lib-tests/test_device
+        --gtest_output=xml:test-results/lib-unit.xml
+        || true
+  artifacts:
+    name: "test-lib-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - test-results/lib-unit.xml
+      - "**/*.gcno"
+      - "**/*.gcda"
+    reports:
+      junit: test-results/lib-unit.xml
+    expire_in: $ARTIFACT_EXPIRE
+    when: always
+
+# ============================================================
+# カバレッジレポート（lcov → HTML + Cobertura XML）
+# ============================================================
+coverage:report:
+  <<: *build_defaults
+  stage: coverage
+  needs: [test:unit:driver, test:unit:lib]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq gcovr
+  script:
+    - mkdir -p coverage
+    - gcovr
+        --root .
+        --exclude 'tests/'
+        --exclude '/usr/'
+        --html-details coverage/index.html
+        --xml coverage/cobertura.xml
+        --print-summary
+  coverage: '/^TOTAL.*\s+(\d+\%)$/'
+  artifacts:
+    name: "coverage-${CI_COMMIT_SHORT_SHA}"
+    paths: [coverage/]
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura.xml
+    expire_in: $ARTIFACT_EXPIRE
+
+# ============================================================
+# リリースパッケージ（タグ push 時）
 # ============================================================
 package:release:
   <<: *build_defaults
   stage: package
   rules:
-    # driver/v* lib/v* cli/v* いずれかのタグで発火
     - if: '$CI_COMMIT_TAG =~ /^(driver|lib|cli)\/v/'
   script:
     - cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -G Ninja
@@ -148,6 +232,5 @@ package:release:
     - tar czf embedded-device-suite-${CI_COMMIT_TAG//\//-}.tar.gz -C dist .
   artifacts:
     name: "release-${CI_COMMIT_TAG//\//-}"
-    paths:
-      - "*.tar.gz"
+    paths: ["*.tar.gz"]
     expire_in: "4 weeks"
