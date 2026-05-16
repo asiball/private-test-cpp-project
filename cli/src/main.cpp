@@ -1,5 +1,6 @@
-#include "../../lib/include/device.hpp"
 #include "../../driver/include/logger.hpp"
+#include "../../driver/include/version.hpp"
+#include "../../lib/include/device.hpp"
 
 #include <condition_variable>
 #include <cstdlib>
@@ -9,6 +10,17 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+
+static void print_version()
+{
+    std::cout
+        << "device-ctl\n"
+        << "  cli:    " << embedded::version::CLI    << "\n"
+        << "  lib:    " << embedded::version::LIB    << "\n"
+        << "  driver: " << embedded::version::DRIVER << "\n"
+        << "  commit: " << embedded::version::GIT_COMMIT << "\n"
+        << "  built:  " << embedded::version::BUILD_DATE << "\n";
+}
 
 static void print_usage(const char* prog)
 {
@@ -22,6 +34,7 @@ static void print_usage(const char* prog)
         << "Options:\n"
         << "  -d <device>   SPIデバイスパス (default: /dev/spidev0.0)\n"
         << "  --async       非同期モードで read を実行 (v1.1.0)\n"
+        << "  --version     バージョン情報を表示\n"
         << "  -h            このヘルプを表示\n";
 }
 
@@ -49,6 +62,9 @@ int main(int argc, char* argv[])
             dev_path = argv[++argi];
         } else if (std::strcmp(argv[argi], "--async") == 0) {
             async_mode = true;
+        } else if (std::strcmp(argv[argi], "--version") == 0) {
+            print_version();
+            return EXIT_SUCCESS;
         } else if (std::strcmp(argv[argi], "-h") == 0) {
             print_usage(argv[0]);
             return EXIT_SUCCESS;
