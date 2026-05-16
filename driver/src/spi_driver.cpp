@@ -19,7 +19,7 @@ SpiDriver::~SpiDriver()
     close();
 }
 
-bool SpiDriver::open(const Config& cfg)
+bool SpiDriver::open(const Config& cfg) noexcept
 {
     fd_ = ::open(device_path_.c_str(), O_RDWR);
     if (fd_ < 0) {
@@ -44,7 +44,7 @@ bool SpiDriver::open(const Config& cfg)
     return true;
 }
 
-void SpiDriver::close()
+void SpiDriver::close() noexcept
 {
     if (fd_ >= 0) {
         LOGD("SpiDriver::close %s", device_path_.c_str());
@@ -53,7 +53,7 @@ void SpiDriver::close()
     }
 }
 
-int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len)
+int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
 {
     if (fd_ < 0) {
         LOGE("SpiDriver::transfer called on closed device");

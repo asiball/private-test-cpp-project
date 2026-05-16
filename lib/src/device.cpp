@@ -34,7 +34,7 @@ Device::~Device()
     delete impl_;
 }
 
-bool Device::open()
+bool Device::open() noexcept
 {
     ISpiDriver::Config cfg;
     cfg.speed_hz      = 1000000;  // 1 MHz
@@ -43,12 +43,12 @@ bool Device::open()
     return impl_->driver->open(cfg);
 }
 
-void Device::close()
+void Device::close() noexcept
 {
     impl_->driver->close();
 }
 
-bool Device::is_open() const
+bool Device::is_open() const noexcept
 {
     return impl_->driver->is_open();
 }

@@ -1,0 +1,65 @@
+# ── ビルド成果物 ────────────────────────────────────────────
+build/
+dist/
+out/
+
+# CMake 生成ファイル
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# コンパイル済みオブジェクト・ライブラリ
+*.o
+*.a
+*.so
+*.so.*
+
+# ── カバレッジ ───────────────────────────────────────────────
+*.gcno
+*.gcda
+*.gcov
+coverage/
+
+# ── 静的解析レポート ─────────────────────────────────────────
+cppcheck-report.xml
+compile_commands.json   # 手元の clang-tidy 用は .gitignore しない場合もあるが
+                        # CMake が毎回再生成するのでリポジトリ管理不要
+
+# ── Doxygen 出力 ─────────────────────────────────────────────
+docs/doxygen/html/
+docs/doxygen/latex/
+docs/doxygen/xml/
+# 警告ログは確認用に残す
+!docs/doxygen/doxygen-warnings.log
+
+# ── 生成ドキュメント（pandoc PDF）────────────────────────────
+output/
+
+# ── Excel/Word ロックファイル ────────────────────────────────
+# Excelが開いている間だけ生成される一時ファイル
+~$*.xlsx
+~$*.docx
+~$*.xls
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── IDE / エディタ ───────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── テスト結果 ───────────────────────────────────────────────
+test-results/
+
+# ── 生成ヘッダ（CMake configure_file の出力）─────────────────
+driver/include/version.hpp

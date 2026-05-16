@@ -1,11 +1,12 @@
 #pragma once
 #include "ispi_driver.hpp"
+
 #include <string>
 
 namespace embedded {
 
 /**
- * @brief Linux spidev を介した SPI フルデュプレクス通信ドライバ
+ * @brief Linux spidev を介した SPI フルデュプレクス通信ドライバ（実機用）
  *
  * ISpiDriver を実装した実機向けクラス。
  * /dev/spidevX.Y を open/ioctl/close で管理する。
@@ -40,10 +41,10 @@ public:
      * @param cfg 転送速度・ビット幅・モードを指定する Config 構造体
      * @return true: 成功 / false: 失敗（last_errno() で原因を確認）
      */
-    bool open(const Config& cfg) override;
+    [[nodiscard]] bool open(const Config& cfg) noexcept override;
 
     /** @brief デバイスをクローズする。未オープン時は何もしない */
-    void close() override;
+    void close() noexcept override;
 
     /**
      * @brief フルデュプレクス SPI 転送を行う
@@ -55,13 +56,13 @@ public:
      * @param len 転送バイト数
      * @return 転送バイト数。エラー時は -1（last_errno() で原因を確認）
      */
-    int  transfer(const uint8_t* tx, uint8_t* rx, size_t len) override;
+    [[nodiscard]] int transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept override;
 
     /** @return デバイスがオープン中なら true */
-    bool is_open() const override { return fd_ >= 0; }
+    [[nodiscard]] bool is_open() const noexcept override { return fd_ >= 0; }
 
     /** @return 直近のエラーの errno 値 */
-    int  last_errno() const override { return last_errno_; }
+    [[nodiscard]] int last_errno() const noexcept override { return last_errno_; }
 
 private:
     std::string device_path_;

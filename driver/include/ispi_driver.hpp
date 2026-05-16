@@ -1,14 +1,14 @@
 #pragma once
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace embedded {
 
 /**
  * @brief SPI ドライバの抽象インターフェース
  *
- * このインターフェースを介することで、テスト時に MockSpiDriver に差し替えられる。
  * SpiDriver（実機用）と MockSpiDriver（テスト用）が共通の型として扱われる。
+ * このインターフェースを介することで、Device クラスが実機に依存しなくなる。
  */
 class ISpiDriver {
 public:
@@ -21,11 +21,28 @@ public:
 
     virtual ~ISpiDriver() = default;
 
-    virtual bool open(const Config& cfg) = 0;
-    virtual void close() = 0;
-    virtual int  transfer(const uint8_t* tx, uint8_t* rx, size_t len) = 0;
-    virtual bool is_open() const = 0;
-    virtual int  last_errno() const = 0;
+    /**
+     * @brief デバイスをオープンし SPI パラメータを設定する
+     * @return true: 成功 / false: 失敗
+     * @note 戻り値の確認を必須とする（[[nodiscard]]）
+     */
+    [[nodiscard]] virtual bool open(const Config& cfg) noexcept = 0;
+
+    /** @brief デバイスをクローズする。未オープン時は no-op */
+    virtual void close() noexcept = 0;
+
+    /**
+     * @brief フルデュプレクス SPI 転送を行う
+     * @return 転送バイト数。エラー時は -1
+     * @note 戻り値の確認を必須とする（[[nodiscard]]）
+     */
+    [[nodiscard]] virtual int transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept = 0;
+
+    /** @return デバイスがオープン中なら true */
+    [[nodiscard]] virtual bool is_open() const noexcept = 0;
+
+    /** @return 直近のエラーの errno 値 */
+    [[nodiscard]] virtual int  last_errno() const noexcept = 0;
 };
 
 } // namespace embedded

@@ -1,5 +1,6 @@
 #pragma once
 #include "../../driver/include/ispi_driver.hpp"
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@ namespace embedded {
  *
  * @code
  * embedded::Device dev("/dev/spidev0.0");
- * dev.open();
+ * if (!dev.open()) { return; }
  * auto data = dev.read(0x00, 4);   // 同期読み出し
  *
  * // 非同期読み出し (v1.1.0)
@@ -59,18 +60,19 @@ public:
      * @brief デバイスをオープンする
      * @return true: 成功 / false: 失敗
      */
-    bool open();
+    [[nodiscard]] bool open() noexcept;
 
     /** @brief デバイスをクローズする */
-    void close();
+    void close() noexcept;
 
     /**
      * @brief レジスタから同期読み出し
+     *
      * @param reg 読み出し元レジスタアドレス（アドレスビット7 は読み出しフラグとして設定される）
      * @param len 読み出しバイト数
      * @return 読み出したデータ。失敗時は空 vector
      */
-    std::vector<uint8_t> read(uint8_t reg, size_t len);
+    [[nodiscard]] std::vector<uint8_t> read(uint8_t reg, size_t len);
 
     /**
      * @brief レジスタへ同期書き込み
@@ -78,7 +80,7 @@ public:
      * @param data 書き込むバイト列
      * @return true: 成功 / false: 失敗
      */
-    bool write(uint8_t reg, const std::vector<uint8_t>& data);
+    [[nodiscard]] bool write(uint8_t reg, const std::vector<uint8_t>& data);
 
     /**
      * @brief レジスタから非同期読み出し (v1.1.0)
@@ -94,7 +96,7 @@ public:
     void read_async(uint8_t reg, size_t len, ReadCallback cb);
 
     /** @return デバイスがオープン中なら true */
-    bool is_open() const;
+    [[nodiscard]] bool is_open() const noexcept;
 
 private:
     struct Impl;

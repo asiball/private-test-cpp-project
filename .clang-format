@@ -1,0 +1,68 @@
+---
+# embedded-device-suite コードスタイル定義
+# 適用: clang-format --style=file
+# 確認: clang-format --dry-run --Werror <file>
+
+Language:        Cpp
+Standard:        c++17
+
+# ── ベーススタイル ────────────────────────────────────────────
+# LLVM をベースに組み込みC++向けに調整する
+BasedOnStyle:    LLVM
+
+# ── インデント ───────────────────────────────────────────────
+IndentWidth:          4
+TabWidth:             4
+UseTab:               Never
+ContinuationIndentWidth: 4
+NamespaceIndentation: None
+
+# ── 行長 ────────────────────────────────────────────────────
+ColumnLimit:     100
+
+# ── 波括弧スタイル ────────────────────────────────────────────
+# 関数・クラス・構造体の { は改行後（Allman）
+# if/for/while の { は同行（K&R）
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass:          true
+  AfterControlStatement: Never   # if (...) { は同行
+  AfterEnum:           false
+  AfterFunction:       true      # 関数定義の { は改行
+  AfterNamespace:      false
+  AfterStruct:         true
+  BeforeCatch:         false
+  BeforeElse:          false
+
+# ── ポインタ・参照 ────────────────────────────────────────────
+# uint8_t* ptr ではなく uint8_t *ptr ← 既存コードに合わせて Left
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# ── スペース ─────────────────────────────────────────────────
+SpaceBeforeParens:              ControlStatements
+SpaceInEmptyParentheses:        false
+SpacesInParentheses:            false
+SpacesInSquareBrackets:         false
+SpaceAfterCStyleCast:           false
+SpaceBeforeAssignmentOperators: true
+
+# ── #include 整列 ────────────────────────────────────────────
+SortIncludes:        true
+IncludeBlocks:       Regroup
+IncludeCategories:
+  # 自プロジェクトヘッダ (相対パス or プロジェクト内)
+  - Regex:    '^"'
+    Priority: 1
+  # システムヘッダ
+  - Regex:    '^<'
+    Priority: 2
+
+# ── その他 ───────────────────────────────────────────────────
+AllowShortFunctionsOnASingleLine:  Inline   # ゲッターのみ1行許可
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine:      false
+BreakConstructorInitializers:      BeforeColon
+ConstructorInitializerIndentWidth: 4
+MaxEmptyLinesToKeep:               1
+ReflowComments:                    true
