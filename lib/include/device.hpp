@@ -1,5 +1,5 @@
 #pragma once
-#include <cstdint>
+#include "../../driver/include/ispi_driver.hpp"
 #include <functional>
 #include <string>
 #include <vector>
@@ -36,10 +36,18 @@ public:
     using ReadCallback = std::function<void(const std::vector<uint8_t>&, int)>;
 
     /**
-     * @brief コンストラクタ
+     * @brief コンストラクタ（実機用）
      * @param spi_path spidev のデバイスパス（例: "/dev/spidev0.0"）
      */
     explicit Device(const std::string& spi_path);
+
+    /**
+     * @brief コンストラクタ（テスト用）
+     *
+     * ISpiDriver を外部から差し込むことで実機なしにテストできる。
+     * @param driver テスト用ドライバ（MockSpiDriver など）。所有権は渡さない
+     */
+    explicit Device(ISpiDriver* driver);
 
     /** @brief デストラクタ。オープン中なら自動的に close する */
     ~Device();

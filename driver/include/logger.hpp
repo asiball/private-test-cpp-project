@@ -5,21 +5,25 @@
 // ─────────────────────────────────────────────────────────────
 // ログマクロ
 //
-// DEBUG ビルド (-DDEBUG):
-//   stderr に詳細ログを出しつつ syslog にも書く。
-//   端末でリアルタイムに見ながら、journalctl にも残せる。
+// 注意: syslog.h は LOG_INFO=6, LOG_ERR=3, LOG_DEBUG=7 という
+//       整数定数マクロを定義している。そのまま同名のマクロを定義すると
+//       プリプロセッサが再帰展開しようとして未定義シンボルエラーになる。
+//       そのため LOGI / LOGW / LOGE / LOGD という名前を使用する。
 //
-// RELEASE ビルド (デフォルト / -DNDEBUG):
-//   syslog のみ。stderr には何も出さない。
-//   本番デーモンとして動かす想定。
+// DEBUGビルド (-DDEBUG):
+//   stderr に詳細ログ + syslog に記録。
+//   端末でリアルタイムに見ながら journalctl にも残せる。
+//
+// RELEASEビルド (デフォルト):
+//   syslog のみ。
 //
 // 使い方:
-//   LOG_OPEN("spi-driver");          // main() の先頭で1回呼ぶ
-//   LOG_INFO("opened %s", path);
-//   LOG_WARN("retry %d/3", n);
-//   LOG_ERR("transfer failed: %d", errno);
-//   LOG_DEBUG("tx[0]=0x%02x", tx[0]); // DEBUGビルドのみ出力
-//   LOG_CLOSE();                       // main() の末尾で呼ぶ
+//   LOG_OPEN("spi-driver");  // main() の先頭で1回呼ぶ
+//   LOGI("opened %s", path);
+//   LOGW("retry %d/3", n);
+//   LOGE("transfer failed: %d", errno_val);
+//   LOGD("tx[0]=0x%02x", tx[0]);  // DEBUGビルドのみ
+//   LOG_CLOSE();                   // main() の末尾で呼ぶ
 // ─────────────────────────────────────────────────────────────
 
 #define LOG_OPEN(ident)  openlog((ident), LOG_PID | LOG_CONS, LOG_DAEMON)
@@ -27,33 +31,33 @@
 
 #ifdef DEBUG
 // ── DEBUGビルド: stderr + syslog 両方に出す ──────────────────
-#define LOG_INFO(fmt, ...) \
+#define LOGI(fmt, ...) \
     do { \
         fprintf(stderr, "[INFO]  " fmt "\n", ##__VA_ARGS__); \
         syslog(LOG_INFO,    fmt, ##__VA_ARGS__); \
     } while (0)
 
-#define LOG_WARN(fmt, ...) \
+#define LOGW(fmt, ...) \
     do { \
         fprintf(stderr, "[WARN]  " fmt "\n", ##__VA_ARGS__); \
         syslog(LOG_WARNING, fmt, ##__VA_ARGS__); \
     } while (0)
 
-#define LOG_ERR(fmt, ...) \
+#define LOGE(fmt, ...) \
     do { \
         fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__); \
         syslog(LOG_ERR,     fmt, ##__VA_ARGS__); \
     } while (0)
 
 // DEBUGマクロ: stderrのみ（syslogをデバッグログで埋めない）
-#define LOG_DEBUG(fmt, ...) \
+#define LOGD(fmt, ...) \
     fprintf(stderr, "[DEBUG] " fmt "\n", ##__VA_ARGS__)
 
 #else
 // ── RELEASEビルド: syslog のみ ───────────────────────────────
-#define LOG_INFO(fmt, ...)  syslog(LOG_INFO,    fmt, ##__VA_ARGS__)
-#define LOG_WARN(fmt, ...)  syslog(LOG_WARNING, fmt, ##__VA_ARGS__)
-#define LOG_ERR(fmt, ...)   syslog(LOG_ERR,     fmt, ##__VA_ARGS__)
-#define LOG_DEBUG(fmt, ...) // RELEASE では no-op
+#define LOGI(fmt, ...)  syslog(LOG_INFO,    fmt, ##__VA_ARGS__)
+#define LOGW(fmt, ...)  syslog(LOG_WARNING, fmt, ##__VA_ARGS__)
+#define LOGE(fmt, ...)  syslog(LOG_ERR,     fmt, ##__VA_ARGS__)
+#define LOGD(fmt, ...)  // RELEASE では no-op
 
 #endif // DEBUG

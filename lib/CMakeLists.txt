@@ -10,7 +10,7 @@ add_library(device SHARED
 )
 target_include_directories(device
     PUBLIC  include
-    PRIVATE ../driver/include
+            ../driver/include   # ISpiDriver を PUBLIC にして利用者も参照できる
 )
 target_link_libraries(device pthread)
 

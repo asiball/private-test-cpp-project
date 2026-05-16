@@ -1,10 +1,12 @@
 #include "../../lib/include/device.hpp"
 #include "../../driver/include/logger.hpp"
 
+#include <condition_variable>
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <string>
 
@@ -77,17 +79,25 @@ int main(int argc, char* argv[])
         size_t  len = static_cast<size_t>(std::stoul(argv[argi++]));
 
         if (async_mode) {
+            std::mutex              mtx;
+            std::condition_variable cv;
             bool done = false;
-            dev.read_async(reg, len, [&done](const std::vector<uint8_t>& data, int err) {
+
+            dev.read_async(reg, len, [&](const std::vector<uint8_t>& data, int err) {
                 if (err) {
                     std::cerr << "async read error: " << err << '\n';
                 } else {
                     print_hex(data);
                 }
-                done = true;
+                {
+                    std::lock_guard<std::mutex> lk(mtx);
+                    done = true;
+                }
+                cv.notify_one();
             });
-            // 簡易待機（実用時はcondition_variableを使うこと）
-            while (!done) { /* busy-wait for demo */ }
+
+            std::unique_lock<std::mutex> lk(mtx);
+            cv.wait(lk, [&]{ return done; });
         } else {
             auto data = dev.read(reg, len);
             if (data.empty()) {
