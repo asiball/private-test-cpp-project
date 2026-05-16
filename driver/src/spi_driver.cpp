@@ -1,4 +1,5 @@
 #include "spi_driver.hpp"
+#include "logger.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -23,6 +24,7 @@ bool SpiDriver::open(const Config& cfg)
     fd_ = ::open(device_path_.c_str(), O_RDWR);
     if (fd_ < 0) {
         last_errno_ = errno;
+        LOG_ERR("SpiDriver::open failed: %s (%s)", device_path_.c_str(), strerror(last_errno_));
         return false;
     }
 
@@ -31,16 +33,21 @@ bool SpiDriver::open(const Config& cfg)
         ioctl(fd_, SPI_IOC_WR_MAX_SPEED_HZ, &cfg.speed_hz) < 0)
     {
         last_errno_ = errno;
+        LOG_ERR("SpiDriver::open ioctl failed: %s (%s)", device_path_.c_str(), strerror(last_errno_));
         ::close(fd_);
         fd_ = -1;
         return false;
     }
+
+    LOG_INFO("SpiDriver::open ok: %s mode=%u bits=%u speed=%uHz",
+             device_path_.c_str(), cfg.mode, cfg.bits_per_word, cfg.speed_hz);
     return true;
 }
 
 void SpiDriver::close()
 {
     if (fd_ >= 0) {
+        LOG_DEBUG("SpiDriver::close %s", device_path_.c_str());
         ::close(fd_);
         fd_ = -1;
     }
@@ -48,13 +55,16 @@ void SpiDriver::close()
 
 int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len)
 {
-    if (fd_ < 0) return -1;
+    if (fd_ < 0) {
+        LOG_ERR("SpiDriver::transfer called on closed device");
+        return -1;
+    }
 
     struct spi_ioc_transfer tr = {};
     tr.tx_buf        = reinterpret_cast<uintptr_t>(tx);
     tr.rx_buf        = reinterpret_cast<uintptr_t>(rx);
     tr.len           = static_cast<uint32_t>(len);
-    tr.speed_hz      = 0;   // デバイス設定値を使用
+    tr.speed_hz      = 0;
     tr.bits_per_word = 0;
 
     int ret;
@@ -62,9 +72,15 @@ int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len)
     for (int retry = 0; retry < 3; ++retry) {
         ret = ioctl(fd_, SPI_IOC_MESSAGE(1), &tr);
         if (ret >= 0 || errno != EAGAIN) break;
+        LOG_WARN("SpiDriver::transfer EAGAIN retry %d/3", retry + 1);
     }
 
-    if (ret < 0) last_errno_ = errno;
+    if (ret < 0) {
+        last_errno_ = errno;
+        LOG_ERR("SpiDriver::transfer failed: len=%zu errno=%s", len, strerror(last_errno_));
+    } else {
+        LOG_DEBUG("SpiDriver::transfer ok: %d bytes", ret);
+    }
     return ret;
 }
 

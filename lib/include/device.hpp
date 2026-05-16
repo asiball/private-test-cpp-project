@@ -6,35 +6,91 @@
 
 namespace embedded {
 
-// ユーザ空間からデバイスを操作するための高レベルAPIを提供する
+/**
+ * @brief SPI デバイスへの高レベルアクセスを提供するクラス
+ *
+ * SpiDriver を PIMPL イディオムで隠蔽し、レジスタ単位の読み書き API を提供する。
+ * 同期 (read/write) と非同期 (read_async) の両方をサポートする。
+ *
+ * @note スレッドセーフではない。複数スレッドから使用する場合は呼び出し側で排他制御すること。
+ * @note コピー禁止。
+ *
+ * @code
+ * embedded::Device dev("/dev/spidev0.0");
+ * dev.open();
+ * auto data = dev.read(0x00, 4);   // 同期読み出し
+ *
+ * // 非同期読み出し (v1.1.0)
+ * dev.read_async(0x00, 4, [](const std::vector<uint8_t>& d, int err) {
+ *     if (!err) { for (auto b : d) printf("%02x ", b); }
+ * });
+ * @endcode
+ */
 class Device {
 public:
-    // v1.1.0 で追加: 非同期読み出し完了コールバック
-    using ReadCallback = std::function<void(const std::vector<uint8_t>&, int /*errno*/)>;
+    /**
+     * @brief 非同期読み出し完了コールバック型 (v1.1.0)
+     * @param data  読み出したデータ。エラー時は空 vector
+     * @param err   成功時 0、失敗時は errno 値
+     */
+    using ReadCallback = std::function<void(const std::vector<uint8_t>&, int)>;
 
+    /**
+     * @brief コンストラクタ
+     * @param spi_path spidev のデバイスパス（例: "/dev/spidev0.0"）
+     */
     explicit Device(const std::string& spi_path);
+
+    /** @brief デストラクタ。オープン中なら自動的に close する */
     ~Device();
 
     Device(const Device&)            = delete;
     Device& operator=(const Device&) = delete;
 
+    /**
+     * @brief デバイスをオープンする
+     * @return true: 成功 / false: 失敗
+     */
     bool open();
+
+    /** @brief デバイスをクローズする */
     void close();
 
-    // 同期読み出し
+    /**
+     * @brief レジスタから同期読み出し
+     * @param reg 読み出し元レジスタアドレス（アドレスビット7 は読み出しフラグとして設定される）
+     * @param len 読み出しバイト数
+     * @return 読み出したデータ。失敗時は空 vector
+     */
     std::vector<uint8_t> read(uint8_t reg, size_t len);
 
-    // 同期書き込み
+    /**
+     * @brief レジスタへ同期書き込み
+     * @param reg  書き込み先レジスタアドレス
+     * @param data 書き込むバイト列
+     * @return true: 成功 / false: 失敗
+     */
     bool write(uint8_t reg, const std::vector<uint8_t>& data);
 
-    // v1.1.0: 非同期読み出し（別スレッドで実行、完了時にcbを呼ぶ）
+    /**
+     * @brief レジスタから非同期読み出し (v1.1.0)
+     *
+     * 内部で std::thread を生成してデタッチする。
+     * 完了時に cb を呼び出す。
+     *
+     * @param reg 読み出し元レジスタアドレス
+     * @param len 読み出しバイト数
+     * @param cb  完了コールバック
+     * @warning Device オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
+     */
     void read_async(uint8_t reg, size_t len, ReadCallback cb);
 
+    /** @return デバイスがオープン中なら true */
     bool is_open() const;
 
 private:
     struct Impl;
-    Impl* impl_;  // PIMPLイディオムでドライバ依存を隠蔽
+    Impl* impl_;
 };
 
 } // namespace embedded

@@ -1,6 +1,7 @@
 # ============================================================
 # embedded-device-suite GitLab CI/CD
 # C++11 / モノレポ。差分ビルド + テスト + カバレッジ + 静的解析
+# + clang-tidy + Doxygen + pandoc PDF変換
 # ============================================================
 
 variables:
@@ -13,6 +14,7 @@ stages:
   - build
   - test
   - coverage
+  - docs
   - package
 
 # ── 共通テンプレート ─────────────────────────────────────
@@ -116,6 +118,39 @@ lint:cppcheck:
     when: always
 
 # ============================================================
+# clang-tidy（GCCビルドとは独立して実行可能）
+#
+# clang-tidy はコンパイラを切り替えなくても使える。
+# compile_commands.json（CMakeが生成）を読んで解析する。
+# ============================================================
+lint:clang-tidy:
+  image: "silkeh/clang:15"   # clang-tidy が入った公式イメージ
+  stage: build
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq cmake ninja-build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: ["**/*.cpp", "**/*.hpp"]
+  script:
+    # compile_commands.json を生成（これが clang-tidy の入力になる）
+    - cmake -B build -S .
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        -DCMAKE_BUILD_TYPE=Debug
+        -G Ninja
+    # GCCフラグを clang が解釈できるよう不要なものを除外してから実行
+    - clang-tidy
+        -p build/
+        --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*'
+        --warnings-as-errors='bugprone-*'
+        driver/src/spi_driver.cpp
+        lib/src/device.cpp
+  artifacts:
+    name: "clang-tidy-${CI_COMMIT_SHORT_SHA}"
+    paths: []
+    expire_in: $ARTIFACT_EXPIRE
+    when: on_failure
+
+# ============================================================
 # 単体テスト（Google Test / JUnit XML出力）
 # ============================================================
 test:unit:driver:
@@ -216,6 +251,65 @@ coverage:report:
         coverage_format: cobertura
         path: coverage/cobertura.xml
     expire_in: $ARTIFACT_EXPIRE
+
+# ============================================================
+# Doxygen API ドキュメント生成
+# ============================================================
+docs:doxygen:
+  image: "debian:bullseye-slim"
+  stage: docs
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq doxygen graphviz
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: ["**/*.hpp", "**/*.cpp", README.md, Doxyfile]
+    - if: '$CI_COMMIT_TAG =~ /^(driver|lib|cli)\/v/'
+  script:
+    - doxygen Doxyfile
+    - echo "Doxygen warnings:"
+    - cat docs/doxygen/doxygen-warnings.log || true
+  artifacts:
+    name: "doxygen-${CI_COMMIT_SHORT_SHA}"
+    paths: [docs/doxygen/html/]
+    expire_in: "2 weeks"
+
+# ============================================================
+# pandoc: Markdown設計書 → PDF 変換
+#
+# 運用方針:
+#   - Markdown を「ソース」、PDF を「納品物の出力」と割り切る
+#   - タグ push 時だけ PDF を生成して Artifacts に保存する
+# ============================================================
+docs:pdf:
+  image: "pandoc/latex:3"
+  stage: docs
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^(driver|lib|cli)\/v/'
+  script:
+    - mkdir -p output/pdf
+    # 設計書・仕様書を PDF に変換（日本語対応: xelatex）
+    - |
+      for f in \
+        docs/01_requirements/requirements-spec.md \
+        docs/02_basic-design/system-architecture.md \
+        docs/03_detailed-design/driver-design.md \
+        docs/04_api-spec/libdevice-api.md \
+        docs/05_interface-spec/spi-hardware-if.md \
+        docs/06_test/test-plan.md \
+        docs/07_delivery/release-notes/v1.1.0.md; do
+        name=$(basename "$f" .md)
+        pandoc "$f" \
+          --pdf-engine=xelatex \
+          -V mainfont="Noto Serif CJK JP" \
+          -V geometry:margin=25mm \
+          -o "output/pdf/${name}.pdf"
+        echo "  converted: ${name}.pdf"
+      done
+  artifacts:
+    name: "docs-pdf-${CI_COMMIT_TAG//\//-}"
+    paths: [output/pdf/]
+    expire_in: "4 weeks"
 
 # ============================================================
 # リリースパッケージ（タグ push 時）

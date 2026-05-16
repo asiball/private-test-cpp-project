@@ -1,0 +1,47 @@
+# ──────────────────────────────────────────────
+# Doxyfile — embedded-device-suite
+# 生成: doxygen Doxyfile
+# 出力: docs/doxygen/html/index.html
+# ──────────────────────────────────────────────
+
+PROJECT_NAME           = "embedded-device-suite"
+PROJECT_NUMBER         = "v1.1.0"
+PROJECT_BRIEF          = "Linux SPI デバイス制御ライブラリ"
+OUTPUT_DIRECTORY       = docs/doxygen
+
+# 解析対象（ヘッダのみで十分。実装コメントも含めるなら src も追加）
+INPUT                  = driver/include \
+                         lib/include \
+                         cli/src
+RECURSIVE              = YES
+FILE_PATTERNS          = *.hpp *.cpp
+
+# 未ドキュメントのものも出力する（学習用に全部見たい場合は YES）
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+
+# HTML出力
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_COLORSTYLE        = LIGHT
+GENERATE_TREEVIEW      = YES
+
+# Markdown を README として取り込む
+USE_MDFILE_AS_MAINPAGE = README.md
+INPUT                 += README.md
+
+# LaTeX/PDF は無効（pandocで代替する）
+GENERATE_LATEX         = NO
+
+# UMLクラス図（dot が入っていれば自動生成）
+HAVE_DOT               = YES
+UML_LOOK               = YES
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+DOT_IMAGE_FORMAT       = svg
+
+# 警告を厳しくする（ドキュメント漏れを検出）
+WARN_IF_UNDOCUMENTED   = YES
+WARN_NO_PARAMDOC       = YES
+WARN_LOGFILE           = docs/doxygen/doxygen-warnings.log

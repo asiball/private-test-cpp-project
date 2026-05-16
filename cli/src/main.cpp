@@ -1,4 +1,5 @@
 #include "../../lib/include/device.hpp"
+#include "../../driver/include/logger.hpp"
 
 #include <cstdlib>
 #include <cstring>
@@ -34,6 +35,8 @@ static void print_hex(const std::vector<uint8_t>& data)
 
 int main(int argc, char* argv[])
 {
+    LOG_OPEN("device-ctl");
+
     std::string dev_path = "/dev/spidev0.0";
     bool async_mode = false;
     int  argi = 1;
@@ -62,6 +65,7 @@ int main(int argc, char* argv[])
     embedded::Device dev(dev_path);
     if (!dev.open()) {
         std::cerr << "Error: cannot open " << dev_path << '\n';
+        LOG_CLOSE();
         return EXIT_FAILURE;
     }
 
@@ -109,8 +113,10 @@ int main(int argc, char* argv[])
     } else {
         std::cerr << "Unknown command: " << cmd << '\n';
         print_usage(argv[0]);
+        LOG_CLOSE();
         return EXIT_FAILURE;
     }
 
+    LOG_CLOSE();
     return EXIT_SUCCESS;
 }
