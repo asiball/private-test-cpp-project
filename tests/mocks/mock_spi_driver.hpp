@@ -12,11 +12,11 @@ namespace embedded {
  */
 class MockSpiDriver : public ISpiDriver {
 public:
-    MOCK_METHOD(bool, open,       (const Config&),                      (override));
-    MOCK_METHOD(void, close,      (),                                   (override));
-    MOCK_METHOD(int,  transfer,   (const uint8_t*, uint8_t*, size_t),   (override));
-    MOCK_METHOD(bool, is_open,    (),                                   (const, override));
-    MOCK_METHOD(int,  last_errno, (),                                   (const, override));
+    MOCK_METHOD(bool, open,       (const Config&),                      (noexcept, override));
+    MOCK_METHOD(void, close,      (),                                   (noexcept, override));
+    MOCK_METHOD(int,  transfer,   (const uint8_t*, uint8_t*, size_t),   (noexcept, override));
+    MOCK_METHOD(bool, is_open,    (),                                   (const, noexcept, override));
+    MOCK_METHOD(int,  last_errno, (),                                   (const, noexcept, override));
 };
 
 } // namespace embedded

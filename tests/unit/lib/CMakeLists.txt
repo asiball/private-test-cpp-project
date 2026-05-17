@@ -5,7 +5,7 @@ find_package(GTest REQUIRED)
 
 add_executable(test_device test_device.cpp)
 target_link_libraries(test_device
-    PRIVATE device GTest::GTest GTest::Main pthread
+    PRIVATE device GTest::GTest GTest::Main GTest::gmock pthread
 )
 target_include_directories(test_device PRIVATE
     ${CMAKE_SOURCE_DIR}/lib/include

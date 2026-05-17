@@ -1,19 +1,32 @@
 FROM ubuntu:24.04
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        g++ \
-        cmake \
-        make \
-        doxygen \
-        graphviz \
+        # C++ build
+        g++ cmake make \
+        # Static analysis
+        cppcheck \
+        # Testing
+        libgtest-dev \
+        # Coverage
+        gcovr \
+        # Documentation
+        doxygen graphviz \
+        # PDF generation (pandoc + Japanese xelatex)
+        pandoc texlive-xetex texlive-fonts-recommended \
+        texlive-lang-japanese fonts-noto-cjk lmodern \
+        # Python (tools/gen_docs.py)
+        python3 python3-openpyxl \
     && rm -rf /var/lib/apt/lists/*
+
+# Build and install Google Test
+RUN cmake -B /tmp/gtest-build /usr/src/googletest \
+        -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build /tmp/gtest-build \
+    && cmake --install /tmp/gtest-build --prefix /usr/local \
+    && rm -rf /tmp/gtest-build
 
 WORKDIR /workspace
 
-CMD ["bash", "-c", "\
-    rm -f build/CMakeCache.txt && \
-    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
-    cmake --build build -j$(nproc) && \
-    mkdir -p docs/doxygen && \
-    doxygen Doxyfile \
-"]
+CMD ["bash", "/workspace/docker-entrypoint.sh"]
