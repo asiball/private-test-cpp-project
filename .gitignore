@@ -32,8 +32,7 @@ compile_commands.json   # 手元の clang-tidy 用は .gitignore しない場合
 docs/doxygen/html/
 docs/doxygen/latex/
 docs/doxygen/xml/
-# 警告ログは確認用に残す
-!docs/doxygen/doxygen-warnings.log
+docs/doxygen/doxygen-warnings.log
 
 # ── 生成ドキュメント（pandoc PDF）────────────────────────────
 output/
