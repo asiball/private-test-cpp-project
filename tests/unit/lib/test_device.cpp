@@ -20,13 +20,16 @@ TEST(DeviceOpen, ValidDeviceReturnsTrue) {
     EXPECT_TRUE(d.is_open());
 }
 
+//! [UT-LIB-002]
 // UT-LIB-002: 無効パスでopen()失敗
 TEST(DeviceOpen, InvalidDeviceReturnsFalse) {
     Device d("/dev/spidevXX.0");
     EXPECT_FALSE(d.open());
     EXPECT_FALSE(d.is_open());
 }
+//! [UT-LIB-002]
 
+//! [UT-LIB-003]
 // UT-LIB-003: MockSpiDriver を使ってread()の返値を検証（実機不要）
 TEST(DeviceRead, MockReturnsExpectedData) {
     MockSpiDriver mock;
@@ -40,7 +43,9 @@ TEST(DeviceRead, MockReturnsExpectedData) {
     auto result = d.read(0x00, 4);
     EXPECT_EQ(result.size(), 4u);
 }
+//! [UT-LIB-003]
 
+//! [UT-LIB-004]
 // UT-LIB-004: 未open状態でread()は空vectorを返す
 TEST(DeviceRead, NotOpenReturnsEmpty) {
     MockSpiDriver mock;
@@ -51,7 +56,9 @@ TEST(DeviceRead, NotOpenReturnsEmpty) {
     auto result = d.read(0x00, 4);
     EXPECT_TRUE(result.empty());
 }
+//! [UT-LIB-004]
 
+//! [UT-LIB-005]
 // UT-LIB-005: write()正常系（MockSpiDriver使用）
 TEST(DeviceWrite, MockWriteReturnsTrue) {
     MockSpiDriver mock;
@@ -63,7 +70,9 @@ TEST(DeviceWrite, MockWriteReturnsTrue) {
     d.open();
     EXPECT_TRUE(d.write(0x10, {0xAA, 0xBB}));
 }
+//! [UT-LIB-005]
 
+//! [UT-LIB-006]
 // UT-LIB-006: 未open状態でwrite()はfalseを返す
 TEST(DeviceWrite, NotOpenReturnsFalse) {
     MockSpiDriver mock;
@@ -72,6 +81,7 @@ TEST(DeviceWrite, NotOpenReturnsFalse) {
     Device d(&mock);
     EXPECT_FALSE(d.write(0x10, {0xAA, 0xBB}));
 }
+//! [UT-LIB-006]
 
 // UT-LIB-007: read_async() でコールバックが呼ばれる（実機のみ）
 TEST(DeviceReadAsync, CallbackIsCalled) {
@@ -105,6 +115,7 @@ TEST(DeviceReadAsync, CallbackIsCalled) {
     EXPECT_EQ(cb_size, 4u);
 }
 
+//! [UT-LIB-008]
 // UT-LIB-008: 未openでread_async() → コールバックにerrが来るか空dataが来る
 TEST(DeviceReadAsync, NotOpenCallbackReceivesError) {
     Device d("/dev/spidev0.0");   // 存在しないデバイス
@@ -131,6 +142,7 @@ TEST(DeviceReadAsync, NotOpenCallbackReceivesError) {
     // 未openなので「データが空」または「errが非ゼロ」のどちらかが成立する
     EXPECT_TRUE(received_size == 0 || received_err != 0);
 }
+//! [UT-LIB-008]
 
 // UT-LIB-009: コピー禁止確認
 TEST(DeviceCopyable, IsNotCopyConstructible) {

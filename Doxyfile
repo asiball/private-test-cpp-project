@@ -16,6 +16,11 @@ INPUT                  = driver/include \
 RECURSIVE              = YES
 FILE_PATTERNS          = *.hpp *.cpp
 
+# snippet タグのソース探索パス
+EXAMPLE_PATH           = tests/unit/driver \
+                         tests/unit/lib
+EXAMPLE_RECURSIVE      = NO
+
 # 未ドキュメントのものも出力する（学習用に全部見たい場合は YES）
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = NO
@@ -26,6 +31,7 @@ GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 HTML_COLORSTYLE        = LIGHT
 GENERATE_TREEVIEW      = YES
+HTML_EXTRA_STYLESHEET  = docs/doxygen-awesome.css
 
 # Markdown を README として取り込む
 USE_MDFILE_AS_MAINPAGE = README.md

@@ -25,16 +25,27 @@ public:
      * @brief デバイスをオープンし SPI パラメータを設定する
      * @return true: 成功 / false: 失敗
      * @note 戻り値の確認を必須とする（[[nodiscard]]）
+     *
+     * **テストケース（UT-DRV-002）** — 無効なパスでは false を返す:
+     * @snippet test_spi_driver.cpp UT-DRV-002
      */
     [[nodiscard]] virtual bool open(const Config& cfg) noexcept = 0;
 
-    /** @brief デバイスをクローズする。未オープン時は no-op */
+    /**
+     * @brief デバイスをクローズする。未オープン時は no-op
+     *
+     * **テストケース（UT-DRV-004）** — 二重 close は安全:
+     * @snippet test_spi_driver.cpp UT-DRV-004
+     */
     virtual void close() noexcept = 0;
 
     /**
      * @brief フルデュプレクス SPI 転送を行う
      * @return 転送バイト数。エラー時は -1
      * @note 戻り値の確認を必須とする（[[nodiscard]]）
+     *
+     * **テストケース（UT-DRV-006）** — 未オープン時は -1 を返す:
+     * @snippet test_spi_driver.cpp UT-DRV-006
      */
     [[nodiscard]] virtual int transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept = 0;
 

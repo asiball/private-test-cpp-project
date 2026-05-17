@@ -59,6 +59,9 @@ public:
     /**
      * @brief デバイスをオープンする
      * @return true: 成功 / false: 失敗
+     *
+     * **テストケース（UT-LIB-002）** — 無効なパスでは false を返す:
+     * @snippet test_device.cpp UT-LIB-002
      */
     [[nodiscard]] bool open() noexcept;
 
@@ -71,6 +74,12 @@ public:
      * @param reg 読み出し元レジスタアドレス（アドレスビット7 は読み出しフラグとして設定される）
      * @param len 読み出しバイト数
      * @return 読み出したデータ。失敗時は空 vector
+     *
+     * **テストケース（UT-LIB-003）** — MockSpiDriver でデータ取得を検証:
+     * @snippet test_device.cpp UT-LIB-003
+     *
+     * **テストケース（UT-LIB-004）** — 未オープン時は空 vector:
+     * @snippet test_device.cpp UT-LIB-004
      */
     [[nodiscard]] std::vector<uint8_t> read(uint8_t reg, size_t len);
 
@@ -79,6 +88,12 @@ public:
      * @param reg  書き込み先レジスタアドレス
      * @param data 書き込むバイト列
      * @return true: 成功 / false: 失敗
+     *
+     * **テストケース（UT-LIB-005）** — MockSpiDriver で成功を検証:
+     * @snippet test_device.cpp UT-LIB-005
+     *
+     * **テストケース（UT-LIB-006）** — 未オープン時は false:
+     * @snippet test_device.cpp UT-LIB-006
      */
     [[nodiscard]] bool write(uint8_t reg, const std::vector<uint8_t>& data);
 

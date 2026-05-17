@@ -16,6 +16,7 @@ TEST(SpiDriverOpen, ValidDeviceReturnsTrue) {
     EXPECT_TRUE(drv.is_open());
 }
 
+//! [UT-DRV-002]
 // UT-DRV-002: 存在しないパスでopen()失敗
 TEST(SpiDriverOpen, InvalidDeviceReturnsFalse) {
     SpiDriver drv("/dev/spidevXX.0");
@@ -24,6 +25,7 @@ TEST(SpiDriverOpen, InvalidDeviceReturnsFalse) {
     EXPECT_FALSE(drv.is_open());
     EXPECT_NE(drv.last_errno(), 0);
 }
+//! [UT-DRV-002]
 
 // UT-DRV-003: open後にclose()するとis_open()==false
 TEST(SpiDriverClose, AfterOpenIsOpenFalse) {
@@ -37,6 +39,7 @@ TEST(SpiDriverClose, AfterOpenIsOpenFalse) {
     EXPECT_FALSE(drv.is_open());
 }
 
+//! [UT-DRV-004]
 // UT-DRV-004: 未openのままclose()しても安全
 TEST(SpiDriverClose, DoubleCloseIsSafe) {
     SpiDriver drv("/dev/spidevXX.0");
@@ -45,13 +48,16 @@ TEST(SpiDriverClose, DoubleCloseIsSafe) {
         drv.close();
     });
 }
+//! [UT-DRV-004]
 
+//! [UT-DRV-006]
 // UT-DRV-006: 未open状態でtransfer()は-1を返す
 TEST(SpiDriverTransfer, NotOpenReturnsMinusOne) {
     SpiDriver drv("/dev/spidev0.0");
     uint8_t tx[4] = {}, rx[4] = {};
     EXPECT_EQ(drv.transfer(tx, rx, 4), -1);
 }
+//! [UT-DRV-006]
 
 // UT-DRV-008: コピーが禁止されていることをコンパイル時に確認
 TEST(SpiDriverCopyable, IsNotCopyConstructible) {
