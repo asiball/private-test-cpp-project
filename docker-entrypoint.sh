@@ -34,6 +34,17 @@ mkdir -p test-results
     && echo "  driver テスト: PASS" \
     || echo "  [警告] driver テスト: 失敗あり"
 
+# ── [3b/7] サニタイザービルド (ASAN + UBSAN) ────────────────
+echo "=== [3b/7] サニタイザービルド (ASAN + UBSAN) ==="
+cmake -S . -B build/sanitized \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+    -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+cmake --build build/sanitized -j"$(nproc)"
+./build/sanitized/cli/device-ctl --version \
+    && echo "  サニタイザービルド: OK" \
+    || echo "  [警告] サニタイザービルド: 起動失敗（続行）"
+
 # ── [4/7] 単体テスト: lib ───────────────────────────────────
 echo "=== [4/7] 単体テスト (lib) ==="
 cmake -S lib -B build/lib-debug -DCMAKE_BUILD_TYPE=Debug

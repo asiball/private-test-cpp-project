@@ -2,6 +2,7 @@
 #include "ispi_driver.hpp"
 #include "spi_driver.hpp"
 
+#include <memory>
 #include <thread>
 
 namespace embedded {
@@ -22,17 +23,14 @@ struct Device::Impl {
 };
 
 Device::Device(const std::string& spi_path)
-    : impl_(new Impl(spi_path))
+    : impl_(std::make_unique<Impl>(spi_path))
 {}
 
 Device::Device(ISpiDriver* driver)
-    : impl_(new Impl(driver))
+    : impl_(std::make_unique<Impl>(driver))
 {}
 
-Device::~Device()
-{
-    delete impl_;
-}
+Device::~Device() = default;
 
 bool Device::open() noexcept
 {

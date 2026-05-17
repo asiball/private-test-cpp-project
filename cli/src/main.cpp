@@ -9,6 +9,7 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 static void print_version()
@@ -91,8 +92,16 @@ int main(int argc, char* argv[])
 
     if (cmd == "read") {
         if (argi + 1 >= argc) { print_usage(argv[0]); return EXIT_FAILURE; }
-        uint8_t reg = static_cast<uint8_t>(std::stoi(argv[argi++], nullptr, 0));
-        size_t  len = static_cast<size_t>(std::stoul(argv[argi++]));
+        uint8_t reg;
+        size_t  len;
+        try {
+            reg = static_cast<uint8_t>(std::stoi(argv[argi++], nullptr, 0));
+            len = static_cast<size_t>(std::stoul(argv[argi++]));
+        } catch (const std::exception& e) {
+            std::cerr << "Invalid argument: " << e.what() << '\n';
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
+        }
 
         if (async_mode) {
             std::mutex              mtx;
@@ -125,10 +134,17 @@ int main(int argc, char* argv[])
 
     } else if (cmd == "write") {
         if (argi >= argc) { print_usage(argv[0]); return EXIT_FAILURE; }
-        uint8_t reg = static_cast<uint8_t>(std::stoi(argv[argi++], nullptr, 0));
+        uint8_t reg;
         std::vector<uint8_t> data;
-        while (argi < argc) {
-            data.push_back(static_cast<uint8_t>(std::stoi(argv[argi++], nullptr, 0)));
+        try {
+            reg = static_cast<uint8_t>(std::stoi(argv[argi++], nullptr, 0));
+            while (argi < argc) {
+                data.push_back(static_cast<uint8_t>(std::stoi(argv[argi++], nullptr, 0)));
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Invalid argument: " << e.what() << '\n';
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
         }
         if (!dev.write(reg, data)) {
             std::cerr << "write failed\n";

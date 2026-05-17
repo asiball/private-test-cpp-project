@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         # C++ build
-        g++ cmake make \
+        g++ cmake make git \
         # Static analysis
         cppcheck \
         # Testing

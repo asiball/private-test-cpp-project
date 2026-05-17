@@ -2,6 +2,7 @@
 #include "../../driver/include/ispi_driver.hpp"
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -115,7 +116,7 @@ public:
 
 private:
     struct Impl;
-    Impl* impl_;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace embedded
