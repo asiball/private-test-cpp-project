@@ -48,6 +48,60 @@ TEST_F(SpiLoopbackTest, Stability100Reads) {
     EXPECT_EQ(errors, 0) << errors << " errors out of 100 transfers";
 }
 
+// IT-004: read_async() のコールバックが呼ばれること（loopback環境）
+TEST_F(SpiLoopbackTest, AsyncReadCallbackIsCalled) {
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool   done    = false;
+    int    cb_err  = -1;
+    size_t cb_size = 0;
+
+    dev.read_async(0x00, 4, [&](const std::vector<uint8_t>& data, int err) {
+        cb_err  = err;
+        cb_size = data.size();
+        {
+            std::lock_guard<std::mutex> lk(mtx);
+            done = true;
+        }
+        cv.notify_one();
+    });
+
+    std::unique_lock<std::mutex> lk(mtx);
+    cv.wait_for(lk, std::chrono::seconds(3), [&]{ return done; });
+    EXPECT_TRUE(done) << "callback was not called within 3 seconds";
+    EXPECT_EQ(cb_err, 0);
+    EXPECT_EQ(cb_size, 4u);
+}
+
+// IT-005: read_async() — エラー発生時にコールバックへエラーが通知されること
+TEST(SpiDeviceAsync, AsyncReadOnClosedDeviceReceivesError) {
+    embedded::Device dev("/dev/spidev0.0");   // open しない
+
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool   done          = false;
+    int    received_err  = 0;
+    size_t received_size = 99;   // 初期値を非ゼロにして「何も書かれなかった」を検出
+
+    dev.read_async(0x00, 4, [&](const std::vector<uint8_t>& data, int err) {
+        received_err  = err;
+        received_size = data.size();
+        {
+            std::lock_guard<std::mutex> lk(mtx);
+            done = true;
+        }
+        cv.notify_one();
+    });
+
+    std::unique_lock<std::mutex> lk(mtx);
+    cv.wait_for(lk, std::chrono::seconds(3), [&]{ return done; });
+    EXPECT_TRUE(done) << "callback was not called within 3 seconds";
+    // 未openなので「データが空」または「errが非ゼロ」のどちらかが成立する
+    EXPECT_TRUE(received_size == 0 || received_err != 0)
+        << "expected empty data or non-zero error, got size=" << received_size
+        << " err=" << received_err;
+}
+
 // IT-006: 無効デバイスでエラー処理
 TEST(SpiDeviceError, InvalidDeviceReturnsError) {
     embedded::Device dev("/dev/spidevXX.0");

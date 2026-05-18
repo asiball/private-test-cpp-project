@@ -65,6 +65,80 @@ jobs:
           name: test-results
           path: test-results/
 
+  coverage:
+    runs-on: ubuntu-24.04
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ cmake make git libgtest-dev gcovr
+
+      - name: Build GTest from source
+        run: |
+          cmake -B /tmp/gtest-build /usr/src/googletest \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/gtest-build
+          sudo cmake --install /tmp/gtest-build --prefix /usr/local
+
+      - name: Build driver with coverage flags
+        run: |
+          cmake -S driver -B build/driver-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
+          cmake --build build/driver-cov -j$(nproc)
+          sudo cmake --install build/driver-cov --prefix /usr/local
+
+      - name: Build lib with coverage flags
+        run: |
+          cmake -S lib -B build/lib-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
+          cmake --build build/lib-cov -j$(nproc)
+          sudo cmake --install build/lib-cov --prefix /usr/local
+          sudo ldconfig
+
+      - name: Run driver tests (coverage)
+        run: |
+          cmake -S tests/unit/driver -B build/test-driver-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/driver/include"
+          cmake --build build/test-driver-cov -j$(nproc)
+          mkdir -p test-results
+          ./build/test-driver-cov/test_spi_driver \
+            --gtest_output=xml:test-results/driver-unit.xml || true
+
+      - name: Run lib tests (coverage)
+        run: |
+          cmake -S tests/unit/lib -B build/test-lib-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/tests/mocks"
+          cmake --build build/test-lib-cov -j$(nproc)
+          ./build/test-lib-cov/test_device \
+            --gtest_output=xml:test-results/lib-unit.xml || true
+
+      - name: Generate coverage report
+        run: |
+          mkdir -p coverage
+          gcovr \
+            --root . \
+            --exclude 'tests/' \
+            --exclude '/usr/' \
+            --html-details coverage/index.html \
+            --xml coverage/cobertura.xml \
+            --print-summary
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
   lint:
     runs-on: ubuntu-24.04
     steps:

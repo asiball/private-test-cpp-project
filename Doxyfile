@@ -35,7 +35,9 @@ HTML_EXTRA_STYLESHEET  = docs/doxygen-awesome.css
 
 # Markdown を README として取り込む
 USE_MDFILE_AS_MAINPAGE = README.md
-INPUT                 += README.md
+INPUT                 += README.md \
+                         docs/gitlab-migration-guide.md \
+                         docs/wiki/release-matrix.md
 
 # LaTeX/PDF は無効（pandocで代替する）
 GENERATE_LATEX         = NO
