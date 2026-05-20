@@ -2,44 +2,116 @@
 
 Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブラリ・CLIツールを一元管理する。
 
-> **学習用プロジェクトとして**  
-> 本プロジェクトは、実案件レベルの組み込みSW開発フローを体験・学習するための例として構築されています。  
-> 仕様書→設計→実装→テスト→CI/CDという開発ライフサイクル全体が一つのリポジトリで確認できます。  
+> **このプロジェクトの目的**
+>
+> 実案件レベルの組み込みSW開発**運用フロー**をまるごと体験・学習するための例として構築されています。
+> C++の設計パターンだけでなく、仕様策定→設計→実装→テスト→CI/CD→納品 という
+> **開発ライフサイクル全体**が一つのリポジトリで追えます。
 > まずは [学習ガイド](docs/00_project/learning-guide.md) をお読みください。
 
 ---
 
-## コンポーネント
+## 開発ライフサイクル
 
-| コンポーネント | ディレクトリ | 説明 |
-|---|---|---|
-| spi-driver | `driver/` | Linux spidev を介した SPI フルデュプレクス通信ドライバ |
-| libdevice | `lib/` | ユーザ空間向け共有ライブラリ（PIMPL・非同期API） |
-| device-ctl | `cli/` | デバイス操作CLIツール（同期・非同期モード） |
+本プロジェクトの全フェーズが `docs/` に揃っています。以下の流れで一貫して追うことができます。
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  フェーズ          ドキュメント                  成果物          │
+├─────────────────────────────────────────────────────────────────┤
+│  01 要件定義  →  requirements-spec.md        機能要件・制約     │
+│  02 基本設計  →  system-architecture.md     システム構成図      │
+│  03 詳細設計  →  driver-design.md / lib-design.md  クラス設計   │
+│  04 API仕様   →  spi-driver-api.md / libdevice-api.md  公開API  │
+│  05 IF仕様    →  spi-hardware-if.md          HW接続仕様         │
+│  06 テスト    →  test-plan.md + 各種spec.xlsx テスト計画・仕様  │
+│  07 納品      →  delivery-checklist.xlsx / release-notes/       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+各フェーズのドキュメントとコードが紐付いており、「なぜこの設計にしたか」を仕様書まで遡って確認できます。
 
 ---
 
-## このプロジェクトで学べるC++パターン
+## モノレポ構成
 
-| パターン | 場所 | 概要 |
+```
+.
+├── driver/          # SPIドライバ（静的ライブラリ: libspi_driver.a）
+├── lib/             # libdevice（動的共有ライブラリ: libdevice.so）
+├── cli/             # device-ctl（CLIツール）
+├── tests/
+│   ├── mocks/       #   MockSpiDriver（テスト用）
+│   ├── unit/        #   単体テスト（driver / lib）
+│   └── integration/ #   結合テスト（実機必須）
+├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
+├── tools/           # ドキュメント生成スクリプト（gen_docs.py）
+├── .github/         # GitHub Actions CI
+├── .gitlab-ci.yml   # GitLab CI/CD
+├── Doxyfile         # Doxygen 設定
+├── Dockerfile.build # Docker ビルド環境
+└── CMakeLists.txt   # トップレベル CMake
+```
+
+### なぜ3コンポーネントに分割するか
+
+| コンポーネント | 種別 | 理由 |
 |---|---|---|
-| **RAII** | `driver/src/spi_driver.cpp` | デストラクタで fd を自動 close |
-| **PIMPL イディオム** | `lib/src/device.cpp` | `Device::Impl` で実装を隠蔽し ABI を安定化 |
-| **インターフェース分離** | `driver/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
-| **依存注入 (DI)** | `lib/include/device.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
-| **`[[nodiscard]]` / `noexcept`** | `driver/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
-| **ロガーマクロ** | `driver/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
-| **バージョン自動生成** | `driver/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |
-| **Doxygen スニペット** | `driver/include/ispi_driver.hpp` | `@snippet` でテストコードをAPIドキュメントに引用 |
-| **GMock** | `tests/mocks/mock_spi_driver.hpp` | `MOCK_METHOD` で実機不要のユニットテスト |
+| `driver/` (spi-driver) | 静的ライブラリ | Linuxカーネル依存コードを隔離。HWが変わっても`lib/`以上への影響を最小化 |
+| `lib/` (libdevice) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
+| `cli/` (device-ctl) | 実行バイナリ | UIロジックと業務ロジックを分離。`lib/`の差し替えが容易 |
 
-詳しい解説は [学習ガイド](docs/00_project/learning-guide.md) を参照してください。
+コンポーネントごとに独立した git タグを持ち（`driver/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
+
+---
+
+## CI/CDパイプライン
+
+```
+コード変更
+    │
+    ├─ push / PR作成
+    │       │
+    │       ▼
+    │   lint（cppcheck / clang-tidy）
+    │       │
+    │       ▼
+    │   build（変更コンポーネントのみ差分ビルド）
+    │       │
+    │       ▼
+    │   test:unit（GMock・実機不要）→ カバレッジレポート
+    │       │
+    │       ▼
+    │   docs（Doxygen HTML / PDF）
+    │
+    └─ タグ push（driver/vX.Y.Z 等）
+            │
+            ▼
+        package:release（.tar.gz アーカイブ生成）
+```
+
+| プラットフォーム | 設定ファイル | 特徴 |
+|---|---|---|
+| GitHub Actions | `.github/workflows/ci.yml` | push/PRで自動実行（ビルド・テスト・カバレッジ・Doxygen） |
+| GitLab CI | `.gitlab-ci.yml` | 差分ビルド・clang-tidy・PDF生成・リリースパッケージ作成 |
+
+---
+
+## テスト戦略
+
+| レベル | 対象 | ツール | 自動化 | 実行環境 |
+|---|---|---|---|---|
+| 単体テスト (UT) | SpiDriver / Device クラス | Google Test + GMock | ✓ CI | Docker（実機不要） |
+| 結合テスト (IT) | SPIループバック通信 | Google Test | 一部 | Raspberry Pi 4B |
+| 受入テスト (AT) | システム全体 | 手動 + Excel仕様書 | - | 実機 + 顧客確認 |
+
+カバレッジ目標: 主要モジュール **80%以上**（gcovr/lcovで計測）
 
 ---
 
 ## ドキュメント読み進めガイド
 
-ドキュメントは開発フローの順番に番号が振られています。以下の順で読むと体系的に学べます。
+ドキュメントは開発フローの順番に番号が振られています。
 
 ```
 01_requirements/   → 何を作るかを決める（要件定義書）
@@ -57,48 +129,6 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 3. `lib/include/device.hpp` / `lib/src/device.cpp` — PIMPL + 非同期API
 4. `tests/mocks/mock_spi_driver.hpp` — モック実装
 5. `tests/unit/` — ユニットテスト
-
----
-
-## ディレクトリ構成
-
-```
-.
-├── driver/          # SPIドライバ（静的ライブラリ）
-│   ├── include/     #   公開ヘッダ（ISpiDriver, SpiDriver, logger, version）
-│   └── src/         #   実装
-├── lib/             # libdevice（動的共有ライブラリ）
-│   ├── include/     #   公開ヘッダ（Device）
-│   └── src/         #   実装
-├── cli/             # device-ctl（CLIツール）
-│   └── src/         #   main.cpp
-├── tests/
-│   ├── mocks/       #   MockSpiDriver（テスト用）
-│   ├── unit/        #   単体テスト（driver / lib）
-│   └── integration/ #   結合テスト（実機必須）
-├── docs/            # プロジェクトドキュメント一式
-│   ├── 00_project/  #   学習ガイド・議事録・WBS
-│   ├── 01_requirements/ → 07_delivery/
-│   └── doxygen/     #   Doxygen 生成ドキュメント（自動生成）
-├── tools/           # ドキュメント生成スクリプト（gen_docs.py）
-├── .github/         # GitHub Actions CI
-├── .gitlab-ci.yml   # GitLab CI/CD
-├── Doxyfile         # Doxygen 設定
-├── Dockerfile.build # Docker ビルド環境
-└── CMakeLists.txt   # トップレベル CMake
-```
-
----
-
-## ビルド要件
-
-| ツール | バージョン |
-|---|---|
-| GCC | 7.5 以上（C++17対応） |
-| CMake | 3.10 以上 |
-| Google Test | 1.14（単体テスト用） |
-| Doxygen | 1.9 以上（ドキュメント生成用） |
-| Python 3 + openpyxl | （gen_docs.py 使用時のみ） |
 
 ---
 
@@ -158,6 +188,18 @@ cppcheck --enable=warning,performance,portability --std=c++17 \
 
 ---
 
+## ビルド要件
+
+| ツール | バージョン |
+|---|---|
+| GCC | 7.5 以上（C++17対応） |
+| CMake | 3.10 以上 |
+| Google Test | 1.14（単体テスト用） |
+| Doxygen | 1.9 以上（ドキュメント生成用） |
+| Python 3 + openpyxl | （gen_docs.py 使用時のみ） |
+
+---
+
 ## タグ命名規則
 
 ```
@@ -169,8 +211,26 @@ cppcheck --enable=warning,performance,portability --std=c++17 \
   cli/v1.0.0
 ```
 
-タグがないと `--version` が `v0.0.0-unknown` を表示するため、  
+タグがないと `--version` が `v0.0.0-unknown` を表示するため、
 リリース時は必ずタグを作成すること（詳細は `CONTRIBUTING.md` 参照）。
+
+---
+
+## C++設計パターン
+
+実装で使用している主なC++パターンの一覧。詳細は [学習ガイド](docs/00_project/learning-guide.md) を参照。
+
+| パターン | 場所 | 概要 |
+|---|---|---|
+| **RAII** | `driver/src/spi_driver.cpp` | デストラクタで fd を自動 close |
+| **PIMPL イディオム** | `lib/src/device.cpp` | `Device::Impl` で実装を隠蔽し ABI を安定化 |
+| **インターフェース分離** | `driver/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
+| **依存注入 (DI)** | `lib/include/device.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
+| **`[[nodiscard]]` / `noexcept`** | `driver/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
+| **ロガーマクロ** | `driver/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
+| **バージョン自動生成** | `driver/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |
+| **Doxygen スニペット** | `driver/include/ispi_driver.hpp` | `@snippet` でテストコードをAPIドキュメントに引用 |
+| **GMock** | `tests/mocks/mock_spi_driver.hpp` | `MOCK_METHOD` で実機不要のユニットテスト |
 
 ---
 
