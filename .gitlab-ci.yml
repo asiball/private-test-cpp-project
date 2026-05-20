@@ -1,6 +1,6 @@
 # ============================================================
 # embedded-device-suite GitLab CI/CD
-# C++11 / モノレポ。差分ビルド + テスト + カバレッジ + 静的解析
+# C++17 / モノレポ。差分ビルド + テスト + カバレッジ + 静的解析
 # + clang-tidy + Doxygen + pandoc PDF変換
 # ============================================================
 
@@ -104,7 +104,7 @@ lint:cppcheck:
   script:
     - cppcheck
         --enable=warning,performance,portability
-        --std=c++11
+        --std=c++17
         --error-exitcode=1
         --suppress=missingIncludeSystem
         --xml --xml-version=2
@@ -144,6 +144,7 @@ lint:clang-tidy:
         --warnings-as-errors='bugprone-*'
         driver/src/spi_driver.cpp
         lib/src/device.cpp
+        cli/src/main.cpp
   artifacts:
     name: "clang-tidy-${CI_COMMIT_SHORT_SHA}"
     paths: []
@@ -175,7 +176,6 @@ test:unit:driver:
     - mkdir -p test-results
     - build/test-driver-tests/test_spi_driver
         --gtest_output=xml:test-results/driver-unit.xml
-        || true   # 実機なしでSKIPが出ても継続
   artifacts:
     name: "test-driver-${CI_COMMIT_SHORT_SHA}"
     paths:
@@ -209,7 +209,6 @@ test:unit:lib:
     - mkdir -p test-results
     - build/test-lib-tests/test_device
         --gtest_output=xml:test-results/lib-unit.xml
-        || true
   artifacts:
     name: "test-lib-${CI_COMMIT_SHORT_SHA}"
     paths:
@@ -218,6 +217,152 @@ test:unit:lib:
       - "**/*.gcda"
     reports:
       junit: test-results/lib-unit.xml
+    expire_in: $ARTIFACT_EXPIRE
+    when: always
+
+# ============================================================
+# 結合テスト（実機なし環境では GTEST_SKIP で全テストをスキップ）
+# ============================================================
+test:integration:
+  <<: *build_defaults
+  stage: test
+  needs: [build:driver, build:lib]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [tests/integration/**/*, driver/**/*, lib/**/*]
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [tests/integration/**/*]
+  script:
+    - cmake -B build/driver -S driver/ -DCMAKE_BUILD_TYPE=Debug -G Ninja
+    - cmake --build build/driver
+    - cmake --install build/driver --prefix /usr/local
+    - cmake -B build/lib -S lib/ -DCMAKE_BUILD_TYPE=Debug -G Ninja
+    - cmake --build build/lib
+    - cmake --install build/lib --prefix /usr/local
+    - ldconfig
+    - cmake -B build/test-integration -S tests/integration/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="-I${CI_PROJECT_DIR}/lib/include -I${CI_PROJECT_DIR}/driver/include"
+        -G Ninja
+    - cmake --build build/test-integration
+    - mkdir -p test-results
+    - build/test-integration/test_spi_loopback
+        --gtest_output=xml:test-results/integration.xml
+  artifacts:
+    name: "test-integration-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - test-results/integration.xml
+    reports:
+      junit: test-results/integration.xml
+    expire_in: $ARTIFACT_EXPIRE
+    when: always
+
+# ============================================================
+# サニタイザーテスト（ASAN+UBSAN / TSAN）
+#
+# ASAN と TSAN は同時使用不可のため、ジョブを分ける。
+# TSAN は lib/src/device.cpp の detach スレッドによる
+# データ競合を検出する（学習ポイント）。
+# ============================================================
+test:sanitizer:asan:
+  <<: *build_defaults
+  stage: test
+  needs: [build:driver, build:lib]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [lib/**/*, driver/**/*, tests/unit/**/*]
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [lib/**/*, driver/**/*]
+  variables:
+    SANITIZER_FLAGS: "-fsanitize=address,undefined -fno-omit-frame-pointer"
+  script:
+    - cmake -B build/driver-asan -S driver/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS"
+        -DCMAKE_EXE_LINKER_FLAGS="$SANITIZER_FLAGS"
+        -G Ninja
+    - cmake --build build/driver-asan
+    - cmake --install build/driver-asan --prefix /usr/local
+    - cmake -B build/lib-asan -S lib/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS"
+        -DCMAKE_EXE_LINKER_FLAGS="$SANITIZER_FLAGS"
+        -G Ninja
+    - cmake --build build/lib-asan
+    - cmake --install build/lib-asan --prefix /usr/local
+    - ldconfig
+    - cmake -B build/test-driver-asan -S tests/unit/driver/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS"
+        -DCMAKE_EXE_LINKER_FLAGS="$SANITIZER_FLAGS"
+        -G Ninja
+    - cmake --build build/test-driver-asan
+    - mkdir -p test-results
+    - ASAN_OPTIONS=detect_leaks=1
+      build/test-driver-asan/test_spi_driver
+        --gtest_output=xml:test-results/driver-asan.xml
+    - cmake -B build/test-lib-asan -S tests/unit/lib/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS
+          -I${CI_PROJECT_DIR}/lib/include -I${CI_PROJECT_DIR}/tests/mocks"
+        -DCMAKE_EXE_LINKER_FLAGS="$SANITIZER_FLAGS"
+        -G Ninja
+    - cmake --build build/test-lib-asan
+    - ASAN_OPTIONS=detect_leaks=1
+      build/test-lib-asan/test_device
+        --gtest_output=xml:test-results/lib-asan.xml
+  artifacts:
+    name: "sanitizer-asan-${CI_COMMIT_SHORT_SHA}"
+    paths: [test-results/]
+    reports:
+      junit:
+        - test-results/driver-asan.xml
+        - test-results/lib-asan.xml
+    expire_in: $ARTIFACT_EXPIRE
+    when: always
+
+test:sanitizer:tsan:
+  <<: *build_defaults
+  stage: test
+  needs: [build:lib]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [lib/**/*, tests/unit/lib/**/*]
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [lib/**/*]
+  variables:
+    TSAN_FLAGS: "-fsanitize=thread -fno-omit-frame-pointer"
+  script:
+    - cmake -B build/driver-tsan -S driver/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$TSAN_FLAGS"
+        -DCMAKE_EXE_LINKER_FLAGS="$TSAN_FLAGS"
+        -G Ninja
+    - cmake --build build/driver-tsan
+    - cmake --install build/driver-tsan --prefix /usr/local
+    - cmake -B build/lib-tsan -S lib/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$TSAN_FLAGS"
+        -DCMAKE_EXE_LINKER_FLAGS="$TSAN_FLAGS"
+        -G Ninja
+    - cmake --build build/lib-tsan
+    - cmake --install build/lib-tsan --prefix /usr/local
+    - ldconfig
+    - cmake -B build/test-lib-tsan -S tests/unit/lib/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="$TSAN_FLAGS
+          -I${CI_PROJECT_DIR}/lib/include -I${CI_PROJECT_DIR}/tests/mocks"
+        -DCMAKE_EXE_LINKER_FLAGS="$TSAN_FLAGS"
+        -G Ninja
+    - cmake --build build/test-lib-tsan
+    - TSAN_OPTIONS=halt_on_error=1
+      build/test-lib-tsan/test_device
+        --gtest_output=xml:test-results/lib-tsan.xml
+  artifacts:
+    name: "sanitizer-tsan-${CI_COMMIT_SHORT_SHA}"
+    paths: [test-results/lib-tsan.xml]
+    reports:
+      junit: test-results/lib-tsan.xml
     expire_in: $ARTIFACT_EXPIRE
     when: always
 

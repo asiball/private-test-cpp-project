@@ -43,7 +43,7 @@ jobs:
           cmake --build build/test-driver -j$(nproc)
           mkdir -p test-results
           ./build/test-driver/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml || true
+            --gtest_output=xml:test-results/driver-unit.xml
 
       - name: Lib unit tests
         run: |
@@ -56,7 +56,21 @@ jobs:
             -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/tests/mocks"
           cmake --build build/test-lib -j$(nproc)
           ./build/test-lib/test_device \
-            --gtest_output=xml:test-results/lib-unit.xml || true
+            --gtest_output=xml:test-results/lib-unit.xml
+
+      - name: Integration tests (compile + skip check)
+        run: |
+          cmake -S lib -B build/lib-integ -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/lib-integ -j$(nproc)
+          sudo cmake --install build/lib-integ --prefix /usr/local
+          sudo ldconfig
+          cmake -S tests/integration -B build/test-integration \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/driver/include"
+          cmake --build build/test-integration -j$(nproc)
+          mkdir -p test-results
+          ./build/test-integration/test_spi_loopback \
+            --gtest_output=xml:test-results/integration.xml
 
       - name: Upload test results
         if: always()
@@ -111,7 +125,7 @@ jobs:
           cmake --build build/test-driver-cov -j$(nproc)
           mkdir -p test-results
           ./build/test-driver-cov/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml || true
+            --gtest_output=xml:test-results/driver-unit.xml
 
       - name: Run lib tests (coverage)
         run: |
@@ -120,7 +134,7 @@ jobs:
             -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/tests/mocks"
           cmake --build build/test-lib-cov -j$(nproc)
           ./build/test-lib-cov/test_device \
-            --gtest_output=xml:test-results/lib-unit.xml || true
+            --gtest_output=xml:test-results/lib-unit.xml
 
       - name: Generate coverage report
         run: |
@@ -144,8 +158,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cppcheck
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cppcheck
+      - name: Install cppcheck and clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cppcheck clang-tidy cmake
 
       - name: Run cppcheck
         run: |
@@ -155,6 +169,19 @@ jobs:
             --suppress=missingIncludeSystem \
             --error-exitcode=1 \
             driver/src/ lib/src/ cli/src/
+
+      - name: Run clang-tidy
+        run: |
+          cmake -B build-tidy -S . \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_BUILD_TYPE=Debug
+          clang-tidy \
+            -p build-tidy/ \
+            --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
+            --warnings-as-errors='bugprone-*' \
+            driver/src/spi_driver.cpp \
+            lib/src/device.cpp \
+            cli/src/main.cpp
 
   docs:
     runs-on: ubuntu-24.04
@@ -174,3 +201,154 @@ jobs:
         with:
           name: doxygen-html
           path: docs/doxygen/html/
+
+  # ============================================================
+  # コミットメッセージ形式チェック（PR 時のみ実行）
+  # CONTRIBUTING.md の規約: feat|fix|docs|refactor|test|ci|chore
+  # ============================================================
+  commit-lint:
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR title format
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          PATTERN='^(feat|fix|docs|refactor|test|ci|chore)(\(.+\))?!?: .+'
+          if echo "$TITLE" | grep -qE "$PATTERN"; then
+            echo "OK: $TITLE"
+          else
+            echo "ERROR: PR タイトルが Conventional Commits 形式に合っていません"
+            echo "  受け取った値: $TITLE"
+            echo "  期待する形式: feat|fix|docs|refactor|test|ci|chore: <概要>"
+            echo "  例: feat(lib): read_async にタイムアウトを追加"
+            exit 1
+          fi
+
+      - name: Validate commit messages in PR
+        run: |
+          PATTERN='^(feat|fix|docs|refactor|test|ci|chore|build)(\(.+\))?!?: .+'
+          INVALID=0
+          while IFS= read -r msg; do
+            # マージコミットはスキップ
+            echo "$msg" | grep -qE '^Merge ' && continue
+            if ! echo "$msg" | grep -qE "$PATTERN"; then
+              echo "INVALID: $msg"
+              INVALID=1
+            fi
+          done < <(git log origin/main..HEAD --format="%s")
+          if [ "$INVALID" -eq 1 ]; then
+            echo ""
+            echo "ERROR: Conventional Commits 形式に合わないコミットがあります"
+            echo "CONTRIBUTING.md を参照してください"
+            exit 1
+          fi
+          echo "All commit messages are valid."
+
+  # ============================================================
+  # サニタイザーテスト（build-and-test 後に実行）
+  # ASAN+UBSAN と TSAN は同時使用不可 → 別ビルドディレクトリで実行
+  # ============================================================
+  sanitizer:
+    runs-on: ubuntu-24.04
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ cmake make git libgtest-dev
+
+      - name: Build GTest from source
+        run: |
+          cmake -B /tmp/gtest-build /usr/src/googletest \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/gtest-build
+          sudo cmake --install /tmp/gtest-build --prefix /usr/local
+
+      # ── ASAN + UBSAN ──────────────────────────────────────────
+      - name: Build driver + lib with ASAN+UBSAN
+        run: |
+          cmake -S driver -B build/driver-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/driver-asan -j$(nproc)
+          sudo cmake --install build/driver-asan --prefix /usr/local
+          cmake -S lib -B build/lib-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/lib-asan -j$(nproc)
+          sudo cmake --install build/lib-asan --prefix /usr/local
+          sudo ldconfig
+
+      - name: Driver unit tests (ASAN+UBSAN)
+        run: |
+          cmake -S tests/unit/driver -B build/test-driver-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I${{ github.workspace }}/driver/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/test-driver-asan -j$(nproc)
+          mkdir -p test-results
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-driver-asan/test_spi_driver \
+            --gtest_output=xml:test-results/driver-asan.xml
+
+      - name: Lib unit tests (ASAN+UBSAN)
+        run: |
+          cmake -S tests/unit/lib -B build/test-lib-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I${{ github.workspace }}/lib/include \
+              -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/test-lib-asan -j$(nproc)
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-lib-asan/test_device \
+            --gtest_output=xml:test-results/lib-asan.xml
+
+      # ── TSAN ─────────────────────────────────────────────────
+      - name: Build lib with TSAN
+        run: |
+          cmake -S driver -B build/driver-tsan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+          cmake --build build/driver-tsan -j$(nproc)
+          sudo cmake --install build/driver-tsan --prefix /usr/local
+          cmake -S lib -B build/lib-tsan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+          cmake --build build/lib-tsan -j$(nproc)
+          sudo cmake --install build/lib-tsan --prefix /usr/local
+          sudo ldconfig
+
+      - name: Lib unit tests (TSAN) — read_async スレッド検査
+        run: |
+          cmake -S tests/unit/lib -B build/test-lib-tsan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer \
+              -I${{ github.workspace }}/lib/include \
+              -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+          cmake --build build/test-lib-tsan -j$(nproc)
+          TSAN_OPTIONS=halt_on_error=1 \
+          ./build/test-lib-tsan/test_device \
+            --gtest_output=xml:test-results/lib-tsan.xml
+
+      - name: Upload sanitizer test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sanitizer-test-results
+          path: test-results/
