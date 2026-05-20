@@ -1,0 +1,54 @@
+# git-cliff 設定ファイル
+# CHANGELOG.md をコミット履歴から自動生成する
+#
+# 使い方:
+#   # タグ間の差分を生成
+#   git cliff --output CHANGELOG.md
+#
+#   # 最新タグ以降の Unreleased セクションのみ出力
+#   git cliff --unreleased --output CHANGELOG.md
+#
+# CI では .github/workflows/release.yml がタグ push 時に自動実行する
+
+[changelog]
+header = """
+# CHANGELOG
+
+このCHANGELOGはコミット履歴から自動生成されます。\n
+"""
+body = """
+{% if version %}\
+## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message }}\
+{% endfor %}
+
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+# feat:/fix:/docs: 等の既存コミット形式にマッピング
+commit_parsers = [
+    { message = "^feat",     group = "Features" },
+    { message = "^fix",      group = "Bug Fixes" },
+    { message = "^docs",     group = "Documentation" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^test",     group = "Tests" },
+    { message = "^ci",       group = "CI" },
+    { message = "^chore",    group = "Chores" },
+    { message = "^build",    group = "Chores" },
+    { message = ".*",        skip = true },
+]
+filter_commits = false
+# コンポーネント別タグ（driver/v*, lib/v*, cli/v*）をリリース境界として認識
+tag_pattern = "^(driver|lib|cli)/v[0-9]"
+sort_commits = "newest"
