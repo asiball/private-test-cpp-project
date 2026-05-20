@@ -53,6 +53,6 @@ configure_file(
     @ONLY
 )
 
+add_subdirectory(driver)
 add_subdirectory(lib)
 add_subdirectory(cli)
-# driver は別途 kernel Makefile でビルドする

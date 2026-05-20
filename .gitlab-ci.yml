@@ -1,6 +1,6 @@
 # ============================================================
 # embedded-device-suite GitLab CI/CD
-# C++11 / モノレポ。差分ビルド + テスト + カバレッジ + 静的解析
+# C++17 / モノレポ。差分ビルド + テスト + カバレッジ + 静的解析
 # + clang-tidy + Doxygen + pandoc PDF変換
 # ============================================================
 
@@ -104,7 +104,7 @@ lint:cppcheck:
   script:
     - cppcheck
         --enable=warning,performance,portability
-        --std=c++11
+        --std=c++17
         --error-exitcode=1
         --suppress=missingIncludeSystem
         --xml --xml-version=2
@@ -144,6 +144,7 @@ lint:clang-tidy:
         --warnings-as-errors='bugprone-*'
         driver/src/spi_driver.cpp
         lib/src/device.cpp
+        cli/src/main.cpp
   artifacts:
     name: "clang-tidy-${CI_COMMIT_SHORT_SHA}"
     paths: []
@@ -175,7 +176,6 @@ test:unit:driver:
     - mkdir -p test-results
     - build/test-driver-tests/test_spi_driver
         --gtest_output=xml:test-results/driver-unit.xml
-        || true   # 実機なしでSKIPが出ても継続
   artifacts:
     name: "test-driver-${CI_COMMIT_SHORT_SHA}"
     paths:
@@ -209,7 +209,6 @@ test:unit:lib:
     - mkdir -p test-results
     - build/test-lib-tests/test_device
         --gtest_output=xml:test-results/lib-unit.xml
-        || true
   artifacts:
     name: "test-lib-${CI_COMMIT_SHORT_SHA}"
     paths:
@@ -218,6 +217,43 @@ test:unit:lib:
       - "**/*.gcda"
     reports:
       junit: test-results/lib-unit.xml
+    expire_in: $ARTIFACT_EXPIRE
+    when: always
+
+# ============================================================
+# 結合テスト（実機なし環境では GTEST_SKIP で全テストをスキップ）
+# ============================================================
+test:integration:
+  <<: *build_defaults
+  stage: test
+  needs: [build:driver, build:lib]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: [tests/integration/**/*, driver/**/*, lib/**/*]
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes: [tests/integration/**/*]
+  script:
+    - cmake -B build/driver -S driver/ -DCMAKE_BUILD_TYPE=Debug -G Ninja
+    - cmake --build build/driver
+    - cmake --install build/driver --prefix /usr/local
+    - cmake -B build/lib -S lib/ -DCMAKE_BUILD_TYPE=Debug -G Ninja
+    - cmake --build build/lib
+    - cmake --install build/lib --prefix /usr/local
+    - ldconfig
+    - cmake -B build/test-integration -S tests/integration/
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCMAKE_CXX_FLAGS="-I${CI_PROJECT_DIR}/lib/include -I${CI_PROJECT_DIR}/driver/include"
+        -G Ninja
+    - cmake --build build/test-integration
+    - mkdir -p test-results
+    - build/test-integration/test_spi_loopback
+        --gtest_output=xml:test-results/integration.xml
+  artifacts:
+    name: "test-integration-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - test-results/integration.xml
+    reports:
+      junit: test-results/integration.xml
     expire_in: $ARTIFACT_EXPIRE
     when: always
 

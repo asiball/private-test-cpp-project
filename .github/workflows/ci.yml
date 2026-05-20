@@ -43,7 +43,7 @@ jobs:
           cmake --build build/test-driver -j$(nproc)
           mkdir -p test-results
           ./build/test-driver/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml || true
+            --gtest_output=xml:test-results/driver-unit.xml
 
       - name: Lib unit tests
         run: |
@@ -56,7 +56,21 @@ jobs:
             -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/tests/mocks"
           cmake --build build/test-lib -j$(nproc)
           ./build/test-lib/test_device \
-            --gtest_output=xml:test-results/lib-unit.xml || true
+            --gtest_output=xml:test-results/lib-unit.xml
+
+      - name: Integration tests (compile + skip check)
+        run: |
+          cmake -S lib -B build/lib-integ -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/lib-integ -j$(nproc)
+          sudo cmake --install build/lib-integ --prefix /usr/local
+          sudo ldconfig
+          cmake -S tests/integration -B build/test-integration \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/driver/include"
+          cmake --build build/test-integration -j$(nproc)
+          mkdir -p test-results
+          ./build/test-integration/test_spi_loopback \
+            --gtest_output=xml:test-results/integration.xml
 
       - name: Upload test results
         if: always()
@@ -111,7 +125,7 @@ jobs:
           cmake --build build/test-driver-cov -j$(nproc)
           mkdir -p test-results
           ./build/test-driver-cov/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml || true
+            --gtest_output=xml:test-results/driver-unit.xml
 
       - name: Run lib tests (coverage)
         run: |
@@ -120,7 +134,7 @@ jobs:
             -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/tests/mocks"
           cmake --build build/test-lib-cov -j$(nproc)
           ./build/test-lib-cov/test_device \
-            --gtest_output=xml:test-results/lib-unit.xml || true
+            --gtest_output=xml:test-results/lib-unit.xml
 
       - name: Generate coverage report
         run: |
@@ -144,8 +158,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cppcheck
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cppcheck
+      - name: Install cppcheck and clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cppcheck clang-tidy cmake
 
       - name: Run cppcheck
         run: |
@@ -155,6 +169,19 @@ jobs:
             --suppress=missingIncludeSystem \
             --error-exitcode=1 \
             driver/src/ lib/src/ cli/src/
+
+      - name: Run clang-tidy
+        run: |
+          cmake -B build-tidy -S . \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_BUILD_TYPE=Debug
+          clang-tidy \
+            -p build-tidy/ \
+            --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
+            --warnings-as-errors='bugprone-*' \
+            driver/src/spi_driver.cpp \
+            lib/src/device.cpp \
+            cli/src/main.cpp
 
   docs:
     runs-on: ubuntu-24.04

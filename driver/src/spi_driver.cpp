@@ -59,6 +59,18 @@ int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
         LOGE("SpiDriver::transfer called on closed device");
         return -1;
     }
+    if (!tx || !rx) {
+        LOGE("SpiDriver::transfer null pointer: tx=%p rx=%p",
+             static_cast<const void*>(tx), static_cast<void*>(rx));
+        return -1;
+    }
+    if (len == 0) {
+        return 0;
+    }
+    if (len > static_cast<size_t>(UINT32_MAX)) {
+        LOGE("SpiDriver::transfer length overflow: %zu", len);
+        return -1;
+    }
 
     struct spi_ioc_transfer tr = {};
     tr.tx_buf        = reinterpret_cast<uintptr_t>(tx);
