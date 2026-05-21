@@ -59,7 +59,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 |---|---|---|
 | `driver/` (spi-driver) | 静的ライブラリ | Linuxカーネル依存コードを隔離。HWが変わっても`lib/`以上への影響を最小化 |
 | `lib/` (libdevice) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
-| `cli/` (device-ctl) | 実行バイナリ | UIロジックと業務ロジックを分離。`lib/`の差し替えが容易 |
+| `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからread/writeを繰り返し実行できる。 |
 
 コンポーネントごとに独立した git タグを持ち（`driver/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
 
@@ -184,6 +184,46 @@ doxygen Doxyfile
 cppcheck --enable=warning,performance,portability --std=c++17 \
          --suppress=missingIncludeSystem --error-exitcode=1 \
          driver/src/ lib/src/ cli/src/
+```
+
+### device-ctl の使い方
+
+```bash
+# デフォルトデバイス (/dev/spidev0.0) で起動
+./build/device-ctl
+
+# デバイスパスを指定して起動
+./build/device-ctl -d /dev/spidev0.1
+
+# 非同期readモードで起動
+./build/device-ctl --async
+
+# バージョン確認
+./build/device-ctl --version
+```
+
+起動後は対話メニューが表示され、read/writeを繰り返し実行できます。
+バックグラウンドで1分ごとにデバイス (reg=0x00, 4バイト) を自動読み出しし、
+次のメニュー表示時に `[MONITOR]` プレフィックス付きで結果を表示します。
+
+```
+device-ctl 対話モード (デバイス: /dev/spidev0.0)
+
+[1] read
+[2] write
+[3] 終了
+選択: 1
+  レジスタ (hex): 0x00
+  バイト数: 4
+00 1a ff 03
+
+[MONITOR] 00 1a ff 03
+
+[1] read
+[2] write
+[3] 終了
+選択: 3
+終了します。
 ```
 
 ---
