@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(spi_driver STATIC
     src/spi_driver.cpp
 )
+set_target_properties(spi_driver PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spi_driver PUBLIC include)
 
 install(TARGETS spi_driver ARCHIVE DESTINATION lib)
