@@ -20,6 +20,9 @@ struct Device::Impl {
         : driver(drv), owns_driver(false) {}
 
     ~Impl() { if (owns_driver) delete driver; }
+
+    Impl(const Impl&)            = delete;
+    Impl& operator=(const Impl&) = delete;
 };
 
 Device::Device(const std::string& spi_path)
