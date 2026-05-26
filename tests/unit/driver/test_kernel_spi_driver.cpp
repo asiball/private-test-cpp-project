@@ -102,3 +102,23 @@ TEST(KernelSpiDriverTransfer, ZeroLenReturnsZero) {
     uint8_t tx[4] = {}, rx[4] = {};
     EXPECT_EQ(drv.transfer(tx, rx, 0), 0);
 }
+
+// UT-KRN-010: close()なしで2回open()するとエラーを返す（既存fdはリークしない）
+TEST(KernelSpiDriverOpen, DoubleOpenWithoutCloseReturnsFalse) {
+    KernelSpiDriver drv("/dev/no_such_device");
+    KernelSpiDriver::Config cfg{1000000, 8, 0};
+    // 1回目は失敗（デバイスが存在しない）→ fd_ は -1 のまま
+    EXPECT_FALSE(drv.open(cfg));
+    EXPECT_FALSE(drv.is_open());
+
+    // 実機向け: fd_ >= 0 の状態で2回目を呼ぶ
+    const char* dev = "/dev/my_spi_dev";
+    if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
+
+    KernelSpiDriver drv2(dev);
+    ASSERT_TRUE(drv2.open(cfg));
+    EXPECT_TRUE(drv2.is_open());
+    // 2回目の open() → false を返し fd_ は変化しない
+    EXPECT_FALSE(drv2.open(cfg));
+    EXPECT_TRUE(drv2.is_open());  // 既存のfdは保持されたまま
+}

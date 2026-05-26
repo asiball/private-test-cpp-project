@@ -22,6 +22,10 @@ KernelSpiDriver::~KernelSpiDriver()
 
 bool KernelSpiDriver::open(const Config& cfg) noexcept
 {
+    if (fd_ >= 0) {
+        LOGE("KernelSpiDriver::open called while already open: %s", device_path_.c_str());
+        return false;
+    }
     fd_ = ::open(device_path_.c_str(), O_RDWR);
     if (fd_ < 0) {
         last_errno_ = errno;
