@@ -1,0 +1,109 @@
+SPDXVersion: SPDX-2.3
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentName: embedded-device-suite-sbom
+DocumentNamespace: https://github.com/asiball/private-test-cpp-project/sbom/1.1.0-d8e140bb-0db0-5811-8c40-29a4c745fe7d
+Creator: Tool: tools/generate-sbom.py
+Creator: Organization: asiball ()
+Created: 2026-05-26T05:33:02Z
+
+PackageName: embedded-device-suite
+SPDXID: SPDXRef-Package-root
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: Linux monorepo for embedded device drivers, shared libraries, and CLI tools
+
+PackageName: spi-driver
+SPDXID: SPDXRef-Package-spi-driver
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#driver
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: Linux SPI device driver (static library: libspi_driver.a). RAII pattern, POSIX/spidev interface.
+
+PackageName: libdevice
+SPDXID: SPDXRef-Package-libdevice
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#lib
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: Device abstraction shared library (libdevice.so). PIMPL idiom, dependency injection, async API.
+
+PackageName: device-ctl
+SPDXID: SPDXRef-Package-device-ctl
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#cli
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: Command-line interface tool for device management with background monitoring.
+
+PackageName: googletest
+SPDXID: SPDXRef-Package-googletest
+PackageVersion: 1.14.0
+PackageSupplier: Organization: Google LLC ()
+PackageDownloadLocation: https://github.com/google/googletest/releases/tag/v1.14.0
+FilesAnalyzed: false
+PackageLicenseConcluded: BSD-3-Clause
+PackageLicenseDeclared: BSD-3-Clause
+PackageCopyrightText: Copyright 2008, Google Inc.
+PackageComment: C++ testing and mocking framework (GTest + GMock). Test-only dependency via CMake find_package(GTest). Installed from Ubuntu 24.04 libgtest-dev.
+
+PackageName: libpthread
+SPDXID: SPDXRef-Package-libpthread
+PackageVersion: NOASSERTION
+PackageSupplier: Organization: GNU Project ()
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageLicenseConcluded: LGPL-2.1-or-later
+PackageLicenseDeclared: LGPL-2.1-or-later
+PackageCopyrightText: NOASSERTION
+PackageComment: POSIX threads runtime library (part of glibc). Dynamically linked by libdevice and test components.
+
+PackageName: linux-spi-headers
+SPDXID: SPDXRef-Package-linux-spi-headers
+PackageVersion: NOASSERTION
+PackageSupplier: Organization: Linux Kernel Organization ()
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageLicenseConcluded: GPL-2.0-only WITH Linux-syscall-note
+PackageLicenseDeclared: GPL-2.0-only WITH Linux-syscall-note
+PackageCopyrightText: NOASSERTION
+PackageComment: Linux kernel UAPI headers for spidev interface (linux/spi/spidev.h). Build-time only; Linux-syscall-note exception permits user-space inclusion without GPL propagation.
+
+PackageName: libstdc++
+SPDXID: SPDXRef-Package-libstdcxx
+PackageVersion: NOASSERTION
+PackageSupplier: Organization: Free Software Foundation ()
+PackageDownloadLocation: NOASSERTION
+FilesAnalyzed: false
+PackageLicenseConcluded: GPL-3.0-only WITH GCC-exception-3.1
+PackageLicenseDeclared: GPL-3.0-only WITH GCC-exception-3.1
+PackageCopyrightText: NOASSERTION
+PackageComment: GNU C++ standard library runtime. GCC Runtime Library Exception permits linking without GPL propagation.
+
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Package-root
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-spi-driver
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-libdevice
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-device-ctl
+Relationship: SPDXRef-Package-device-ctl DYNAMIC_LINK SPDXRef-Package-libdevice
+Relationship: SPDXRef-Package-libdevice STATIC_LINK SPDXRef-Package-spi-driver
+Relationship: SPDXRef-Package-libdevice DYNAMIC_LINK SPDXRef-Package-libpthread
+Relationship: SPDXRef-Package-libdevice DYNAMIC_LINK SPDXRef-Package-libstdcxx
+Relationship: SPDXRef-Package-linux-spi-headers BUILD_DEPENDENCY_OF SPDXRef-Package-spi-driver
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-spi-driver
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-libdevice
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-device-ctl

@@ -1,0 +1,216 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:d8e140bb-0db0-5811-8c40-29a4c745fe7d",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-05-26T05:33:02Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "generate-sbom.py",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "embedded-device-suite",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux monorepo for embedded device drivers, shared libraries, and CLI tools"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "MIT"
+        }
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "spi-driver",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux SPI device driver (static library: libspi_driver.a). RAII pattern, POSIX/spidev interface."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "libdevice",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Device abstraction shared library (libdevice.so). PIMPL idiom, dependency injection, async API."
+    },
+    {
+      "type": "application",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "device-ctl",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Command-line interface tool for device management with background monitoring."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/google/googletest@v1.14.0",
+      "supplier": {
+        "name": "Google LLC"
+      },
+      "name": "googletest",
+      "purl": "pkg:github/google/googletest@v1.14.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "version": "1.14.0",
+      "copyright": "Copyright 2008, Google Inc.",
+      "description": "C++ testing and mocking framework (GTest + GMock). Test-only dependency via CMake find_package(GTest). Installed from Ubuntu 24.04 libgtest-dev.",
+      "scope": "excluded"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/libpthread",
+      "supplier": {
+        "name": "GNU Project"
+      },
+      "name": "libpthread",
+      "purl": "pkg:generic/libpthread",
+      "licenses": [
+        {
+          "license": {
+            "id": "LGPL-2.1-or-later"
+          }
+        }
+      ],
+      "description": "POSIX threads runtime library (part of glibc). Dynamically linked by libdevice and test components."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/linux-spi-headers",
+      "supplier": {
+        "name": "Linux Kernel Organization"
+      },
+      "name": "linux-spi-headers",
+      "purl": "pkg:generic/linux-spi-headers",
+      "licenses": [
+        {
+          "expression": "GPL-2.0-only WITH Linux-syscall-note"
+        }
+      ],
+      "description": "Linux kernel UAPI headers for spidev interface (linux/spi/spidev.h). Build-time only; Linux-syscall-note exception permits user-space inclusion without GPL propagation."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/libstdc%2B%2B",
+      "supplier": {
+        "name": "Free Software Foundation"
+      },
+      "name": "libstdc++",
+      "purl": "pkg:generic/libstdc%2B%2B",
+      "licenses": [
+        {
+          "expression": "GPL-3.0-only WITH GCC-exception-3.1"
+        }
+      ],
+      "description": "GNU C++ standard library runtime. GCC Runtime Library Exception permits linking without GPL propagation."
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0",
+      "dependsOn": [
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#lib"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "dependsOn": [
+        "pkg:generic/linux-spi-headers"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "dependsOn": [
+        "pkg:generic/libpthread",
+        "pkg:generic/libstdc%2B%2B",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+      "dependsOn": [
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#lib"
+      ]
+    },
+    {
+      "ref": "pkg:github/google/googletest@v1.14.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:generic/libpthread",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:generic/linux-spi-headers",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:generic/libstdc%2B%2B",
+      "dependsOn": []
+    }
+  ]
+}
