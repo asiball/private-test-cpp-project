@@ -44,6 +44,8 @@ jobs:
           mkdir -p test-results
           ./build/test-driver/test_spi_driver \
             --gtest_output=xml:test-results/driver-unit.xml
+          ./build/test-driver/test_kernel_spi_driver \
+            --gtest_output=xml:test-results/kernel-driver-unit.xml
 
       - name: Lib unit tests
         run: |
@@ -126,6 +128,8 @@ jobs:
           mkdir -p test-results
           ./build/test-driver-cov/test_spi_driver \
             --gtest_output=xml:test-results/driver-unit.xml
+          ./build/test-driver-cov/test_kernel_spi_driver \
+            --gtest_output=xml:test-results/kernel-driver-unit.xml
 
       - name: Run lib tests (coverage)
         run: |
@@ -180,6 +184,7 @@ jobs:
             --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
             --warnings-as-errors='bugprone-*' \
             driver/src/spi_driver.cpp \
+            driver/src/kernel_spi_driver.cpp \
             lib/src/device.cpp \
             cli/src/main.cpp
 
@@ -302,6 +307,9 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           ./build/test-driver-asan/test_spi_driver \
             --gtest_output=xml:test-results/driver-asan.xml
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-driver-asan/test_kernel_spi_driver \
+            --gtest_output=xml:test-results/kernel-driver-asan.xml
 
       - name: Lib unit tests (ASAN+UBSAN)
         run: |
