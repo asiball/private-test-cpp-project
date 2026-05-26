@@ -1,0 +1,80 @@
+name: SBOM
+
+# Trigger on:
+#   - Release tags: regenerate and attach SBOM to the GitHub Release
+#   - Push to main (metadata or CMakeLists.txt changed): regenerate if stale
+#   - Pull requests: verify SBOM is consistent with metadata (no auto-commit)
+#   - Manual dispatch: always regenerate
+
+on:
+  push:
+    tags:
+      - 'driver/v*'
+      - 'lib/v*'
+      - 'cli/v*'
+    branches:
+      - main
+    paths:
+      - 'tools/sbom-metadata.json'
+      - '**/CMakeLists.txt'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tools/sbom-metadata.json'
+      - '**/CMakeLists.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ── PR: verify only (no commit) ──────────────────────────────────────────────
+  verify-sbom:
+    name: Verify SBOM consistency
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check SBOM matches metadata
+        run: python3 tools/generate-sbom.py --verify
+
+  # ── push / tag / manual: regenerate and commit ───────────────────────────────
+  update-sbom:
+    name: Regenerate SBOM
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate SBOM
+        run: python3 tools/generate-sbom.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sbom.spdx sbom.cdx.json
+          git diff --cached --quiet && echo "SBOM unchanged" || \
+            (git commit -m "chore: regenerate SBOM [skip ci]" && \
+             git push origin HEAD:main)
+
+      - name: Upload SBOM as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom.spdx
+            sbom.cdx.json
+
+      - name: Attach SBOM to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sbom.spdx
+            sbom.cdx.json
