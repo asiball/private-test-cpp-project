@@ -4,7 +4,7 @@
   "serialNumber": "urn:uuid:d8e140bb-0db0-5811-8c40-29a4c745fe7d",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-05-26T05:33:02Z",
+    "timestamp": "2026-05-26T09:42:26Z",
     "tools": {
       "components": [
         {
@@ -59,7 +59,26 @@
       ],
       "version": "1.1.0",
       "copyright": "Copyright (c) 2024 asiball",
-      "description": "Linux SPI device driver (static library: libspi_driver.a). RAII pattern, POSIX/spidev interface."
+      "description": "Linux SPI device driver static library (libspi_driver.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
+    },
+    {
+      "type": "firmware",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "my-spi-driver",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-2.0-only"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux kernel SPI device driver module (my_spi_driver.ko). Registers with Linux SPI subsystem via probe(), exposes /dev/my_spi_dev character device, controlled via MY_SPI_IOC_CONFIG/MY_SPI_IOC_TRANSFER ioctl. Requires running Linux kernel with SPI subsystem enabled."
     },
     {
       "type": "library",
@@ -121,12 +140,12 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:generic/libpthread",
+      "bom-ref": "pkg:generic/glibc",
       "supplier": {
-        "name": "GNU Project"
+        "name": "Free Software Foundation"
       },
-      "name": "libpthread",
-      "purl": "pkg:generic/libpthread",
+      "name": "glibc",
+      "purl": "pkg:generic/glibc",
       "licenses": [
         {
           "license": {
@@ -134,22 +153,22 @@
           }
         }
       ],
-      "description": "POSIX threads runtime library (part of glibc). Dynamically linked by libdevice and test components."
+      "description": "GNU C Library. Provides POSIX interfaces used across driver and library components: pthread (thread management in libdevice), syslog.h (logger.hpp in driver), fcntl.h/unistd.h (file operations in spi_driver.cpp and kernel_spi_driver.cpp), sys/ioctl.h (ioctl calls in both drivers)."
     },
     {
       "type": "library",
-      "bom-ref": "pkg:generic/linux-spi-headers",
+      "bom-ref": "pkg:generic/linux-kernel-headers",
       "supplier": {
         "name": "Linux Kernel Organization"
       },
-      "name": "linux-spi-headers",
-      "purl": "pkg:generic/linux-spi-headers",
+      "name": "linux-kernel-headers",
+      "purl": "pkg:generic/linux-kernel-headers",
       "licenses": [
         {
           "expression": "GPL-2.0-only WITH Linux-syscall-note"
         }
       ],
-      "description": "Linux kernel UAPI headers for spidev interface (linux/spi/spidev.h). Build-time only; Linux-syscall-note exception permits user-space inclusion without GPL propagation."
+      "description": "Linux kernel headers. Userspace UAPI (Linux-syscall-note exception applies): linux/spi/spidev.h (SpiDriver), linux/ioctl.h and linux/types.h (my_spi_dev.h shared ioctl definitions). Kernel module internal headers: linux/spi/spi.h, linux/module.h, linux/miscdevice.h, linux/uaccess.h, linux/slab.h, linux/mutex.h (my_spi_driver.c). Build-time only for userspace; kernel module compiled against the running kernel's build tree."
     },
     {
       "type": "library",
@@ -173,19 +192,28 @@
       "dependsOn": [
         "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#lib"
       ]
     },
     {
       "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
       "dependsOn": [
-        "pkg:generic/linux-spi-headers"
+        "pkg:generic/glibc",
+        "pkg:generic/linux-kernel-headers"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+      "dependsOn": [
+        "pkg:generic/linux-kernel-headers",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver"
       ]
     },
     {
       "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
       "dependsOn": [
-        "pkg:generic/libpthread",
+        "pkg:generic/glibc",
         "pkg:generic/libstdc%2B%2B",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#driver"
       ]
@@ -201,11 +229,11 @@
       "dependsOn": []
     },
     {
-      "ref": "pkg:generic/libpthread",
+      "ref": "pkg:generic/glibc",
       "dependsOn": []
     },
     {
-      "ref": "pkg:generic/linux-spi-headers",
+      "ref": "pkg:generic/linux-kernel-headers",
       "dependsOn": []
     },
     {

@@ -5,7 +5,7 @@ DocumentName: embedded-device-suite-sbom
 DocumentNamespace: https://github.com/asiball/private-test-cpp-project/sbom/1.1.0-d8e140bb-0db0-5811-8c40-29a4c745fe7d
 Creator: Tool: tools/generate-sbom.py
 Creator: Organization: asiball ()
-Created: 2026-05-26T05:33:02Z
+Created: 2026-05-26T09:42:26Z
 
 PackageName: embedded-device-suite
 SPDXID: SPDXRef-Package-root
@@ -27,7 +27,18 @@ FilesAnalyzed: false
 PackageLicenseConcluded: MIT
 PackageLicenseDeclared: MIT
 PackageCopyrightText: Copyright (c) 2024 asiball
-PackageComment: Linux SPI device driver (static library: libspi_driver.a). RAII pattern, POSIX/spidev interface.
+PackageComment: Linux SPI device driver static library (libspi_driver.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access.
+
+PackageName: my-spi-driver
+SPDXID: SPDXRef-Package-my-spi-driver
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#kernel
+FilesAnalyzed: false
+PackageLicenseConcluded: GPL-2.0-only
+PackageLicenseDeclared: GPL-2.0-only
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: Linux kernel SPI device driver module (my_spi_driver.ko). Registers with Linux SPI subsystem via probe(), exposes /dev/my_spi_dev character device, controlled via MY_SPI_IOC_CONFIG/MY_SPI_IOC_TRANSFER ioctl. Requires running Linux kernel with SPI subsystem enabled.
 
 PackageName: libdevice
 SPDXID: SPDXRef-Package-libdevice
@@ -62,19 +73,19 @@ PackageLicenseDeclared: BSD-3-Clause
 PackageCopyrightText: Copyright 2008, Google Inc.
 PackageComment: C++ testing and mocking framework (GTest + GMock). Test-only dependency via CMake find_package(GTest). Installed from Ubuntu 24.04 libgtest-dev.
 
-PackageName: libpthread
-SPDXID: SPDXRef-Package-libpthread
+PackageName: glibc
+SPDXID: SPDXRef-Package-glibc
 PackageVersion: NOASSERTION
-PackageSupplier: Organization: GNU Project ()
+PackageSupplier: Organization: Free Software Foundation ()
 PackageDownloadLocation: NOASSERTION
 FilesAnalyzed: false
 PackageLicenseConcluded: LGPL-2.1-or-later
 PackageLicenseDeclared: LGPL-2.1-or-later
 PackageCopyrightText: NOASSERTION
-PackageComment: POSIX threads runtime library (part of glibc). Dynamically linked by libdevice and test components.
+PackageComment: GNU C Library. Provides POSIX interfaces used across driver and library components: pthread (thread management in libdevice), syslog.h (logger.hpp in driver), fcntl.h/unistd.h (file operations in spi_driver.cpp and kernel_spi_driver.cpp), sys/ioctl.h (ioctl calls in both drivers).
 
-PackageName: linux-spi-headers
-SPDXID: SPDXRef-Package-linux-spi-headers
+PackageName: linux-kernel-headers
+SPDXID: SPDXRef-Package-linux-kernel-headers
 PackageVersion: NOASSERTION
 PackageSupplier: Organization: Linux Kernel Organization ()
 PackageDownloadLocation: NOASSERTION
@@ -82,7 +93,7 @@ FilesAnalyzed: false
 PackageLicenseConcluded: GPL-2.0-only WITH Linux-syscall-note
 PackageLicenseDeclared: GPL-2.0-only WITH Linux-syscall-note
 PackageCopyrightText: NOASSERTION
-PackageComment: Linux kernel UAPI headers for spidev interface (linux/spi/spidev.h). Build-time only; Linux-syscall-note exception permits user-space inclusion without GPL propagation.
+PackageComment: Linux kernel headers. Userspace UAPI (Linux-syscall-note exception applies): linux/spi/spidev.h (SpiDriver), linux/ioctl.h and linux/types.h (my_spi_dev.h shared ioctl definitions). Kernel module internal headers: linux/spi/spi.h, linux/module.h, linux/miscdevice.h, linux/uaccess.h, linux/slab.h, linux/mutex.h (my_spi_driver.c). Build-time only for userspace; kernel module compiled against the running kernel's build tree.
 
 PackageName: libstdc++
 SPDXID: SPDXRef-Package-libstdcxx
@@ -97,13 +108,17 @@ PackageComment: GNU C++ standard library runtime. GCC Runtime Library Exception 
 
 Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Package-root
 Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-spi-driver
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-my-spi-driver
 Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-libdevice
 Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-device-ctl
 Relationship: SPDXRef-Package-device-ctl DYNAMIC_LINK SPDXRef-Package-libdevice
 Relationship: SPDXRef-Package-libdevice STATIC_LINK SPDXRef-Package-spi-driver
-Relationship: SPDXRef-Package-libdevice DYNAMIC_LINK SPDXRef-Package-libpthread
+Relationship: SPDXRef-Package-libdevice DYNAMIC_LINK SPDXRef-Package-glibc
 Relationship: SPDXRef-Package-libdevice DYNAMIC_LINK SPDXRef-Package-libstdcxx
-Relationship: SPDXRef-Package-linux-spi-headers BUILD_DEPENDENCY_OF SPDXRef-Package-spi-driver
+Relationship: SPDXRef-Package-spi-driver DYNAMIC_LINK SPDXRef-Package-glibc
+Relationship: SPDXRef-Package-linux-kernel-headers BUILD_DEPENDENCY_OF SPDXRef-Package-spi-driver
+Relationship: SPDXRef-Package-linux-kernel-headers BUILD_DEPENDENCY_OF SPDXRef-Package-my-spi-driver
+Relationship: SPDXRef-Package-my-spi-driver OPTIONAL_DEPENDENCY_OF SPDXRef-Package-spi-driver
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-spi-driver
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-libdevice
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-device-ctl
