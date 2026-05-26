@@ -64,3 +64,17 @@ TEST(SpiDriverCopyable, IsNotCopyConstructible) {
     EXPECT_FALSE(std::is_copy_constructible<SpiDriver>::value);
     EXPECT_FALSE(std::is_copy_assignable<SpiDriver>::value);
 }
+
+// UT-DRV-009: close()なしで2回open()するとエラーを返す
+TEST(SpiDriverOpen, DoubleOpenWithoutCloseReturnsFalse) {
+    const char* dev = "/dev/spidev0.0";
+    if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
+
+    SpiDriver drv(dev);
+    SpiDriver::Config cfg{1000000, 8, 0};
+    ASSERT_TRUE(drv.open(cfg));
+    EXPECT_TRUE(drv.is_open());
+    // 2回目の open() → false を返し、fd_ は変化しない
+    EXPECT_FALSE(drv.open(cfg));
+    EXPECT_TRUE(drv.is_open());  // 既存のfdは保持されたまま
+}

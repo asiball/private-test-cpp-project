@@ -21,6 +21,10 @@ SpiDriver::~SpiDriver()
 
 bool SpiDriver::open(const Config& cfg) noexcept
 {
+    if (fd_ >= 0) {
+        LOGE("SpiDriver::open called while already open: %s", device_path_.c_str());
+        return false;
+    }
     fd_ = ::open(device_path_.c_str(), O_RDWR);
     if (fd_ < 0) {
         last_errno_ = errno;
