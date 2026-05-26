@@ -1,0 +1,244 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:d8e140bb-0db0-5811-8c40-29a4c745fe7d",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-05-26T09:42:26Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "generate-sbom.py",
+          "version": "1.0.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "embedded-device-suite",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux monorepo for embedded device drivers, shared libraries, and CLI tools"
+    },
+    "licenses": [
+      {
+        "license": {
+          "id": "MIT"
+        }
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "spi-driver",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux SPI device driver static library (libspi_driver.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
+    },
+    {
+      "type": "firmware",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "my-spi-driver",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-2.0-only"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux kernel SPI device driver module (my_spi_driver.ko). Registers with Linux SPI subsystem via probe(), exposes /dev/my_spi_dev character device, controlled via MY_SPI_IOC_CONFIG/MY_SPI_IOC_TRANSFER ioctl. Requires running Linux kernel with SPI subsystem enabled."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "libdevice",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Device abstraction shared library (libdevice.so). PIMPL idiom, dependency injection, async API."
+    },
+    {
+      "type": "application",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "device-ctl",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Command-line interface tool for device management with background monitoring."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/google/googletest@v1.14.0",
+      "supplier": {
+        "name": "Google LLC"
+      },
+      "name": "googletest",
+      "purl": "pkg:github/google/googletest@v1.14.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "version": "1.14.0",
+      "copyright": "Copyright 2008, Google Inc.",
+      "description": "C++ testing and mocking framework (GTest + GMock). Test-only dependency via CMake find_package(GTest). Installed from Ubuntu 24.04 libgtest-dev.",
+      "scope": "excluded"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/glibc",
+      "supplier": {
+        "name": "Free Software Foundation"
+      },
+      "name": "glibc",
+      "purl": "pkg:generic/glibc",
+      "licenses": [
+        {
+          "license": {
+            "id": "LGPL-2.1-or-later"
+          }
+        }
+      ],
+      "description": "GNU C Library. Provides POSIX interfaces used across driver and library components: pthread (thread management in libdevice), syslog.h (logger.hpp in driver), fcntl.h/unistd.h (file operations in spi_driver.cpp and kernel_spi_driver.cpp), sys/ioctl.h (ioctl calls in both drivers)."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/linux-kernel-headers",
+      "supplier": {
+        "name": "Linux Kernel Organization"
+      },
+      "name": "linux-kernel-headers",
+      "purl": "pkg:generic/linux-kernel-headers",
+      "licenses": [
+        {
+          "expression": "GPL-2.0-only WITH Linux-syscall-note"
+        }
+      ],
+      "description": "Linux kernel headers. Userspace UAPI (Linux-syscall-note exception applies): linux/spi/spidev.h (SpiDriver), linux/ioctl.h and linux/types.h (my_spi_dev.h shared ioctl definitions). Kernel module internal headers: linux/spi/spi.h, linux/module.h, linux/miscdevice.h, linux/uaccess.h, linux/slab.h, linux/mutex.h (my_spi_driver.c). Build-time only for userspace; kernel module compiled against the running kernel's build tree."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:generic/libstdc%2B%2B",
+      "supplier": {
+        "name": "Free Software Foundation"
+      },
+      "name": "libstdc++",
+      "purl": "pkg:generic/libstdc%2B%2B",
+      "licenses": [
+        {
+          "expression": "GPL-3.0-only WITH GCC-exception-3.1"
+        }
+      ],
+      "description": "GNU C++ standard library runtime. GCC Runtime Library Exception permits linking without GPL propagation."
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0",
+      "dependsOn": [
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#lib"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "dependsOn": [
+        "pkg:generic/glibc",
+        "pkg:generic/linux-kernel-headers"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+      "dependsOn": [
+        "pkg:generic/linux-kernel-headers",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "dependsOn": [
+        "pkg:generic/glibc",
+        "pkg:generic/libstdc%2B%2B",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+      "dependsOn": [
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#lib"
+      ]
+    },
+    {
+      "ref": "pkg:github/google/googletest@v1.14.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:generic/glibc",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:generic/linux-kernel-headers",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:generic/libstdc%2B%2B",
+      "dependsOn": []
+    }
+  ]
+}
