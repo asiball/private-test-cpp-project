@@ -103,7 +103,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 | レベル | 対象 | ツール | 自動化 | 実行環境 |
 |---|---|---|---|---|
 | 単体テスト (UT) | SpiDriver / Sensor クラス | Google Test + GMock | ✓ CI | Docker（実機不要） |
-| 結合テスト (IT) | SPIループバック通信 | Google Test | 一部 | Raspberry Pi 4B |
+| 結合テスト (IT) | SPIループバック通信 | Google Test | 一部 | Raspberry Pi 3B+ |
 | 受入テスト (AT) | システム全体 | 手動 + Excel仕様書 | - | 実機 + 顧客確認 |
 
 カバレッジ目標: 主要モジュール **80%以上**（gcovr/lcovで計測）

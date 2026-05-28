@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 #include <cstdlib>
 
-// 結合テスト: 実機（Raspi4B + SPI loopback）必須
+// 結合テスト: 実機（Raspi3B+ + SPI loopback）必須
 // IT-001 〜 IT-006 に対応
 
 static const char* SPI_DEV = "/dev/spidev0.0";
