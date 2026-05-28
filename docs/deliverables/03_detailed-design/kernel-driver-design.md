@@ -30,7 +30,7 @@
 
 - プロジェクト固有の処理をカーネル空間で実装できる
 - 独自の ioctl インターフェースで拡張しやすい
-- Device Tree でデバイスを記述し、自動バインドが可能
+- Sensor Tree でデバイスを記述し、自動バインドが可能
 
 ---
 
@@ -39,7 +39,7 @@
 ```
 ユーザー空間:
   ┌──────────────────────────────────────────────────────────┐
-  │  アプリケーション / libdevice                            │
+  │  アプリケーション / libsensor                            │
   │  ┌─────────────────────────┐  ┌────────────────────────┐│
   │  │   ISpiDriver インターフェース                        ││
   │  └──────────┬──────────────┘  └──────────┬─────────────┘│
@@ -77,7 +77,7 @@
 kernel/
 ├── Makefile           # カーネルビルドシステム用 Makefile
 └── my_spi_driver.c    # モジュール本体
-driver/include/
+spi-hal/include/
 └── my_spi_dev.h       # カーネル・ユーザー空間共有 ioctl 定義
 ```
 
@@ -229,7 +229,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-`libspi_driver.a` に `KernelSpiDriver` が含まれる。
+`libspihal.a` に `KernelSpiDriver` が含まれる。
 
 ### 5.3 カーネルモジュールのロード
 
@@ -248,7 +248,7 @@ echo "my_spi_driver" | sudo tee /etc/modules-load.d/my-spi.conf
 
 ---
 
-## 6. Device Tree オーバーレイ（Raspberry Pi 例）
+## 6. Sensor Tree オーバーレイ（Raspberry Pi 例）
 
 カーネルモジュールが SPI バスにバインドするためにはデバイスツリーへの登録が必要。
 
@@ -308,18 +308,18 @@ if (n < 0) {
 }
 ```
 
-`Device` クラスへの注入（`ISpiDriver*` を受け取るコンストラクタを使用）:
+`Sensor` クラスへの注入（`ISpiDriver*` を受け取るコンストラクタを使用）:
 
 ```cpp
 embedded::KernelSpiDriver kernel_drv("/dev/my_spi_dev");
-embedded::Device dev(&kernel_drv);  // ISpiDriver* を注入
+embedded::Sensor dev(&kernel_drv);  // ISpiDriver* を注入
 ```
 
 ---
 
 ## 8. エラーハンドリング
 
-`SpiDriver` と同じ方針に従う（`driver-design.md` セクション 4 参照）。
+`SpiDriver` と同じ方針に従う（`spihal-design.md` セクション 4 参照）。
 
 - エラー発生時は `last_errno_` に `errno` を保存
 - 例外を使用しない（`noexcept`）

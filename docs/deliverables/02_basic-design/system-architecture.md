@@ -23,14 +23,14 @@
 │          └──────────┬────────────────┘                  │
 │                     │ C++ API                           │
 │          ┌──────────▼──────────────────┐               │
-│          │       libdevice.so          │               │
-│          │  Device クラス              │               │
+│          │       libsensor.so          │               │
+│          │  Sensor クラス              │               │
 │          │  ・read() / write()         │               │
 │          │  ・read_async()             │               │
 │          └──────────┬──────────────────┘               │
 │                     │ C++ API                           │
 │          ┌──────────▼──────────────────┐               │
-│          │      libspi_driver.a        │               │
+│          │      libspihal.a        │               │
 │          │  SpiDriver クラス           │               │
 │          │  ・open() / close()         │               │
 │          │  ・transfer()               │               │
@@ -58,8 +58,8 @@
 
 ```mermaid
 graph TD
-    CLI[device-ctl] --> LIB[libdevice.so]
-    LIB --> DRV[libspi_driver.a]
+    CLI[device-ctl] --> LIB[libsensor.so]
+    LIB --> DRV[libspihal.a]
     DRV --> SPIDEV[/dev/spidev0.0]
     APP[発注者App] --> LIB
 ```
@@ -68,15 +68,15 @@ graph TD
 
 | 成果物 | 種別 | 提供先 |
 |---|---|---|
-| `libspi_driver.a` | 静的ライブラリ | libdevice内部リンク |
-| `libdevice.so.1.1.0` | 動的共有ライブラリ | 発注者アプリ・CLI |
+| `libspihal.a` | 静的ライブラリ | libsensor内部リンク |
+| `libsensor.so.1.1.0` | 動的共有ライブラリ | 発注者アプリ・CLI |
 | `device-ctl` | 実行ファイル | 動作確認・デバッグ用 |
 
 ## 4. 実行環境
 
 | 項目 | 仕様 |
 |---|---|
-| ハードウェア | Raspberry Pi 4B |
+| ハードウェア | Raspberry Pi 3B+ |
 | OS | Linux kernel 5.10.x |
 | コンパイラ | GCC 7.5 (C++11) |
 | SPIデバイス | /dev/spidev0.0（最大 2MHz） |

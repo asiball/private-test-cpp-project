@@ -14,7 +14,7 @@
 
 `ISpiDriver` はSPIドライバの抽象インターフェースである。
 実機用実装（`SpiDriver`）とテスト用モック（`MockSpiDriver`）が共通の型として扱われる。
-`Device` クラスは `ISpiDriver*` のみを参照するため、実機なしでのテストが可能になる。
+`Sensor` クラスは `ISpiDriver*` のみを参照するため、実機なしでのテストが可能になる。
 
 ### 1.1 Config 構造体
 

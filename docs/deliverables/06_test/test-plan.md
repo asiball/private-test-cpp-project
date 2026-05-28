@@ -12,7 +12,7 @@
 ## 1. テスト方針
 
 - **単体テスト**: Google Test + Google Mock を使用。実機不要（モックによる）。CIで自動実行。
-- **結合テスト**: 実機（Raspi4B）上で `device-ctl` を起動し、対話メニューからread/writeを実行して動作確認。手動実施。
+- **結合テスト**: 実機（Raspi3B+）上で `device-ctl` を起動し、対話メニューからread/writeを実行して動作確認。手動実施。
   > **注記（v1.2.0〜）**: `device-ctl` は対話型モードに移行。起動後のメニュー操作で結合テストを実施すること。コマンドライン引数によるread/writeは廃止。
 - **受け入れテスト**: 発注者立会いのもと手動実施。Excelシートで結果を記録・署名。
 
@@ -21,7 +21,7 @@
 | コンポーネント | 目標 | 測定方法 |
 |---|---|---|
 | SpiDriver | 80%以上 | gcov / lcov |
-| Device lib | 80%以上 | gcov / lcov |
+| Sensor lib | 80%以上 | gcov / lcov |
 | device-ctl | 対象外 | — |
 
 ## 3. テスト環境
@@ -29,8 +29,8 @@
 | 用途 | 環境 |
 |---|---|
 | 単体テスト（CI） | Docker `gcc:7.5` + Google Test 1.14 |
-| 結合テスト | Raspberry Pi 4B / Linux 5.10 / SPI loopback治具 |
-| 受け入れテスト | 発注者会議室（Raspi4B現物） |
+| 結合テスト | Raspberry Pi 3B+ / Linux 5.10 / SPI loopback治具 |
+| 受け入れテスト | 発注者会議室（Raspi3B+現物） |
 
 ## 4. テストスイート一覧
 

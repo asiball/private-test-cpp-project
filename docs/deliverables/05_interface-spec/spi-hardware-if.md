@@ -10,7 +10,7 @@
 
 ## 1. 物理インターフェース
 
-| 信号名 | 方向 | ピン（Raspi4B） | 説明 |
+| 信号名 | 方向 | ピン（Raspi3B+） | 説明 |
 |---|---|---|---|
 | SCLK | Master → Slave | GPIO11 (Pin 23) | クロック |
 | MOSI | Master → Slave | GPIO10 (Pin 19) | マスタ送信 |

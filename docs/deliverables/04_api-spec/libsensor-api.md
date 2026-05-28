@@ -1,22 +1,22 @@
-# API仕様書 — libdevice
+# API仕様書 — libsensor
 
 | 項目 | 内容 |
 |---|---|
 | ドキュメント番号 | API-LIB-001 |
 | バージョン | 1.1 |
-| ヘッダ | `#include <device.hpp>` |
+| ヘッダ | `#include <sensor.hpp>` |
 | リンク | `-ldevice -lpthread` |
 | 名前空間 | `embedded::` |
 
 ---
 
-## 1. Device クラス
+## 1. Sensor クラス
 
 ### コンストラクタ / デストラクタ
 
 ```cpp
-explicit Device(const std::string& spi_path);
-~Device();
+explicit Sensor(const std::string& spi_path);
+~Sensor();
 ```
 
 | パラメータ | 説明 |
@@ -105,18 +105,18 @@ void read_async(uint8_t reg, size_t len, ReadCallback cb);
 | `len` | 読み出しバイト数 |
 | `cb` | 完了コールバック。第1引数: 読み出しデータ、第2引数: errno（成功時0） |
 
-> **注意**: `Device` オブジェクトのライフタイムはコールバック完了まで呼び出し元が保証すること。
+> **注意**: `Sensor` オブジェクトのライフタイムはコールバック完了まで呼び出し元が保証すること。
 
 ---
 
 ## 2. 使用例
 
 ```cpp
-#include <device.hpp>
+#include <sensor.hpp>
 #include <iostream>
 
 int main() {
-    embedded::Device dev("/dev/spidev0.0");
+    embedded::Sensor dev("/dev/spidev0.0");
     if (!dev.open()) {
         std::cerr << "open failed\n";
         return 1;

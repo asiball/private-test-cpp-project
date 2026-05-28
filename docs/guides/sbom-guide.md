@@ -97,7 +97,7 @@ tools/sbom-metadata.json   ← 手動管理・依存関係の定義
 | embedded-device-suite | 自プロジェクト（ルート） | 1.1.0 | MIT | SBOM の対象プロダクト |
 | spi-driver | 自プロジェクト（静的ライブラリ） | 1.1.0 | MIT | 内部コンポーネント |
 | my-spi-driver | 自プロジェクト（カーネルモジュール） | 1.1.0 | GPL-2.0-only | 内部コンポーネント |
-| libdevice | 自プロジェクト（共有ライブラリ） | 1.1.0 | MIT | 内部コンポーネント |
+| libsensor | 自プロジェクト（共有ライブラリ） | 1.1.0 | MIT | 内部コンポーネント |
 | device-ctl | 自プロジェクト（実行ファイル） | 1.1.0 | MIT | 内部コンポーネント |
 | googletest | 外部ライブラリ（テストのみ） | 1.14.0 | BSD-3-Clause | テスト依存。`TEST_DEPENDENCY_OF` で明示 |
 | glibc | システムライブラリ | NOASSERTION | LGPL-2.1-or-later | POSIX インタフェース群（下記 §3.2 参照） |
@@ -130,11 +130,11 @@ SBOM に記載する対象の原則は以下のとおり。
 
 | ヘッダ | 使用ファイル | 機能 |
 |---|---|---|
-| `<syslog.h>` | `driver/include/logger.hpp` | syslog ロギング |
-| `<pthread.h>`（暗黙リンク） | `lib/src/device.cpp` | スレッド管理（`std::thread` の実装） |
-| `<fcntl.h>` | `driver/src/spi_driver.cpp`, `driver/src/kernel_spi_driver.cpp` | `open()`, `O_RDWR` |
+| `<syslog.h>` | `spi-hal/include/logger.hpp` | syslog ロギング |
+| `<pthread.h>`（暗黙リンク） | `libsensor/src/sensor.cpp` | スレッド管理（`std::thread` の実装） |
+| `<fcntl.h>` | `spi-hal/src/spi_driver.cpp`, `spi-hal/src/kernel_spi_driver.cpp` | `open()`, `O_RDWR` |
 | `<unistd.h>` | 同上 | `close()`, `read()`, `write()` |
-| `<sys/ioctl.h>` | `driver/src/spi_driver.cpp`, `driver/src/kernel_spi_driver.cpp`, `driver/include/my_spi_dev.h` | ioctl システムコール |
+| `<sys/ioctl.h>` | `spi-hal/src/spi_driver.cpp`, `spi-hal/src/kernel_spi_driver.cpp`, `spi-hal/include/my_spi_dev.h` | ioctl システムコール |
 
 **SBOM での表現**：`DYNAMIC_LINK`（実行時リンク）
 
@@ -240,7 +240,7 @@ git commit -m "docs(sbom): update SBOM for <変更内容>"
 |---|---|
 | PR（`CMakeLists.txt` または `sbom-metadata.json` 変更） | `--verify` モードで整合性チェック。不一致なら CI が失敗しコメントが付く |
 | main へのプッシュ（同ファイル変更） | SBOM を再生成し自動コミット |
-| リリースタグ（`driver/v*`, `lib/v*`, `cli/v*`） | SBOM を再生成し GitHub Release にアセットとして添付 |
+| リリースタグ（`spi-hal/v*`, `lib/v*`, `cli/v*`） | SBOM を再生成し GitHub Release にアセットとして添付 |
 
 ---
 

@@ -1,4 +1,4 @@
-# 詳細設計書 — libdevice（Device クラス）
+# 詳細設計書 — libsensor（Sensor クラス）
 
 | 項目 | 内容 |
 |---|---|
@@ -11,7 +11,7 @@
 
 ## 1. クラス概要
 
-`Device` はSPIデバイスへの**高レベルアクセス**を提供するクラスである。
+`Sensor` はSPIデバイスへの**高レベルアクセス**を提供するクラスである。
 内部ではPIMPLイディオムを使って実装詳細を隠蔽し、
 コンストラクタ引数によって実機用・テスト用ドライバを切り替えられる設計になっている。
 
@@ -19,7 +19,7 @@
 
 | 特徴 | 実現方法 |
 |---|---|
-| ABI安定性 | PIMPLイディオム（`Device::Impl` を `unique_ptr` で保持） |
+| ABI安定性 | PIMPLイディオム（`Sensor::Impl` を `unique_ptr` で保持） |
 | テスト可能性 | `ISpiDriver*` を外部から注入できるコンストラクタを持つ |
 | 非同期対応 | `std::thread` + `detach` で `read_async()` を実装 |
 | コピー禁止 | ファイルディスクリプタを所有するため `= delete` で禁止 |
@@ -30,13 +30,13 @@
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                    Device                            │
+│                    Sensor                            │
 ├──────────────────────────────────────────────────────┤
 │ - impl_ : unique_ptr<Impl>                           │
 ├──────────────────────────────────────────────────────┤
-│ + Device(spi_path: string)    ← 実機用               │
-│ + Device(driver: ISpiDriver*) ← テスト用             │
-│ + ~Device()                                          │
+│ + Sensor(spi_path: string)    ← 実機用               │
+│ + Sensor(driver: ISpiDriver*) ← テスト用             │
+│ + ~Sensor()                                          │
 │ + open()       : bool                                │
 │ + close()      : void                                │
 │ + read(reg, len) : vector<uint8_t>                   │
@@ -46,7 +46,7 @@
 └──────────────────────┬───────────────────────────────┘
                        │ unique_ptr
        ┌───────────────▼───────────────┐
-       │         Device::Impl          │
+       │         Sensor::Impl          │
        ├───────────────────────────────┤
        │ + driver      : ISpiDriver*   │
        │ + owns_driver : bool          │
@@ -67,14 +67,14 @@
 ### 3.1 設計意図
 
 ```cpp
-// device.hpp — ヘッダには前方宣言のみ
-class Device {
+// sensor.hpp — ヘッダには前方宣言のみ
+class Sensor {
     struct Impl;                       // 前方宣言
     std::unique_ptr<Impl> impl_;       // ポインタで保持
 };
 
-// device.cpp — 実装の詳細はここだけ
-struct Device::Impl {
+// sensor.cpp — 実装の詳細はここだけ
+struct Sensor::Impl {
     ISpiDriver* driver;
     bool        owns_driver;
     ...
@@ -83,8 +83,8 @@ struct Device::Impl {
 
 ヘッダに `SpiDriver` のインクルードが不要になるため:
 
-1. **再コンパイル削減**: `spi_driver.hpp` を変更しても `device.hpp` をインクルードしたファイルを再コンパイルしなくてよい
-2. **ABI安定化**: `Impl` の内容を変えても `Device` のバイナリサイズが変わらない
+1. **再コンパイル削減**: `spi_driver.hpp` を変更しても `sensor.hpp` をインクルードしたファイルを再コンパイルしなくてよい
+2. **ABI安定化**: `Impl` の内容を変えても `Sensor` のバイナリサイズが変わらない
 3. **依存隠蔽**: `<linux/spi/spidev.h>` をライブラリ利用者に露出しない
 
 ### 3.2 所有権の管理
@@ -92,8 +92,8 @@ struct Device::Impl {
 `Impl` は `driver` ポインタの所有権を `owns_driver` フラグで管理する:
 
 ```
-Device(spi_path) → Impl が SpiDriver を new → owns_driver = true
-Device(driver*)  → Impl はドライバを借りる  → owns_driver = false
+Sensor(spi_path) → Impl が SpiDriver を new → owns_driver = true
+Sensor(driver*)  → Impl はドライバを借りる  → owns_driver = false
 ```
 
 デストラクタでは `owns_driver == true` の場合のみ `delete` する。
@@ -105,12 +105,12 @@ Device(driver*)  → Impl はドライバを借りる  → owns_driver = false
 
 ```cpp
 // 実機用: SpiDriver を内部で生成して所有する
-explicit Device(const std::string& spi_path)
+explicit Sensor(const std::string& spi_path)
     : impl_(std::make_unique<Impl>(spi_path))  // Impl が SpiDriver を new
 {}
 
 // テスト用: ISpiDriver* を外部から受け取る（所有しない）
-explicit Device(ISpiDriver* driver)
+explicit Sensor(ISpiDriver* driver)
     : impl_(std::make_unique<Impl>(driver))    // Impl はポインタを借用
 {}
 ```
@@ -122,7 +122,7 @@ MockSpiDriver mock;
 EXPECT_CALL(mock, open(_)).WillOnce(Return(true));
 EXPECT_CALL(mock, transfer(_, _, _)).WillOnce(Return(5));
 
-Device d(&mock);   // 実機不要
+Sensor d(&mock);   // 実機不要
 d.open();
 auto result = d.read(0x00, 4);
 EXPECT_EQ(result.size(), 4u);
@@ -165,7 +165,7 @@ EXPECT_EQ(result.size(), 4u);
 ### 6.1 実装
 
 ```cpp
-void Device::read_async(uint8_t reg, size_t len, ReadCallback cb)
+void Sensor::read_async(uint8_t reg, size_t len, ReadCallback cb)
 {
     std::thread([this, reg, len, cb]() {
         auto result = this->read(reg, len);
@@ -179,7 +179,7 @@ void Device::read_async(uint8_t reg, size_t len, ReadCallback cb)
 
 ### 6.2 ライフタイムの注意事項
 
-**重要**: `read_async()` でデタッチしたスレッドは `Device` のデストラクタを待たない。
+**重要**: `read_async()` でデタッチしたスレッドは `Sensor` のデストラクタを待たない。
 
 ```
 呼び出し元                スレッド
@@ -187,16 +187,16 @@ void Device::read_async(uint8_t reg, size_t len, ReadCallback cb)
     ├─ read_async() ─────── start
     │   (すぐ返る)           │
     │                    read() 実行中
-    ├─ Device が破棄される !!
+    ├─ Sensor が破棄される !!
     │                    cb(result, err)  ← this が dangling pointer!
 ```
 
-**対策**: `Device` オブジェクトのライフタイムをコールバック完了まで呼び出し元が保証すること。
+**対策**: `Sensor` オブジェクトのライフタイムをコールバック完了まで呼び出し元が保証すること。
 長期稼働デーモンでは `shared_ptr + enable_shared_from_this` の採用を検討すること。
 
 ### 6.3 スレッドセーフ性
 
-`Device` はスレッドセーフではない。複数スレッドから同一インスタンスに `read()`/`write()` を
+`Sensor` はスレッドセーフではない。複数スレッドから同一インスタンスに `read()`/`write()` を
 並行して呼び出す場合は呼び出し元でミューテックス管理を行うこと。
 
 ---
@@ -217,7 +217,7 @@ void Device::read_async(uint8_t reg, size_t len, ReadCallback cb)
 ## 8. シーケンス図（同期読み出し）
 
 ```
-呼び出し元          Device          Device::Impl       ISpiDriver
+呼び出し元          Sensor          Sensor::Impl       ISpiDriver
     │                 │                  │                  │
     ├── read(0x00, 4) ──────────────────►│                  │
     │                 │                  │                  │
