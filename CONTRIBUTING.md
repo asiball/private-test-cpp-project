@@ -48,11 +48,11 @@ fix: MockSpiDriver の noexcept 指定が抜けていたのを修正
 # cppcheck のみ
 cppcheck --enable=warning,performance,portability --std=c++17 \
          --suppress=missingIncludeSystem --error-exitcode=1 \
-         driver/src/ lib/src/ cli/src/
+         spi-hal/src/ lib/src/ cli/src/
 
 # clang-tidy（compile_commands.json が必要）
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-clang-tidy -p build/ driver/src/spi_driver.cpp lib/src/device.cpp
+clang-tidy -p build/ spi-hal/src/spi_driver.cpp lib/src/device.cpp
 ```
 
 ## コーディング規約
@@ -67,7 +67,7 @@ clang-tidy -p build/ driver/src/spi_driver.cpp lib/src/device.cpp
 コンポーネントごとにタグを付与する:
 
 ```bash
-git tag driver/vX.Y.Z
+git tag spi-hal/vX.Y.Z
 git tag lib/vX.Y.Z
 git tag cli/vX.Y.Z
 git push origin --tags

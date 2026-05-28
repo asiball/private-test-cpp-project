@@ -1,5 +1,5 @@
 #pragma once
-#include "../../driver/include/ispi_driver.hpp"
+#include "../../spi-hal/include/ispi_driver.hpp"
 #include <gmock/gmock.h>
 
 namespace embedded {

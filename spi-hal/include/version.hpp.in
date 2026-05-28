@@ -7,7 +7,7 @@ namespace embedded {
 namespace version {
 
 // コンポーネント別バージョン（git tag から自動取得）
-inline constexpr const char* DRIVER = "@EDS_VERSION_DRIVER@";
+inline constexpr const char* SPIHAL = "@EDS_VERSION_SPIHAL@";
 inline constexpr const char* LIB    = "@EDS_VERSION_LIB@";
 inline constexpr const char* CLI    = "@EDS_VERSION_CLI@";
 

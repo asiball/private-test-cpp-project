@@ -32,18 +32,18 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build -j$(nproc)
 
-      - name: Driver unit tests
+      - name: SPI HAL unit tests
         run: |
-          cmake -S driver -B build/driver-debug -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build/driver-debug -j$(nproc)
-          sudo cmake --install build/driver-debug --prefix /usr/local
-          cmake -S tests/unit/driver -B build/test-driver \
+          cmake -S spi-hal -B build/spihal-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/spihal-debug -j$(nproc)
+          sudo cmake --install build/spihal-debug --prefix /usr/local
+          cmake -S tests/unit/spi-hal -B build/test-spihal \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/driver/include"
-          cmake --build build/test-driver -j$(nproc)
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/spi-hal/include"
+          cmake --build build/test-spihal -j$(nproc)
           mkdir -p test-results
-          ./build/test-driver/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml
+          ./build/test-spihal/test_spi_driver \
+            --gtest_output=xml:test-results/spihal-unit.xml
 
       - name: Lib unit tests
         run: |
@@ -66,7 +66,7 @@ jobs:
           sudo ldconfig
           cmake -S tests/integration -B build/test-integration \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/driver/include"
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/spi-hal/include"
           cmake --build build/test-integration -j$(nproc)
           mkdir -p test-results
           ./build/test-integration/test_spi_loopback \
@@ -100,13 +100,13 @@ jobs:
           cmake --build /tmp/gtest-build
           sudo cmake --install /tmp/gtest-build --prefix /usr/local
 
-      - name: Build driver with coverage flags
+      - name: Build spi-hal with coverage flags
         run: |
-          cmake -S driver -B build/driver-cov \
+          cmake -S spi-hal -B build/spihal-cov \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
-          cmake --build build/driver-cov -j$(nproc)
-          sudo cmake --install build/driver-cov --prefix /usr/local
+          cmake --build build/spihal-cov -j$(nproc)
+          sudo cmake --install build/spihal-cov --prefix /usr/local
 
       - name: Build lib with coverage flags
         run: |
@@ -117,15 +117,15 @@ jobs:
           sudo cmake --install build/lib-cov --prefix /usr/local
           sudo ldconfig
 
-      - name: Run driver tests (coverage)
+      - name: Run spi-hal tests (coverage)
         run: |
-          cmake -S tests/unit/driver -B build/test-driver-cov \
+          cmake -S tests/unit/spi-hal -B build/test-spihal-cov \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/driver/include"
-          cmake --build build/test-driver-cov -j$(nproc)
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/spi-hal/include"
+          cmake --build build/test-spihal-cov -j$(nproc)
           mkdir -p test-results
-          ./build/test-driver-cov/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml
+          ./build/test-spihal-cov/test_spi_driver \
+            --gtest_output=xml:test-results/spihal-unit.xml
 
       - name: Run lib tests (coverage)
         run: |
@@ -168,7 +168,7 @@ jobs:
             --std=c++17 \
             --suppress=missingIncludeSystem \
             --error-exitcode=1 \
-            driver/src/ lib/src/ cli/src/
+            spi-hal/src/ lib/src/ cli/src/
 
       - name: Run clang-tidy
         run: |
@@ -179,7 +179,7 @@ jobs:
             -p build-tidy/ \
             --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
             --warnings-as-errors='bugprone-*' \
-            driver/src/spi_driver.cpp \
+            spi-hal/src/spi_driver.cpp \
             lib/src/device.cpp \
             cli/src/main.cpp
 
@@ -274,14 +274,14 @@ jobs:
           sudo cmake --install /tmp/gtest-build --prefix /usr/local
 
       # ── ASAN + UBSAN ──────────────────────────────────────────
-      - name: Build driver + lib with ASAN+UBSAN
+      - name: Build spi-hal + lib with ASAN+UBSAN
         run: |
-          cmake -S driver -B build/driver-asan \
+          cmake -S spi-hal -B build/spihal-asan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build/driver-asan -j$(nproc)
-          sudo cmake --install build/driver-asan --prefix /usr/local
+          cmake --build build/spihal-asan -j$(nproc)
+          sudo cmake --install build/spihal-asan --prefix /usr/local
           cmake -S lib -B build/lib-asan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
@@ -290,18 +290,18 @@ jobs:
           sudo cmake --install build/lib-asan --prefix /usr/local
           sudo ldconfig
 
-      - name: Driver unit tests (ASAN+UBSAN)
+      - name: SPI HAL unit tests (ASAN+UBSAN)
         run: |
-          cmake -S tests/unit/driver -B build/test-driver-asan \
+          cmake -S tests/unit/spi-hal -B build/test-spihal-asan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
-              -I${{ github.workspace }}/driver/include" \
+              -I${{ github.workspace }}/spi-hal/include" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build/test-driver-asan -j$(nproc)
+          cmake --build build/test-spihal-asan -j$(nproc)
           mkdir -p test-results
           ASAN_OPTIONS=detect_leaks=1 \
-          ./build/test-driver-asan/test_spi_driver \
-            --gtest_output=xml:test-results/driver-asan.xml
+          ./build/test-spihal-asan/test_spi_driver \
+            --gtest_output=xml:test-results/spihal-asan.xml
 
       - name: Lib unit tests (ASAN+UBSAN)
         run: |
@@ -319,12 +319,12 @@ jobs:
       # ── TSAN ─────────────────────────────────────────────────
       - name: Build lib with TSAN
         run: |
-          cmake -S driver -B build/driver-tsan \
+          cmake -S spi-hal -B build/spihal-tsan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
-          cmake --build build/driver-tsan -j$(nproc)
-          sudo cmake --install build/driver-tsan --prefix /usr/local
+          cmake --build build/spihal-tsan -j$(nproc)
+          sudo cmake --install build/spihal-tsan --prefix /usr/local
           cmake -S lib -B build/lib-tsan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \

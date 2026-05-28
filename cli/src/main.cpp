@@ -1,5 +1,5 @@
-#include "../../driver/include/logger.hpp"
-#include "../../driver/include/version.hpp"
+#include "../../spi-hal/include/logger.hpp"
+#include "../../spi-hal/include/version.hpp"
 #include "../../lib/include/device.hpp"
 
 #include <atomic>
@@ -19,11 +19,11 @@ static void print_version()
 {
     std::cout
         << "device-ctl\n"
-        << "  cli:    " << embedded::version::CLI    << "\n"
-        << "  lib:    " << embedded::version::LIB    << "\n"
-        << "  driver: " << embedded::version::DRIVER << "\n"
-        << "  commit: " << embedded::version::GIT_COMMIT << "\n"
-        << "  built:  " << embedded::version::BUILD_DATE << "\n";
+        << "  cli:     " << embedded::version::CLI    << "\n"
+        << "  lib:     " << embedded::version::LIB    << "\n"
+        << "  spi-hal: " << embedded::version::SPIHAL << "\n"
+        << "  commit:  " << embedded::version::GIT_COMMIT << "\n"
+        << "  built:   " << embedded::version::BUILD_DATE << "\n";
 }
 
 static void print_usage(const char* prog)

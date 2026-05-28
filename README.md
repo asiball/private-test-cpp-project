@@ -37,12 +37,13 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 ```
 .
-├── driver/          # SPIドライバ（静的ライブラリ: libspi_driver.a）
+├── spi-hal/         # SPI HAL（静的ライブラリ: libspihal.a）
 ├── lib/             # libdevice（動的共有ライブラリ: libdevice.so）
 ├── cli/             # device-ctl（CLIツール）
+├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
 ├── tests/
 │   ├── mocks/       #   MockSpiDriver（テスト用）
-│   ├── unit/        #   単体テスト（driver / lib）
+│   ├── unit/        #   単体テスト（spi-hal / lib）
 │   └── integration/ #   結合テスト（実機必須）
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
 ├── tools/           # ドキュメント生成スクリプト（gen_docs.py）
@@ -57,11 +58,11 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 | コンポーネント | 種別 | 理由 |
 |---|---|---|
-| `driver/` (spi-driver) | 静的ライブラリ | Linuxカーネル依存コードを隔離。HWが変わっても`lib/`以上への影響を最小化 |
+| `spi-hal/` (libspihal) | 静的ライブラリ | Linux SPI 依存コードを隔離。HWが変わっても `lib/` 以上への影響を最小化 |
 | `lib/` (libdevice) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
 | `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからread/writeを繰り返し実行できる。 |
 
-コンポーネントごとに独立した git タグを持ち（`driver/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
+コンポーネントごとに独立した git タグを持ち（`spi-hal/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
 
 ---
 
@@ -84,7 +85,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
     │       ▼
     │   docs（Doxygen HTML / PDF）
     │
-    └─ タグ push（driver/vX.Y.Z 等）
+    └─ タグ push（spi-hal/vX.Y.Z 等）
             │
             ▼
         package:release（.tar.gz アーカイブ生成）
@@ -124,8 +125,8 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ```
 
 コードを読む場合のお勧め順序:
-1. `driver/include/ispi_driver.hpp` — インターフェース設計
-2. `driver/include/spi_driver.hpp` / `driver/src/spi_driver.cpp` — 実機ドライバ実装
+1. `spi-hal/include/ispi_driver.hpp` — インターフェース設計
+2. `spi-hal/include/spi_driver.hpp` / `spi-hal/src/spi_driver.cpp` — 実機ドライバ実装
 3. `lib/include/device.hpp` / `lib/src/device.cpp` — PIMPL + 非同期API
 4. `tests/mocks/mock_spi_driver.hpp` — モック実装
 5. `tests/unit/` — ユニットテスト
@@ -156,12 +157,12 @@ cmake --build build
 ### 単体テストの実行
 
 ```bash
-# driver 単体テスト
-cmake -S driver -B build/driver -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/driver
-cmake -S tests/unit/driver -B build/test-driver
-cmake --build build/test-driver
-./build/test-driver/test_spi_driver
+# spi-hal 単体テスト
+cmake -S spi-hal -B build/spihal -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/spihal
+cmake -S tests/unit/spi-hal -B build/test-spihal
+cmake --build build/test-spihal
+./build/test-spihal/test_spi_driver
 
 # lib 単体テスト
 cmake -S lib -B build/lib -DCMAKE_BUILD_TYPE=Debug
@@ -183,7 +184,7 @@ doxygen Doxyfile
 ```bash
 cppcheck --enable=warning,performance,portability --std=c++17 \
          --suppress=missingIncludeSystem --error-exitcode=1 \
-         driver/src/ lib/src/ cli/src/
+         spi-hal/src/ lib/src/ cli/src/
 ```
 
 ### device-ctl の使い方
@@ -246,7 +247,7 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 <component>/v<MAJOR>.<MINOR>.<PATCH>
 
 例:
-  driver/v1.0.0
+  spi-hal/v1.0.0
   lib/v1.0.0
   cli/v1.0.0
 ```
@@ -262,14 +263,14 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 
 | パターン | 場所 | 概要 |
 |---|---|---|
-| **RAII** | `driver/src/spi_driver.cpp` | デストラクタで fd を自動 close |
+| **RAII** | `spi-hal/src/spi_driver.cpp` | デストラクタで fd を自動 close |
 | **PIMPL イディオム** | `lib/src/device.cpp` | `Device::Impl` で実装を隠蔽し ABI を安定化 |
-| **インターフェース分離** | `driver/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
+| **インターフェース分離** | `spi-hal/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
 | **依存注入 (DI)** | `lib/include/device.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
-| **`[[nodiscard]]` / `noexcept`** | `driver/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
-| **ロガーマクロ** | `driver/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
-| **バージョン自動生成** | `driver/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |
-| **Doxygen スニペット** | `driver/include/ispi_driver.hpp` | `@snippet` でテストコードをAPIドキュメントに引用 |
+| **`[[nodiscard]]` / `noexcept`** | `spi-hal/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
+| **ロガーマクロ** | `spi-hal/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
+| **バージョン自動生成** | `spi-hal/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |
+| **Doxygen スニペット** | `spi-hal/include/ispi_driver.hpp` | `@snippet` でテストコードをAPIドキュメントに引用 |
 | **GMock** | `tests/mocks/mock_spi_driver.hpp` | `MOCK_METHOD` で実機不要のユニットテスト |
 
 ---

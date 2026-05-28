@@ -1,10 +1,10 @@
 name: Release
 
-# driver/v*, lib/v*, cli/v* のいずれかのタグが push されたときに実行
+# spi-hal/v*, lib/v*, cli/v* のいずれかのタグが push されたときに実行
 on:
   push:
     tags:
-      - 'driver/v*'
+      - 'spi-hal/v*'
       - 'lib/v*'
       - 'cli/v*'
 

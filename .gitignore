@@ -68,4 +68,4 @@ Thumbs.db
 test-results/
 
 # ── 生成ヘッダ（CMake configure_file の出力）─────────────────
-driver/include/version.hpp
+spi-hal/include/version.hpp

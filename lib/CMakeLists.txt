@@ -6,18 +6,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(device SHARED src/device.cpp)
 
-if(TARGET spi_driver)
-    # モノレポビルド: driver サブディレクトリが先に処理されている場合はリンク
-    target_link_libraries(device PRIVATE spi_driver pthread)
+if(TARGET spihal)
+    # モノレポビルド: spi-hal サブディレクトリが先に処理されている場合はリンク
+    target_link_libraries(device PRIVATE spihal pthread)
 else()
-    # スタンドアロンビルド（cmake -S lib/）: ドライバソースをそのままコンパイル
-    target_sources(device PRIVATE ../driver/src/spi_driver.cpp)
+    # スタンドアロンビルド（cmake -S lib/）: SPI HAL のソースをそのままコンパイル
+    target_sources(device PRIVATE ../spi-hal/src/spi_driver.cpp)
     target_link_libraries(device pthread)
 endif()
 
 target_include_directories(device
     PUBLIC  include
-            ../driver/include
+            ../spi-hal/include
 )
 
 set_target_properties(device PROPERTIES

@@ -47,9 +47,9 @@ function(get_git_tag pattern out_var fallback)
     set(${out_var} "${fallback}" PARENT_SCOPE)
 endfunction()
 
-get_git_tag("driver/v*" EDS_VERSION_DRIVER "driver/v0.0.0-unknown")
-get_git_tag("lib/v*"    EDS_VERSION_LIB    "lib/v0.0.0-unknown")
-get_git_tag("cli/v*"    EDS_VERSION_CLI    "cli/v0.0.0-unknown")
+get_git_tag("spi-hal/v*" EDS_VERSION_SPIHAL "spi-hal/v0.0.0-unknown")
+get_git_tag("lib/v*"     EDS_VERSION_LIB    "lib/v0.0.0-unknown")
+get_git_tag("cli/v*"     EDS_VERSION_CLI    "cli/v0.0.0-unknown")
 
 if(GIT_FOUND)
     execute_process(
@@ -65,16 +65,16 @@ endif()
 
 string(TIMESTAMP EDS_BUILD_DATE "%Y-%m-%d")
 
-message(STATUS "Version: driver=${EDS_VERSION_DRIVER} lib=${EDS_VERSION_LIB} cli=${EDS_VERSION_CLI}")
+message(STATUS "Version: spi-hal=${EDS_VERSION_SPIHAL} lib=${EDS_VERSION_LIB} cli=${EDS_VERSION_CLI}")
 message(STATUS "Commit:  ${EDS_GIT_COMMIT}  Date: ${EDS_BUILD_DATE}")
 
-# version.hpp.in → driver/include/version.hpp を生成
+# version.hpp.in → spi-hal/include/version.hpp を生成
 configure_file(
-    ${CMAKE_SOURCE_DIR}/driver/include/version.hpp.in
-    ${CMAKE_SOURCE_DIR}/driver/include/version.hpp
+    ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in
+    ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp
     @ONLY
 )
 
-add_subdirectory(driver)
+add_subdirectory(spi-hal)
 add_subdirectory(lib)
 add_subdirectory(cli)
