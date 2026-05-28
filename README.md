@@ -48,7 +48,6 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
 ├── tools/           # ドキュメント生成スクリプト（gen_docs.py）
 ├── .github/         # GitHub Actions CI
-├── .gitlab-ci.yml   # GitLab CI/CD
 ├── Doxyfile         # Doxygen 設定
 ├── Dockerfile.build # Docker ビルド環境
 └── CMakeLists.txt   # トップレベル CMake
@@ -94,7 +93,6 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 | プラットフォーム | 設定ファイル | 特徴 |
 |---|---|---|
 | GitHub Actions | `.github/workflows/ci.yml` | push/PRで自動実行（ビルド・テスト・カバレッジ・Doxygen） |
-| GitLab CI | `.gitlab-ci.yml` | 差分ビルド・clang-tidy・PDF生成・リリースパッケージ作成 |
 
 ---
 
@@ -278,7 +276,6 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 ## ドキュメント
 
 - [学習ガイド](docs/00_project/learning-guide.md)
-- [GitLab移行・運用ガイド](docs/gitlab-migration-guide.md)
 - [リリースマトリックス](docs/wiki/release-matrix.md)
-- [API仕様書 — libdevice](docs/04_api-spec/libdevice-api.md)
+- [API仕様書 — libsensor](docs/04_api-spec/libdevice-api.md)
 - [API仕様書 — SpiDriver](docs/04_api-spec/spi-driver-api.md)
