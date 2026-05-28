@@ -282,7 +282,24 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 
 ## ドキュメント
 
-- [学習ガイド](docs/guides/learning-guide.md)
-- [リリースマトリックス](docs/wiki/release-matrix.md)
-- [API仕様書 — libsensor](docs/deliverables/04_api-spec/libdevice-api.md)
+### 学習ガイド（`docs/guides/`）
+
+- [学習ガイド（C++ パターン総合）](docs/guides/learning-guide.md)
+- ツール別ガイド（`docs/guides/tooling/`）:
+  [CMake](docs/guides/tooling/cmake-guide.md) ・
+  [Google Test/GMock](docs/guides/tooling/gtest-guide.md) ・
+  [Doxygen](docs/guides/tooling/doxygen-guide.md) ・
+  [静的解析](docs/guides/tooling/static-analysis-guide.md) ・
+  [カバレッジ](docs/guides/tooling/coverage-guide.md) ・
+  [サニタイザー](docs/guides/tooling/sanitizers-guide.md) ・
+  [Linux カーネルモジュール](docs/guides/tooling/kernel-module-guide.md)
+- [SBOM ガイド](docs/guides/sbom-guide.md)
+
+### 案件成果物（`docs/deliverables/`）
+
+- [API仕様書 — libsensor](docs/deliverables/04_api-spec/libsensor-api.md)
 - [API仕様書 — SpiDriver](docs/deliverables/04_api-spec/spi-driver-api.md)
+
+### 運用情報（`docs/wiki/`）
+
+- [リリースマトリックス](docs/wiki/release-matrix.md)

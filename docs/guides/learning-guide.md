@@ -21,6 +21,25 @@ CI設定（`.github/`）まで一貫して追えます。
 
 ---
 
+## ツール別ガイド
+
+本プロジェクトで使われている主要ツールごとに、簡単な説明・構文・本プロジェクトでの
+使われ方をまとめた個別ガイドを用意しています。ツールに慣れていない場合は、
+このページの C++ 設計パターン解説より先に参照することを推奨します。
+
+| ツール | ガイド |
+|---|---|
+| CMake | [cmake-guide.md](tooling/cmake-guide.md) |
+| Google Test / GMock | [gtest-guide.md](tooling/gtest-guide.md) |
+| Doxygen | [doxygen-guide.md](tooling/doxygen-guide.md) |
+| cppcheck / clang-tidy / clang-format | [static-analysis-guide.md](tooling/static-analysis-guide.md) |
+| gcov / gcovr（カバレッジ） | [coverage-guide.md](tooling/coverage-guide.md) |
+| ASan / UBSan / TSan（サニタイザー）| [sanitizers-guide.md](tooling/sanitizers-guide.md) |
+| Linux カーネルモジュール | [kernel-module-guide.md](tooling/kernel-module-guide.md) |
+| SBOM（成果物管理）| [../sbom-guide.md](../sbom-guide.md) |
+
+---
+
 ## C++設計パターン一覧
 
 ### 1. RAII（Resource Acquisition Is Initialization）
