@@ -9,7 +9,10 @@ add_library(spihal STATIC
     src/kernel_spi_driver.cpp
 )
 set_target_properties(spihal PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(spihal PUBLIC include)
+target_include_directories(spihal
+    PUBLIC  include
+    PRIVATE ../kernel/include   # my_spi_dev.h（カーネルと共有する ioctl 定義）
+)
 
 install(TARGETS spihal ARCHIVE DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include/spihal)
