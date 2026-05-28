@@ -1,6 +1,6 @@
 #include "../../spi-hal/include/logger.hpp"
 #include "../../spi-hal/include/version.hpp"
-#include "../../lib/include/device.hpp"
+#include "../../libsensor/include/device.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -19,11 +19,11 @@ static void print_version()
 {
     std::cout
         << "device-ctl\n"
-        << "  cli:     " << embedded::version::CLI    << "\n"
-        << "  lib:     " << embedded::version::LIB    << "\n"
-        << "  spi-hal: " << embedded::version::SPIHAL << "\n"
-        << "  commit:  " << embedded::version::GIT_COMMIT << "\n"
-        << "  built:   " << embedded::version::BUILD_DATE << "\n";
+        << "  cli:       " << embedded::version::CLI       << "\n"
+        << "  libsensor: " << embedded::version::LIBSENSOR << "\n"
+        << "  spi-hal:   " << embedded::version::SPIHAL    << "\n"
+        << "  commit:    " << embedded::version::GIT_COMMIT << "\n"
+        << "  built:     " << embedded::version::BUILD_DATE << "\n";
 }
 
 static void print_usage(const char* prog)

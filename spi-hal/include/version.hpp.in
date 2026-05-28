@@ -7,9 +7,9 @@ namespace embedded {
 namespace version {
 
 // コンポーネント別バージョン（git tag から自動取得）
-inline constexpr const char* SPIHAL = "@EDS_VERSION_SPIHAL@";
-inline constexpr const char* LIB    = "@EDS_VERSION_LIB@";
-inline constexpr const char* CLI    = "@EDS_VERSION_CLI@";
+inline constexpr const char* SPIHAL    = "@EDS_VERSION_SPIHAL@";
+inline constexpr const char* LIBSENSOR = "@EDS_VERSION_LIBSENSOR@";
+inline constexpr const char* CLI       = "@EDS_VERSION_CLI@";
 
 // ビルド時情報
 inline constexpr const char* GIT_COMMIT = "@EDS_GIT_COMMIT@";

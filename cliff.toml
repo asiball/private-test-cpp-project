@@ -49,6 +49,6 @@ commit_parsers = [
     { message = ".*",        skip = true },
 ]
 filter_commits = false
-# コンポーネント別タグ（spi-hal/v*, lib/v*, cli/v*）をリリース境界として認識
-tag_pattern = "^(spi-hal|lib|cli)/v[0-9]"
+# コンポーネント別タグ（spi-hal/v*, libsensor/v*, cli/v*）をリリース境界として認識
+tag_pattern = "^(spi-hal|libsensor|cli)/v[0-9]"
 sort_commits = "newest"

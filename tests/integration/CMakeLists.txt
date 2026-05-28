@@ -8,7 +8,7 @@ find_package(GTest REQUIRED)
 
 add_executable(test_spi_loopback test_spi_loopback.cpp)
 target_link_libraries(test_spi_loopback
-    PRIVATE device GTest::GTest GTest::Main pthread
+    PRIVATE sensor GTest::GTest GTest::Main pthread
 )
 
 include(GoogleTest)

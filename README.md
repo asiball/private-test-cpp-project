@@ -38,12 +38,12 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ```
 .
 ├── spi-hal/         # SPI HAL（静的ライブラリ: libspihal.a）
-├── lib/             # libdevice（動的共有ライブラリ: libdevice.so）
+├── libsensor/       # libsensor（動的共有ライブラリ: libsensor.so）
 ├── cli/             # device-ctl（CLIツール）
 ├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
 ├── tests/
 │   ├── mocks/       #   MockSpiDriver（テスト用）
-│   ├── unit/        #   単体テスト（spi-hal / lib）
+│   ├── unit/        #   単体テスト（spi-hal / libsensor）
 │   └── integration/ #   結合テスト（実機必須）
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
 ├── tools/           # ドキュメント生成スクリプト（gen_docs.py）
@@ -58,11 +58,11 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 | コンポーネント | 種別 | 理由 |
 |---|---|---|
-| `spi-hal/` (libspihal) | 静的ライブラリ | Linux SPI 依存コードを隔離。HWが変わっても `lib/` 以上への影響を最小化 |
-| `lib/` (libdevice) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
+| `spi-hal/` (libspihal) | 静的ライブラリ | Linux SPI 依存コードを隔離。HWが変わっても `libsensor/` 以上への影響を最小化 |
+| `libsensor/` (libsensor) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
 | `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからread/writeを繰り返し実行できる。 |
 
-コンポーネントごとに独立した git タグを持ち（`spi-hal/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
+コンポーネントごとに独立した git タグを持ち（`spi-hal/v1.1.0`、`libsensor/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
 
 ---
 
@@ -127,7 +127,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 コードを読む場合のお勧め順序:
 1. `spi-hal/include/ispi_driver.hpp` — インターフェース設計
 2. `spi-hal/include/spi_driver.hpp` / `spi-hal/src/spi_driver.cpp` — 実機ドライバ実装
-3. `lib/include/device.hpp` / `lib/src/device.cpp` — PIMPL + 非同期API
+3. `libsensor/include/device.hpp` / `libsensor/src/device.cpp` — PIMPL + 非同期API
 4. `tests/mocks/mock_spi_driver.hpp` — モック実装
 5. `tests/unit/` — ユニットテスト
 
@@ -164,12 +164,12 @@ cmake -S tests/unit/spi-hal -B build/test-spihal
 cmake --build build/test-spihal
 ./build/test-spihal/test_spi_driver
 
-# lib 単体テスト
-cmake -S lib -B build/lib -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/lib
-cmake -S tests/unit/lib -B build/test-lib
-cmake --build build/test-lib
-./build/test-lib/test_device
+# libsensor 単体テスト
+cmake -S libsensor -B build/libsensor -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/libsensor
+cmake -S tests/unit/libsensor -B build/test-libsensor
+cmake --build build/test-libsensor
+./build/test-libsensor/test_device
 ```
 
 ### Doxygen ドキュメントの生成
@@ -184,7 +184,7 @@ doxygen Doxyfile
 ```bash
 cppcheck --enable=warning,performance,portability --std=c++17 \
          --suppress=missingIncludeSystem --error-exitcode=1 \
-         spi-hal/src/ lib/src/ cli/src/
+         spi-hal/src/ libsensor/src/ cli/src/
 ```
 
 ### device-ctl の使い方
@@ -248,7 +248,7 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 
 例:
   spi-hal/v1.0.0
-  lib/v1.0.0
+  libsensor/v1.0.0
   cli/v1.0.0
 ```
 
@@ -264,9 +264,9 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 | パターン | 場所 | 概要 |
 |---|---|---|
 | **RAII** | `spi-hal/src/spi_driver.cpp` | デストラクタで fd を自動 close |
-| **PIMPL イディオム** | `lib/src/device.cpp` | `Device::Impl` で実装を隠蔽し ABI を安定化 |
+| **PIMPL イディオム** | `libsensor/src/device.cpp` | `Device::Impl` で実装を隠蔽し ABI を安定化 |
 | **インターフェース分離** | `spi-hal/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
-| **依存注入 (DI)** | `lib/include/device.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
+| **依存注入 (DI)** | `libsensor/include/device.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
 | **`[[nodiscard]]` / `noexcept`** | `spi-hal/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
 | **ロガーマクロ** | `spi-hal/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
 | **バージョン自動生成** | `spi-hal/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |

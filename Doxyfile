@@ -11,14 +11,14 @@ OUTPUT_DIRECTORY       = docs/doxygen
 
 # 解析対象（ヘッダのみで十分。実装コメントも含めるなら src も追加）
 INPUT                  = spi-hal/include \
-                         lib/include \
+                         libsensor/include \
                          cli/src
 RECURSIVE              = YES
 FILE_PATTERNS          = *.hpp *.cpp
 
 # snippet タグのソース探索パス
 EXAMPLE_PATH           = tests/unit/spi-hal \
-                         tests/unit/lib
+                         tests/unit/libsensor
 EXAMPLE_RECURSIVE      = NO
 
 # 未ドキュメントのものも出力する（学習用に全部見たい場合は YES）

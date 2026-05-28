@@ -10,7 +10,7 @@ on:
   push:
     tags:
       - 'spi-hal/v*'
-      - 'lib/v*'
+      - 'libsensor/v*'
       - 'cli/v*'
     branches:
       - main

@@ -15,7 +15,7 @@ cppcheck \
     --std=c++17 \
     --suppress=missingIncludeSystem \
     --error-exitcode=1 \
-    spi-hal/src/ lib/src/ cli/src/ \
+    spi-hal/src/ libsensor/src/ cli/src/ \
     && echo "  cppcheck: 問題なし" \
     || echo "  [警告] cppcheck: 問題あり（続行）"
 
@@ -45,20 +45,20 @@ cmake --build build/sanitized -j"$(nproc)"
     && echo "  サニタイザービルド: OK" \
     || echo "  [警告] サニタイザービルド: 起動失敗（続行）"
 
-# ── [4/7] 単体テスト: lib ───────────────────────────────────
-echo "=== [4/7] 単体テスト (lib) ==="
-cmake -S lib -B build/lib-debug -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/lib-debug -j"$(nproc)"
-cmake --install build/lib-debug --prefix /usr/local
+# ── [4/7] 単体テスト: libsensor ─────────────────────────────
+echo "=== [4/7] 単体テスト (libsensor) ==="
+cmake -S libsensor -B build/libsensor-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/libsensor-debug -j"$(nproc)"
+cmake --install build/libsensor-debug --prefix /usr/local
 ldconfig
-cmake -S tests/unit/lib -B build/test-lib \
+cmake -S tests/unit/libsensor -B build/test-libsensor \
     -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_CXX_FLAGS="-I/workspace/lib/include -I/workspace/tests/mocks"
-cmake --build build/test-lib -j"$(nproc)"
-./build/test-lib/test_device \
-    --gtest_output=xml:test-results/lib-unit.xml \
-    && echo "  lib テスト: PASS" \
-    || echo "  [警告] lib テスト: 失敗あり"
+    -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/tests/mocks"
+cmake --build build/test-libsensor -j"$(nproc)"
+./build/test-libsensor/test_device \
+    --gtest_output=xml:test-results/libsensor-unit.xml \
+    && echo "  libsensor テスト: PASS" \
+    || echo "  [警告] libsensor テスト: 失敗あり"
 
 # ── [5/7] Doxygen ───────────────────────────────────────────
 echo "=== [5/7] Doxygen ==="
@@ -96,7 +96,7 @@ python3 tools/gen_docs.py
 
 echo ""
 echo "=== 完了 ==="
-echo "  バイナリ         : build/cli/device-ctl, build/lib/libdevice.so"
+echo "  バイナリ         : build/cli/device-ctl, build/libsensor/libsensor.so"
 echo "  テスト結果       : test-results/"
 echo "  APIドキュメント  : docs/doxygen/html/index.html"
 echo "  PDF              : output/pdf/"
