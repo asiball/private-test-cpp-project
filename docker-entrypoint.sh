@@ -69,13 +69,13 @@ doxygen Doxyfile
 echo "=== [6/7] pandoc Markdown → PDF ==="
 mkdir -p output/pdf
 for f in \
-    docs/01_requirements/requirements-spec.md \
-    docs/02_basic-design/system-architecture.md \
-    docs/03_detailed-design/driver-design.md \
-    docs/04_api-spec/libdevice-api.md \
-    docs/05_interface-spec/spi-hardware-if.md \
-    docs/06_test/test-plan.md \
-    docs/07_delivery/release-notes/v1.1.0.md; do
+    docs/deliverables/01_requirements/requirements-spec.md \
+    docs/deliverables/02_basic-design/system-architecture.md \
+    docs/deliverables/03_detailed-design/driver-design.md \
+    docs/deliverables/04_api-spec/libdevice-api.md \
+    docs/deliverables/05_interface-spec/spi-hardware-if.md \
+    docs/deliverables/06_test/test-plan.md \
+    docs/deliverables/07_delivery/release-notes/v1.1.0.md; do
     name=$(basename "$f" .md)
     if [ -f "$f" ]; then
         pandoc "$f" \

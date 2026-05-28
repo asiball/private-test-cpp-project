@@ -31,7 +31,7 @@ GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 HTML_COLORSTYLE        = LIGHT
 GENERATE_TREEVIEW      = YES
-HTML_EXTRA_STYLESHEET  = docs/doxygen-awesome.css
+HTML_EXTRA_STYLESHEET  = docs/assets/doxygen-awesome.css
 
 # Markdown を README として取り込む
 USE_MDFILE_AS_MAINPAGE = README.md

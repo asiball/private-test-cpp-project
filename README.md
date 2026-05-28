@@ -7,7 +7,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 > 実案件レベルの組み込みSW開発**運用フロー**をまるごと体験・学習するための例として構築されています。
 > C++の設計パターンだけでなく、仕様策定→設計→実装→テスト→CI/CD→納品 という
 > **開発ライフサイクル全体**が一つのリポジトリで追えます。
-> まずは [学習ガイド](docs/00_project/learning-guide.md) をお読みください。
+> まずは [学習ガイド](docs/guides/learning-guide.md) をお読みください。
 
 ---
 
@@ -110,16 +110,23 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 ## ドキュメント読み進めガイド
 
-ドキュメントは開発フローの順番に番号が振られています。
+ドキュメントは「学習者向けガイド」と「プロジェクト成果物（納品物サンプル）」に分けています。
 
 ```
-01_requirements/   → 何を作るかを決める（要件定義書）
-02_basic-design/   → どう作るかの全体像（システム構成・アーキテクチャ）
-03_detailed-design/→ クラス設計の詳細（SpiDriver・Sensor）
-04_api-spec/       → 公開APIの仕様書（使う側の視点）
-05_interface-spec/ → ハードウェアとのインターフェース仕様
-06_test/           → テスト計画・仕様書
-07_delivery/       → リリースノート・納品物チェックリスト
+docs/
+├── guides/             ← 学習者向けガイド（このリポジトリの読み方など）
+│   ├── learning-guide.md
+│   └── sbom-guide.md
+├── deliverables/       ← プロジェクト成果物（要件→設計→テスト→納品の順）
+│   ├── 01_requirements/   何を作るかを決める（要件定義書）
+│   ├── 02_basic-design/   どう作るかの全体像（システム構成・アーキテクチャ）
+│   ├── 03_detailed-design/クラス設計の詳細（SpiDriver・Sensor）
+│   ├── 04_api-spec/       公開 API の仕様書（使う側の視点）
+│   ├── 05_interface-spec/ ハードウェアとのインターフェース仕様
+│   ├── 06_test/           テスト計画・仕様書
+│   └── 07_delivery/       リリースノート・納品物チェックリスト
+├── wiki/               ← 運用情報（リリースマトリックス等）
+└── assets/             ← Doxygen 用 CSS 等
 ```
 
 コードを読む場合のお勧め順序:
@@ -257,7 +264,7 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 
 ## C++設計パターン
 
-実装で使用している主なC++パターンの一覧。詳細は [学習ガイド](docs/00_project/learning-guide.md) を参照。
+実装で使用している主なC++パターンの一覧。詳細は [学習ガイド](docs/guides/learning-guide.md) を参照。
 
 | パターン | 場所 | 概要 |
 |---|---|---|
@@ -275,7 +282,7 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 
 ## ドキュメント
 
-- [学習ガイド](docs/00_project/learning-guide.md)
+- [学習ガイド](docs/guides/learning-guide.md)
 - [リリースマトリックス](docs/wiki/release-matrix.md)
-- [API仕様書 — libsensor](docs/04_api-spec/libdevice-api.md)
-- [API仕様書 — SpiDriver](docs/04_api-spec/spi-driver-api.md)
+- [API仕様書 — libsensor](docs/deliverables/04_api-spec/libdevice-api.md)
+- [API仕様書 — SpiDriver](docs/deliverables/04_api-spec/spi-driver-api.md)

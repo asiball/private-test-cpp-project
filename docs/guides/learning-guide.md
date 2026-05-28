@@ -42,7 +42,7 @@ SpiDriver::~SpiDriver()
 組み込みSWでは「ファイルディスクリプタ漏れ」「メモリリーク」は致命的なバグになるため、
 RAIIは基本的な防衛策として広く使われる。
 
-**合わせて読む**: [詳細設計書 — SpiDriver](../03_detailed-design/driver-design.md)
+**合わせて読む**: [詳細設計書 — SpiDriver](../deliverables/03_detailed-design/driver-design.md)
 
 ---
 
@@ -72,7 +72,7 @@ struct Device::Impl {
 - ヘッダをインクルードしたファイルの**再コンパイルを防げる**
 - `#include <linux/spi/spidev.h>` などのプラットフォーム依存ヘッダをライブラリ利用者に露出しない
 
-**合わせて読む**: [詳細設計書 — libdevice](../03_detailed-design/lib-design.md)
+**合わせて読む**: [詳細設計書 — libdevice](../deliverables/03_detailed-design/lib-design.md)
 
 ---
 
@@ -124,7 +124,7 @@ Device d(&mock);   // 実機不要でテスト可能
 - `#ifdef TEST` のような分岐がコードに混入しない
 - ユニットテストと結合テストを明確に分離できる
 
-**合わせて読む**: [テスト計画書](../06_test/test-plan.md)
+**合わせて読む**: [テスト計画書](../deliverables/06_test/test-plan.md)
 
 ---
 
@@ -328,7 +328,7 @@ class Device : public std::enable_shared_from_this<Device> {
 同一バイナリに混在させるとマッピングが競合してクラッシュする。
 CIでは `test:sanitizer:asan` と `test:sanitizer:tsan` を **別ジョブ・別ビルドディレクトリ** に分けることで対処している。
 
-**合わせて読む**: [詳細設計書 — libdevice](../03_detailed-design/lib-design.md)
+**合わせて読む**: [詳細設計書 — libdevice](../deliverables/03_detailed-design/lib-design.md)
 
 ---
 
@@ -353,16 +353,15 @@ push/PR → build-and-test → lint（cppcheck）→ docs（Doxygen）→ covera
 
 | ドキュメント | 対応する成果物 |
 |---|---|
-| 要件定義書 | `docs/01_requirements/requirements-spec.md` |
-| 基本設計書 | `docs/02_basic-design/system-architecture.md` |
-| 詳細設計書（driver）| `docs/03_detailed-design/driver-design.md` |
-| 詳細設計書（lib）| `docs/03_detailed-design/lib-design.md` |
-| API仕様書（driver）| `docs/04_api-spec/spi-driver-api.md` |
-| API仕様書（lib）| `docs/04_api-spec/libdevice-api.md` |
-| IF仕様書 | `docs/05_interface-spec/spi-hardware-if.md` |
-| テスト計画書 | `docs/06_test/test-plan.md` |
-| テスト仕様書 | `docs/06_test/unit/spec/`, `integration/spec/`, `acceptance/spec/` |
-| リリースノート | `docs/07_delivery/release-notes/v1.1.0.md` |
+| 要件定義書 | `docs/deliverables/01_requirements/requirements-spec.md` |
+| 基本設計書 | `docs/deliverables/02_basic-design/system-architecture.md` |
+| 詳細設計書（spi-hal）| `docs/deliverables/03_detailed-design/driver-design.md` |
+| 詳細設計書（libsensor）| `docs/deliverables/03_detailed-design/lib-design.md` |
+| API仕様書（SpiDriver）| `docs/deliverables/04_api-spec/spi-driver-api.md` |
+| API仕様書（libsensor）| `docs/deliverables/04_api-spec/libdevice-api.md` |
+| IF仕様書 | `docs/deliverables/05_interface-spec/spi-hardware-if.md` |
+| テスト計画書 | `docs/deliverables/06_test/test-plan.md` |
+| リリースノート | `docs/deliverables/07_delivery/release-notes/v1.1.0.md` |
 
 ---
 
