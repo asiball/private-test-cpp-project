@@ -10,14 +10,13 @@ namespace embedded {
 struct Sensor::Impl {
     ISpiDriver* driver;
     bool        owns_driver;  // Impl がドライバを所有しているか
+    double      vref_volts;
 
-    // 実機用（デフォルト）: SpiDriver を内部で生成して所有する
-    explicit Impl(const std::string& path)
-        : driver(new SpiDriver(path)), owns_driver(true) {}
+    explicit Impl(const std::string& path, double v)
+        : driver(new SpiDriver(path)), owns_driver(true), vref_volts(v) {}
 
-    // テスト用: 外部から ISpiDriver を差し込む（所有しない）
-    explicit Impl(ISpiDriver* drv)
-        : driver(drv), owns_driver(false) {}
+    explicit Impl(ISpiDriver* drv, double v)
+        : driver(drv), owns_driver(false), vref_volts(v) {}
 
     ~Impl() { if (owns_driver) delete driver; }
 
@@ -25,12 +24,12 @@ struct Sensor::Impl {
     Impl& operator=(const Impl&) = delete;
 };
 
-Sensor::Sensor(const std::string& spi_path)
-    : impl_(std::make_unique<Impl>(spi_path))
+Sensor::Sensor(const std::string& spi_path, double vref)
+    : impl_(std::make_unique<Impl>(spi_path, vref))
 {}
 
-Sensor::Sensor(ISpiDriver* driver)
-    : impl_(std::make_unique<Impl>(driver))
+Sensor::Sensor(ISpiDriver* driver, double vref)
+    : impl_(std::make_unique<Impl>(driver, vref))
 {}
 
 Sensor::~Sensor() = default;
@@ -38,7 +37,7 @@ Sensor::~Sensor() = default;
 bool Sensor::open() noexcept
 {
     ISpiDriver::Config cfg;
-    cfg.speed_hz      = 1000000;  // 1 MHz
+    cfg.speed_hz      = 1000000;  // 1 MHz（MCP3008 の Vdd=3.3V 時の上限は 1.35 MHz）
     cfg.bits_per_word = 8;
     cfg.mode          = 0;        // SPI_MODE_0
     return impl_->driver->open(cfg);
@@ -54,38 +53,53 @@ bool Sensor::is_open() const noexcept
     return impl_->driver->is_open();
 }
 
-std::vector<uint8_t> Sensor::read(uint8_t reg, size_t len)
+std::optional<uint16_t> Sensor::read_raw(uint8_t channel)
 {
-    std::vector<uint8_t> tx(len + 1, 0x00);
-    std::vector<uint8_t> rx(len + 1, 0x00);
-    tx[0] = reg | 0x80;  // 読み出しビット
-
-    if (impl_->driver->transfer(tx.data(), rx.data(), tx.size()) < 0) {
-        return {};
+    if (channel >= CHANNEL_COUNT) {
+        return std::nullopt;
     }
-    return std::vector<uint8_t>(rx.begin() + 1, rx.end());
+
+    // MCP3008 シングルエンドモード:
+    //   TX: [ 0x01,  0x80 | (channel << 4),  0x00 ]
+    //   RX: [   _,        ----- 10 bit -----      ]
+    uint8_t tx[3] = { 0x01,
+                      static_cast<uint8_t>(0x80 | (channel << 4)),
+                      0x00 };
+    uint8_t rx[3] = { 0, 0, 0 };
+
+    if (impl_->driver->transfer(tx, rx, 3) < 0) {
+        return std::nullopt;
+    }
+    uint16_t raw = static_cast<uint16_t>((rx[1] & 0x03) << 8) | rx[2];
+    return raw;
 }
 
-bool Sensor::write(uint8_t reg, const std::vector<uint8_t>& data)
+std::optional<double> Sensor::read_voltage(uint8_t channel)
 {
-    std::vector<uint8_t> tx;
-    tx.reserve(data.size() + 1);
-    tx.push_back(reg & 0x7F);
-    tx.insert(tx.end(), data.begin(), data.end());
-
-    std::vector<uint8_t> rx(tx.size(), 0);
-    return impl_->driver->transfer(tx.data(), rx.data(), tx.size()) >= 0;
+    auto raw = read_raw(channel);
+    if (!raw) return std::nullopt;
+    return static_cast<double>(*raw) * impl_->vref_volts / ADC_MAX;
 }
 
-void Sensor::read_async(uint8_t reg, size_t len, ReadCallback cb)
+void Sensor::read_raw_async(uint8_t channel, ReadCallback cb)
 {
     // Sensor オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
     // （detach しているため）。長期稼働デーモンでは shared_ptr + enable_shared_from_this を検討。
-    std::thread([this, reg, len, cb]() {
-        auto result = this->read(reg, len);
-        int  err    = result.empty() ? impl_->driver->last_errno() : 0;
+    std::thread([this, channel, cb]() {
+        auto result = this->read_raw(channel);
+        int  err    = result ? 0 : impl_->driver->last_errno();
         cb(result, err);
     }).detach();
+}
+
+double Sensor::vref() const noexcept
+{
+    return impl_->vref_volts;
+}
+
+void Sensor::set_vref(double v) noexcept
+{
+    impl_->vref_volts = v;
 }
 
 } // namespace embedded

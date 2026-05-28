@@ -69,7 +69,7 @@ jobs:
             -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/spi-hal/include"
           cmake --build build/test-integration -j$(nproc)
           mkdir -p test-results
-          ./build/test-integration/test_spi_loopback \
+          ./build/test-integration/test_mcp3008 \
             --gtest_output=xml:test-results/integration.xml
 
       - name: Upload test results

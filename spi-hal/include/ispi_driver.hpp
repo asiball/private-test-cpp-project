@@ -8,7 +8,7 @@ namespace embedded {
  * @brief SPI ドライバの抽象インターフェース
  *
  * SpiDriver（実機用）と MockSpiDriver（テスト用）が共通の型として扱われる。
- * このインターフェースを介することで、Device クラスが実機に依存しなくなる。
+ * このインターフェースを介することで、Sensor クラスが実機に依存しなくなる。
  */
 class ISpiDriver {
 public:
