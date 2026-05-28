@@ -67,7 +67,7 @@ gcovr \
 | `--root` | プロジェクトルート（カバレッジ集計の基点） |
 | `--exclude` | 集計から除外するパス（テスト本体、システムヘッダ） |
 | `--html-details` | ファイル別の詳細レポートも出力 |
-| `--xml` | Cobertura XML（Jenkins / GitHub のレポートビューワが消費） |
+| `--xml` | Cobertura XML（GitHub などのレポートビューワが消費） |
 
 ---
 

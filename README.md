@@ -21,8 +21,8 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├─────────────────────────────────────────────────────────────────┤
 │  01 要件定義  →  requirements-spec.md        機能要件・制約     │
 │  02 基本設計  →  system-architecture.md     システム構成図      │
-│  03 詳細設計  →  driver-design.md / lib-design.md  クラス設計   │
-│  04 API仕様   →  spi-driver-api.md / libdevice-api.md  公開API  │
+│  03 詳細設計  →  spihal-design.md / libsensor-design.md  クラス設計 │
+│  04 API仕様   →  spi-driver-api.md / libsensor-api.md  公開API   │
 │  05 IF仕様    →  spi-hardware-if.md          HW接続仕様         │
 │  06 テスト    →  test-plan.md + tests/*/test-cases.md           │
 │  07 納品      →  release-notes/                                 │
@@ -59,7 +59,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 |---|---|---|
 | `spi-hal/` (libspihal) | 静的ライブラリ | Linux SPI 依存コードを隔離。HWが変わっても `libsensor/` 以上への影響を最小化 |
 | `libsensor/` (libsensor) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
-| `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからread/writeを繰り返し実行できる。 |
+| `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからMCP3008の各チャネル読み出しを繰り返し実行できる。 |
 
 コンポーネントごとに独立した git タグを持ち（`spi-hal/v1.1.0`、`libsensor/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
 
@@ -101,8 +101,8 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 | レベル | 対象 | ツール | 自動化 | 実行環境 |
 |---|---|---|---|---|
 | 単体テスト (UT) | SpiDriver / Sensor クラス | Google Test + GMock | ✓ CI | Docker（実機不要） |
-| 結合テスト (IT) | SPIループバック通信 | Google Test | 一部 | Raspberry Pi 3B+ |
-| 受入テスト (AT) | システム全体 | 手動 + Excel仕様書 | - | 実機 + 顧客確認 |
+| 結合テスト (IT) | MCP3008 実機読み出し | Google Test | 一部 | Raspberry Pi 3B+ + MCP3008 |
+| 受入テスト (AT) | システム全体 | 手動 + チェックリスト（Markdown） | - | 実機 + 顧客確認 |
 
 カバレッジ目標: 主要モジュール **80%以上**（gcovr/lcovで計測）
 
@@ -174,7 +174,7 @@ cmake -S libsensor -B build/libsensor -DCMAKE_BUILD_TYPE=Debug
 cmake --build build/libsensor
 cmake -S tests/unit/libsensor -B build/test-libsensor
 cmake --build build/test-libsensor
-./build/test-libsensor/test_device
+./build/test-libsensor/test_sensor
 ```
 
 ### Doxygen ドキュメントの生成
@@ -195,11 +195,14 @@ cppcheck --enable=warning,performance,portability --std=c++17 \
 ### device-ctl の使い方
 
 ```bash
-# デフォルトデバイス (/dev/spidev0.0) で起動
+# デフォルトデバイス (/dev/spidev0.0) / Vref 3.3V で起動
 ./build/device-ctl
 
 # デバイスパスを指定して起動
 ./build/device-ctl -d /dev/spidev0.1
+
+# Vref を指定して起動（例: 5.0V）
+./build/device-ctl --vref 5.0
 
 # 非同期readモードで起動
 ./build/device-ctl --async
@@ -208,25 +211,25 @@ cppcheck --enable=warning,performance,portability --std=c++17 \
 ./build/device-ctl --version
 ```
 
-起動後は対話メニューが表示され、read/writeを繰り返し実行できます。
-バックグラウンドで1分ごとにデバイス (reg=0x00, 4バイト) を自動読み出しし、
-次のメニュー表示時に `[MONITOR]` プレフィックス付きで結果を表示します。
+起動後は対話メニューが表示され、MCP3008 の各チャネル（0〜7）の読み出しを繰り返し実行できます。
+読み出し値は 10bit raw（0〜1023）と Vref から換算した電圧の両方を表示します。
+バックグラウンドで1分ごとに CH0 を自動読み出しし、次のメニュー表示時に
+`[MONITOR]` プレフィックス付きで結果を表示します。
 
 ```
-device-ctl 対話モード (デバイス: /dev/spidev0.0)
+device-ctl 対話モード (デバイス: /dev/spidev0.0, Vref=3.30 V)
 
-[1] read
-[2] write
+[1] チャネル指定読み出し
+[2] 全チャネルスキャン
 [3] 終了
 選択: 1
-  レジスタ (hex): 0x00
-  バイト数: 4
-00 1a ff 03
+  チャネル (0-7): 0
+CH0  raw=512  voltage=1.650 V
 
-[MONITOR] 00 1a ff 03
+[MONITOR] CH0 raw=512 voltage=1.650 V
 
-[1] read
-[2] write
+[1] チャネル指定読み出し
+[2] 全チャネルスキャン
 [3] 終了
 選択: 3
 終了します。

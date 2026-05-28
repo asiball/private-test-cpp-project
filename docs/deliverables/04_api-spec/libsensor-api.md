@@ -5,131 +5,151 @@
 | ドキュメント番号 | API-LIB-001 |
 | バージョン | 1.1 |
 | ヘッダ | `#include <sensor.hpp>` |
-| リンク | `-ldevice -lpthread` |
+| リンク | `-lsensor -lpthread` |
 | 名前空間 | `embedded::` |
+
+> `Sensor` クラスは MCP3008（8ch / 10bit SPI ADC）からアナログ値を読み出すための
+> 高レベル API を提供する。低レベルの SPI 転送は `spi-hal`（`ISpiDriver`）に委譲する。
 
 ---
 
-## 1. Sensor クラス
+## 1. 定数
+
+```cpp
+static constexpr uint8_t  CHANNEL_COUNT = 8;     // MCP3008 のチャネル数
+static constexpr uint16_t ADC_MAX       = 1023;  // 10bit ADC のフルスケール値
+static constexpr double   DEFAULT_VREF  = 3.3;   // 既定の基準電圧 [V]
+```
+
+---
+
+## 2. Sensor クラス
 
 ### コンストラクタ / デストラクタ
 
 ```cpp
-explicit Sensor(const std::string& spi_path);
+explicit Sensor(const std::string& spi_path, double vref = DEFAULT_VREF);
+explicit Sensor(ISpiDriver* driver,          double vref = DEFAULT_VREF);  // DI（テスト用）
 ~Sensor();
 ```
 
 | パラメータ | 説明 |
 |---|---|
 | `spi_path` | SPIデバイスパス（例: `/dev/spidev0.0`） |
+| `driver` | 既存の `ISpiDriver` 実装を注入（モックによる実機不要テスト用）。所有権は移動しない |
+| `vref` | 基準電圧 [V]。電圧換算（`read_voltage`）に使用。省略時 `DEFAULT_VREF`（3.3V） |
+
+> コピー構築・コピー代入は禁止（`= delete`）。
 
 ---
 
-### open()
+### open() / close() / is_open()
 
 ```cpp
-bool open();
+[[nodiscard]] bool open() noexcept;
+void               close() noexcept;
+[[nodiscard]] bool is_open() const noexcept;
 ```
 
-**説明**: デバイスをオープンしSPIを初期化する。
+**説明**: デバイスをオープン／クローズする。`close()` は未オープンでも安全（no-op）。
+デストラクタはオープン中なら自動的に `close()` を呼ぶ（RAII）。
 
-| 戻り値 | 条件 |
+| `open()` 戻り値 | 条件 |
 |---|---|
 | `true` | オープン成功 |
 | `false` | デバイスが存在しない、権限不足など |
 
 ---
 
-### close()
+### read_raw()
 
 ```cpp
-void close();
+[[nodiscard]] std::optional<uint16_t> read_raw(uint8_t channel);
 ```
 
-**説明**: デバイスをクローズする。未オープンの状態で呼んでも安全（no-op）。
-
----
-
-### read()
-
-```cpp
-std::vector<uint8_t> read(uint8_t reg, size_t len);
-```
-
-**説明**: 指定レジスタから `len` バイトを同期読み出しする。
+**説明**: 指定チャネルの 10bit raw 値（0〜`ADC_MAX`）を同期読み出しする。
 
 | パラメータ | 説明 |
 |---|---|
-| `reg` | 読み出し元レジスタアドレス |
-| `len` | 読み出しバイト数 |
+| `channel` | チャネル番号（0〜7）。範囲外は失敗 |
 
 | 戻り値 | 条件 |
 |---|---|
-| `vector<uint8_t>（len バイト）` | 成功 |
-| 空の `vector` | 失敗（未オープン、転送エラー） |
+| `uint16_t`（0〜1023） | 成功 |
+| `std::nullopt` | 失敗（未オープン、範囲外チャネル、転送エラー） |
 
 ---
 
-### write()
+### read_voltage()
 
 ```cpp
-bool write(uint8_t reg, const std::vector<uint8_t>& data);
+[[nodiscard]] std::optional<double> read_voltage(uint8_t channel);
 ```
 
-**説明**: 指定レジスタへ `data` を書き込む。
-
-| パラメータ | 説明 |
-|---|---|
-| `reg` | 書き込み先レジスタアドレス |
-| `data` | 書き込むバイト列 |
+**説明**: 指定チャネルを読み出し、電圧 [V] に換算して返す。
+内部で `read_raw(channel) * vref() / ADC_MAX` を計算する。
 
 | 戻り値 | 条件 |
 |---|---|
-| `true` | 成功 |
-| `false` | 失敗 |
+| `double`（電圧 [V]） | 成功 |
+| `std::nullopt` | 失敗（`read_raw` と同条件） |
 
 ---
 
-### read_async() *(v1.1.0追加)*
+### read_raw_async() *(v1.1.0追加)*
 
 ```cpp
-using ReadCallback = std::function<void(const std::vector<uint8_t>&, int)>;
-void read_async(uint8_t reg, size_t len, ReadCallback cb);
+using ReadCallback = std::function<void(std::optional<uint16_t>, int)>;
+void read_raw_async(uint8_t channel, ReadCallback cb);
 ```
 
 **説明**: 別スレッドで非同期読み出しを実行する。完了時に `cb` を呼ぶ。
 
 | パラメータ | 説明 |
 |---|---|
-| `reg` | 読み出し元レジスタアドレス |
-| `len` | 読み出しバイト数 |
-| `cb` | 完了コールバック。第1引数: 読み出しデータ、第2引数: errno（成功時0） |
+| `channel` | チャネル番号（0〜7） |
+| `cb` | 完了コールバック。第1引数: raw 値（失敗時 `std::nullopt`）、第2引数: errno（成功時0） |
 
 > **注意**: `Sensor` オブジェクトのライフタイムはコールバック完了まで呼び出し元が保証すること。
 
 ---
 
-## 2. 使用例
+### vref() / set_vref()
+
+```cpp
+[[nodiscard]] double vref() const noexcept;
+void                 set_vref(double vref) noexcept;
+```
+
+**説明**: 電圧換算に使う基準電圧 [V] の取得・変更。
+
+---
+
+## 3. 使用例
 
 ```cpp
 #include <sensor.hpp>
 #include <iostream>
 
 int main() {
-    embedded::Sensor dev("/dev/spidev0.0");
-    if (!dev.open()) {
+    embedded::Sensor sensor("/dev/spidev0.0");  // Vref=3.3V
+    if (!sensor.open()) {
         std::cerr << "open failed\n";
         return 1;
     }
 
-    // 同期読み出し
-    auto data = dev.read(0x00, 4);
-    for (auto b : data) printf("%02x ", b);
+    // 同期読み出し（CH0）
+    if (auto raw = sensor.read_raw(0)) {
+        std::cout << "CH0 raw = " << *raw << '\n';
+    }
+    if (auto v = sensor.read_voltage(0)) {
+        std::cout << "CH0 voltage = " << *v << " V\n";
+    }
 
     // 非同期読み出し (v1.1.0)
-    dev.read_async(0x00, 4, [](const std::vector<uint8_t>& d, int err) {
-        if (!err)
-            for (auto b : d) printf("%02x ", b);
+    sensor.read_raw_async(0, [](std::optional<uint16_t> raw, int err) {
+        if (raw) std::cout << "async CH0 raw = " << *raw << '\n';
+        else     std::cerr << "async read error: " << err << '\n';
     });
 
     return 0;
@@ -138,9 +158,9 @@ int main() {
 
 ---
 
-## 3. バージョン履歴
+## 4. バージョン履歴
 
 | バージョン | 変更内容 |
 |---|---|
-| v1.0.0 | 初版。`open`, `close`, `read`, `write` |
-| v1.1.0 | `read_async()` を追加（CHG-003） |
+| v1.0.0 | 初版。`open`, `close`, `read_raw`, `read_voltage` |
+| v1.1.0 | `read_raw_async()` を追加（CHG-003） |

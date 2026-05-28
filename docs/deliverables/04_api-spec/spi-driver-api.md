@@ -5,7 +5,7 @@
 | ドキュメント番号 | API-DRV-001 |
 | バージョン | 1.1 |
 | ヘッダ | `#include <spi_driver.hpp>` / `#include <ispi_driver.hpp>` |
-| リンク | `-lspi_driver` |
+| リンク | `-lspihal` |
 | 名前空間 | `embedded::` |
 
 ---
@@ -176,8 +176,9 @@ int main()
         return 1;
     }
 
-    uint8_t tx[] = {0x80, 0x00, 0x00, 0x00, 0x00};  // reg=0x00, 読み出し4バイト
-    uint8_t rx[5] = {};
+    // MCP3008: スタートビット, シングルエンド CH0 選択, クロック供給用ダミー
+    uint8_t tx[] = {0x01, 0x80, 0x00};
+    uint8_t rx[3] = {};
 
     int n = drv.transfer(tx, rx, sizeof(tx));
     if (n < 0) {
@@ -185,7 +186,8 @@ int main()
         return 1;
     }
 
-    printf("received %d bytes: %02x %02x %02x %02x\n", n, rx[1], rx[2], rx[3], rx[4]);
+    uint16_t raw = ((rx[1] & 0x03) << 8) | rx[2];  // 下位 10bit を組み立てる
+    printf("CH0 raw = %u (%d bytes transferred)\n", raw, n);
     return 0;
     // drv のデストラクタが自動的に close() を呼ぶ（RAII）
 }

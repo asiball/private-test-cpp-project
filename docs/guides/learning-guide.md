@@ -36,7 +36,7 @@ CI設定（`.github/`）まで一貫して追えます。
 | gcov / gcovr（カバレッジ） | [coverage-guide.md](tooling/coverage-guide.md) |
 | ASan / UBSan / TSan（サニタイザー）| [sanitizers-guide.md](tooling/sanitizers-guide.md) |
 | Linux カーネルモジュール | [kernel-module-guide.md](tooling/kernel-module-guide.md) |
-| SBOM（成果物管理）| [../sbom-guide.md](../sbom-guide.md) |
+| SBOM（成果物管理）| [sbom-guide.md](sbom-guide.md) |
 
 ---
 
@@ -312,13 +312,13 @@ cmake --build build-tsan/test-lib
 TSAN_OPTIONS=halt_on_error=1 ./build-tsan/test-lib/test_sensor
 ```
 
-#### このプロジェクトでの学習ポイント: `read_async()` のスレッド危険性
+#### このプロジェクトでの学習ポイント: `read_raw_async()` のスレッド危険性
 
-`libsensor/src/sensor.cpp` の `read_async()` を見てほしい:
+`libsensor/src/sensor.cpp` の `read_raw_async()` を見てほしい:
 
 ```cpp
-std::thread([this, reg, len, cb]() {
-    auto result = this->read(reg, len);   // this を生ポインタでキャプチャ！
+std::thread([this, channel, cb]() {
+    auto result = this->read_raw(channel);   // this を生ポインタでキャプチャ！
     ...
 }).detach();
 ```
@@ -331,10 +331,10 @@ std::thread([this, reg, len, cb]() {
 
 ```cpp
 class Sensor : public std::enable_shared_from_this<Sensor> {
-    void read_async(uint8_t reg, size_t len, ReadCallback cb) {
+    void read_raw_async(uint8_t channel, ReadCallback cb) {
         auto self = shared_from_this();   // shared_ptr でライフタイムを延長
-        std::thread([self, reg, len, cb]() {
-            auto result = self->read(reg, len);
+        std::thread([self, channel, cb]() {
+            auto result = self->read_raw(channel);
             ...
         }).detach();
     }

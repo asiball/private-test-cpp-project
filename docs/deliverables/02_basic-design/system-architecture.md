@@ -25,12 +25,12 @@
 │          ┌──────────▼──────────────────┐               │
 │          │       libsensor.so          │               │
 │          │  Sensor クラス              │               │
-│          │  ・read() / write()         │               │
-│          │  ・read_async()             │               │
+│          │  ・read_raw()/read_voltage()│               │
+│          │  ・read_raw_async()         │               │
 │          └──────────┬──────────────────┘               │
 │                     │ C++ API                           │
 │          ┌──────────▼──────────────────┐               │
-│          │      libspihal.a        │               │
+│          │       libspihal.a           │               │
 │          │  SpiDriver クラス           │               │
 │          │  ・open() / close()         │               │
 │          │  ・transfer()               │               │
@@ -78,5 +78,5 @@ graph TD
 |---|---|
 | ハードウェア | Raspberry Pi 3B+ |
 | OS | Linux kernel 5.10.x |
-| コンパイラ | GCC 7.5 (C++11) |
+| コンパイラ | GCC 7.5 (C++17) |
 | SPIデバイス | /dev/spidev0.0（最大 2MHz） |

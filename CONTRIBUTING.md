@@ -24,7 +24,7 @@
 
 ```
 # 例
-feat: read_async() に完了コールバックを追加
+feat: read_raw_async() に完了コールバックを追加
 fix: MockSpiDriver の noexcept 指定が抜けていたのを修正
 ```
 
