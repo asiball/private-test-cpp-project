@@ -4,7 +4,7 @@ project(libsensor VERSION 1.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(sensor SHARED src/device.cpp)
+add_library(sensor SHARED src/sensor.cpp)
 
 if(TARGET spihal)
     # モノレポビルド: spi-hal サブディレクトリが先に処理されている場合はリンク

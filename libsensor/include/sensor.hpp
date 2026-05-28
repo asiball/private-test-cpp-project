@@ -9,7 +9,7 @@
 namespace embedded {
 
 /**
- * @brief SPI デバイスへの高レベルアクセスを提供するクラス
+ * @brief SPI センサへの高レベルアクセスを提供するクラス
  *
  * SpiDriver を PIMPL イディオムで隠蔽し、レジスタ単位の読み書き API を提供する。
  * 同期 (read/write) と非同期 (read_async) の両方をサポートする。
@@ -18,17 +18,17 @@ namespace embedded {
  * @note コピー禁止。
  *
  * @code
- * embedded::Device dev("/dev/spidev0.0");
- * if (!dev.open()) { return; }
- * auto data = dev.read(0x00, 4);   // 同期読み出し
+ * embedded::Sensor sensor("/dev/spidev0.0");
+ * if (!sensor.open()) { return; }
+ * auto data = sensor.read(0x00, 4);   // 同期読み出し
  *
  * // 非同期読み出し (v1.1.0)
- * dev.read_async(0x00, 4, [](const std::vector<uint8_t>& d, int err) {
+ * sensor.read_async(0x00, 4, [](const std::vector<uint8_t>& d, int err) {
  *     if (!err) { for (auto b : d) printf("%02x ", b); }
  * });
  * @endcode
  */
-class Device {
+class Sensor {
 public:
     /**
      * @brief 非同期読み出し完了コールバック型 (v1.1.0)
@@ -41,7 +41,7 @@ public:
      * @brief コンストラクタ（実機用）
      * @param spi_path spidev のデバイスパス（例: "/dev/spidev0.0"）
      */
-    explicit Device(const std::string& spi_path);
+    explicit Sensor(const std::string& spi_path);
 
     /**
      * @brief コンストラクタ（テスト用）
@@ -49,20 +49,20 @@ public:
      * ISpiDriver を外部から差し込むことで実機なしにテストできる。
      * @param driver テスト用ドライバ（MockSpiDriver など）。所有権は渡さない
      */
-    explicit Device(ISpiDriver* driver);
+    explicit Sensor(ISpiDriver* driver);
 
     /** @brief デストラクタ。オープン中なら自動的に close する */
-    ~Device();
+    ~Sensor();
 
-    Device(const Device&)            = delete;
-    Device& operator=(const Device&) = delete;
+    Sensor(const Sensor&)            = delete;
+    Sensor& operator=(const Sensor&) = delete;
 
     /**
      * @brief デバイスをオープンする
      * @return true: 成功 / false: 失敗
      *
      * **テストケース（UT-LIB-002）** — 無効なパスでは false を返す:
-     * @snippet test_device.cpp UT-LIB-002
+     * @snippet test_sensor.cpp UT-LIB-002
      */
     [[nodiscard]] bool open() noexcept;
 
@@ -77,10 +77,10 @@ public:
      * @return 読み出したデータ。失敗時は空 vector
      *
      * **テストケース（UT-LIB-003）** — MockSpiDriver でデータ取得を検証:
-     * @snippet test_device.cpp UT-LIB-003
+     * @snippet test_sensor.cpp UT-LIB-003
      *
      * **テストケース（UT-LIB-004）** — 未オープン時は空 vector:
-     * @snippet test_device.cpp UT-LIB-004
+     * @snippet test_sensor.cpp UT-LIB-004
      */
     [[nodiscard]] std::vector<uint8_t> read(uint8_t reg, size_t len);
 
@@ -91,10 +91,10 @@ public:
      * @return true: 成功 / false: 失敗
      *
      * **テストケース（UT-LIB-005）** — MockSpiDriver で成功を検証:
-     * @snippet test_device.cpp UT-LIB-005
+     * @snippet test_sensor.cpp UT-LIB-005
      *
      * **テストケース（UT-LIB-006）** — 未オープン時は false:
-     * @snippet test_device.cpp UT-LIB-006
+     * @snippet test_sensor.cpp UT-LIB-006
      */
     [[nodiscard]] bool write(uint8_t reg, const std::vector<uint8_t>& data);
 
@@ -107,7 +107,7 @@ public:
      * @param reg 読み出し元レジスタアドレス
      * @param len 読み出しバイト数
      * @param cb  完了コールバック
-     * @warning Device オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
+     * @warning Sensor オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
      */
     void read_async(uint8_t reg, size_t len, ReadCallback cb);
 

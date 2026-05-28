@@ -1,4 +1,4 @@
-#include "device.hpp"
+#include "sensor.hpp"
 #include "ispi_driver.hpp"
 #include "spi_driver.hpp"
 
@@ -7,7 +7,7 @@
 
 namespace embedded {
 
-struct Device::Impl {
+struct Sensor::Impl {
     ISpiDriver* driver;
     bool        owns_driver;  // Impl がドライバを所有しているか
 
@@ -25,17 +25,17 @@ struct Device::Impl {
     Impl& operator=(const Impl&) = delete;
 };
 
-Device::Device(const std::string& spi_path)
+Sensor::Sensor(const std::string& spi_path)
     : impl_(std::make_unique<Impl>(spi_path))
 {}
 
-Device::Device(ISpiDriver* driver)
+Sensor::Sensor(ISpiDriver* driver)
     : impl_(std::make_unique<Impl>(driver))
 {}
 
-Device::~Device() = default;
+Sensor::~Sensor() = default;
 
-bool Device::open() noexcept
+bool Sensor::open() noexcept
 {
     ISpiDriver::Config cfg;
     cfg.speed_hz      = 1000000;  // 1 MHz
@@ -44,17 +44,17 @@ bool Device::open() noexcept
     return impl_->driver->open(cfg);
 }
 
-void Device::close() noexcept
+void Sensor::close() noexcept
 {
     impl_->driver->close();
 }
 
-bool Device::is_open() const noexcept
+bool Sensor::is_open() const noexcept
 {
     return impl_->driver->is_open();
 }
 
-std::vector<uint8_t> Device::read(uint8_t reg, size_t len)
+std::vector<uint8_t> Sensor::read(uint8_t reg, size_t len)
 {
     std::vector<uint8_t> tx(len + 1, 0x00);
     std::vector<uint8_t> rx(len + 1, 0x00);
@@ -66,7 +66,7 @@ std::vector<uint8_t> Device::read(uint8_t reg, size_t len)
     return std::vector<uint8_t>(rx.begin() + 1, rx.end());
 }
 
-bool Device::write(uint8_t reg, const std::vector<uint8_t>& data)
+bool Sensor::write(uint8_t reg, const std::vector<uint8_t>& data)
 {
     std::vector<uint8_t> tx;
     tx.reserve(data.size() + 1);
@@ -77,11 +77,10 @@ bool Device::write(uint8_t reg, const std::vector<uint8_t>& data)
     return impl_->driver->transfer(tx.data(), rx.data(), tx.size()) >= 0;
 }
 
-void Device::read_async(uint8_t reg, size_t len, ReadCallback cb)
+void Sensor::read_async(uint8_t reg, size_t len, ReadCallback cb)
 {
-    // @warning Device オブジェクトのライフタイムはコールバック完了まで
-    //          呼び出し側が保証すること（detach しているため）。
-    //          長期稼働デーモンでは shared_ptr + enable_shared_from_this を検討すること。
+    // Sensor オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
+    // （detach しているため）。長期稼働デーモンでは shared_ptr + enable_shared_from_this を検討。
     std::thread([this, reg, len, cb]() {
         auto result = this->read(reg, len);
         int  err    = result.empty() ? impl_->driver->last_errno() : 0;

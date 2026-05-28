@@ -1,6 +1,6 @@
 #include "../../spi-hal/include/logger.hpp"
 #include "../../spi-hal/include/version.hpp"
-#include "../../libsensor/include/device.hpp"
+#include "../../libsensor/include/sensor.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -86,7 +86,7 @@ static bool prompt_line(const std::string& prompt, std::string& out)
     return true;
 }
 
-static void do_read(embedded::Device& dev, bool async_mode)
+static void do_read(embedded::Sensor& dev, bool async_mode)
 {
     std::string reg_s, len_s;
     if (!prompt_line("  レジスタ (hex): ", reg_s)) return;
@@ -133,7 +133,7 @@ static void do_read(embedded::Device& dev, bool async_mode)
     }
 }
 
-static void do_write(embedded::Device& dev)
+static void do_write(embedded::Sensor& dev)
 {
     std::string reg_s, data_s;
     if (!prompt_line("  レジスタ (hex): ", reg_s)) return;
@@ -183,7 +183,7 @@ struct MonitorState {
     bool                    error{false};
 };
 
-static void monitor_thread_fn(embedded::Device& dev, MonitorState& state)
+static void monitor_thread_fn(embedded::Sensor& dev, MonitorState& state)
 {
     while (!state.stop.load()) {
         std::unique_lock<std::mutex> lk(state.mtx);
@@ -219,7 +219,7 @@ static void flush_monitor(MonitorState& state)
     }
 }
 
-static void run_loop(embedded::Device& dev, bool async_mode, MonitorState& state)
+static void run_loop(embedded::Sensor& dev, bool async_mode, MonitorState& state)
 {
     while (true) {
         flush_monitor(state);
@@ -276,7 +276,7 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    embedded::Device dev(dev_path);
+    embedded::Sensor dev(dev_path);
     if (!dev.open()) {
         std::cerr << "Error: cannot open " << dev_path << '\n';
         LOG_CLOSE();

@@ -55,7 +55,7 @@ cmake -S tests/unit/libsensor -B build/test-libsensor \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/tests/mocks"
 cmake --build build/test-libsensor -j"$(nproc)"
-./build/test-libsensor/test_device \
+./build/test-libsensor/test_sensor \
     --gtest_output=xml:test-results/libsensor-unit.xml \
     && echo "  libsensor テスト: PASS" \
     || echo "  [警告] libsensor テスト: 失敗あり"

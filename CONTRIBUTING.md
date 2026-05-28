@@ -52,7 +52,7 @@ cppcheck --enable=warning,performance,portability --std=c++17 \
 
 # clang-tidy（compile_commands.json が必要）
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-clang-tidy -p build/ spi-hal/src/spi_driver.cpp libsensor/src/device.cpp
+clang-tidy -p build/ spi-hal/src/spi_driver.cpp libsensor/src/sensor.cpp
 ```
 
 ## コーディング規約

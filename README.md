@@ -102,7 +102,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 | レベル | 対象 | ツール | 自動化 | 実行環境 |
 |---|---|---|---|---|
-| 単体テスト (UT) | SpiDriver / Device クラス | Google Test + GMock | ✓ CI | Docker（実機不要） |
+| 単体テスト (UT) | SpiDriver / Sensor クラス | Google Test + GMock | ✓ CI | Docker（実機不要） |
 | 結合テスト (IT) | SPIループバック通信 | Google Test | 一部 | Raspberry Pi 4B |
 | 受入テスト (AT) | システム全体 | 手動 + Excel仕様書 | - | 実機 + 顧客確認 |
 
@@ -117,7 +117,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ```
 01_requirements/   → 何を作るかを決める（要件定義書）
 02_basic-design/   → どう作るかの全体像（システム構成・アーキテクチャ）
-03_detailed-design/→ クラス設計の詳細（SpiDriver・Device）
+03_detailed-design/→ クラス設計の詳細（SpiDriver・Sensor）
 04_api-spec/       → 公開APIの仕様書（使う側の視点）
 05_interface-spec/ → ハードウェアとのインターフェース仕様
 06_test/           → テスト計画・仕様書
@@ -127,7 +127,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 コードを読む場合のお勧め順序:
 1. `spi-hal/include/ispi_driver.hpp` — インターフェース設計
 2. `spi-hal/include/spi_driver.hpp` / `spi-hal/src/spi_driver.cpp` — 実機ドライバ実装
-3. `libsensor/include/device.hpp` / `libsensor/src/device.cpp` — PIMPL + 非同期API
+3. `libsensor/include/sensor.hpp` / `libsensor/src/sensor.cpp` — PIMPL + 非同期API
 4. `tests/mocks/mock_spi_driver.hpp` — モック実装
 5. `tests/unit/` — ユニットテスト
 
@@ -264,9 +264,9 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 | パターン | 場所 | 概要 |
 |---|---|---|
 | **RAII** | `spi-hal/src/spi_driver.cpp` | デストラクタで fd を自動 close |
-| **PIMPL イディオム** | `libsensor/src/device.cpp` | `Device::Impl` で実装を隠蔽し ABI を安定化 |
+| **PIMPL イディオム** | `libsensor/src/sensor.cpp` | `Sensor::Impl` で実装を隠蔽し ABI を安定化 |
 | **インターフェース分離** | `spi-hal/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
-| **依存注入 (DI)** | `libsensor/include/device.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
+| **依存注入 (DI)** | `libsensor/include/sensor.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
 | **`[[nodiscard]]` / `noexcept`** | `spi-hal/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
 | **ロガーマクロ** | `spi-hal/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
 | **バージョン自動生成** | `spi-hal/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |

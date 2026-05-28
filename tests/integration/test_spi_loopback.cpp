@@ -1,4 +1,4 @@
-#include "device.hpp"
+#include "sensor.hpp"
 #include <gtest/gtest.h>
 #include <cstdlib>
 
@@ -9,7 +9,7 @@ static const char* SPI_DEV = "/dev/spidev0.0";
 
 class SpiLoopbackTest : public ::testing::Test {
 protected:
-    embedded::Device dev{SPI_DEV};
+    embedded::Sensor dev{SPI_DEV};
 
     void SetUp() override {
         if (access(SPI_DEV, F_OK) != 0)
@@ -75,7 +75,7 @@ TEST_F(SpiLoopbackTest, AsyncReadCallbackIsCalled) {
 
 // IT-005: read_async() — エラー発生時にコールバックへエラーが通知されること
 TEST(SpiDeviceAsync, AsyncReadOnClosedDeviceReceivesError) {
-    embedded::Device dev("/dev/spidev0.0");   // open しない
+    embedded::Sensor dev("/dev/spidev0.0");   // open しない
 
     std::mutex mtx;
     std::condition_variable cv;
@@ -104,7 +104,7 @@ TEST(SpiDeviceAsync, AsyncReadOnClosedDeviceReceivesError) {
 
 // IT-006: 無効デバイスでエラー処理
 TEST(SpiDeviceError, InvalidDeviceReturnsError) {
-    embedded::Device dev("/dev/spidevXX.0");
+    embedded::Sensor dev("/dev/spidevXX.0");
     EXPECT_FALSE(dev.open());
     EXPECT_TRUE(dev.read(0x00, 1).empty());
 }
