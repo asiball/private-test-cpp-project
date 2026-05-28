@@ -24,8 +24,8 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 │  03 詳細設計  →  driver-design.md / lib-design.md  クラス設計   │
 │  04 API仕様   →  spi-driver-api.md / libdevice-api.md  公開API  │
 │  05 IF仕様    →  spi-hardware-if.md          HW接続仕様         │
-│  06 テスト    →  test-plan.md + 各種spec.xlsx テスト計画・仕様  │
-│  07 納品      →  delivery-checklist.xlsx / release-notes/       │
+│  06 テスト    →  test-plan.md + tests/*/test-cases.md           │
+│  07 納品      →  release-notes/                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,7 +46,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 │   ├── unit/        #   単体テスト（spi-hal / libsensor）
 │   └── integration/ #   結合テスト（実機必須）
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
-├── tools/           # ドキュメント生成スクリプト（gen_docs.py）
+├── tools/           # SBOM 生成スクリプト（generate-sbom.py 等）
 ├── .github/         # GitHub Actions CI
 ├── Doxyfile         # Doxygen 設定
 ├── Dockerfile.build # Docker ビルド環境
@@ -242,7 +242,7 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 | CMake | 3.10 以上 |
 | Google Test | 1.14（単体テスト用） |
 | Doxygen | 1.9 以上（ドキュメント生成用） |
-| Python 3 + openpyxl | （gen_docs.py 使用時のみ） |
+| Python 3 | （generate-sbom.py 等のスクリプト使用時のみ） |
 
 ---
 

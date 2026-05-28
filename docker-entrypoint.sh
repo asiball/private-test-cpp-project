@@ -2,14 +2,14 @@
 set -euo pipefail
 cd /workspace
 
-# ── [1/7] CMakeビルド (Release) ─────────────────────────────
-echo "=== [1/7] CMakeビルド (Release) ==="
+# ── [1/6] CMakeビルド (Release) ─────────────────────────────
+echo "=== [1/6] CMakeビルド (Release) ==="
 rm -f build/CMakeCache.txt
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 
-# ── [2/7] cppcheck 静的解析 ─────────────────────────────────
-echo "=== [2/7] cppcheck 静的解析 ==="
+# ── [2/6] cppcheck 静的解析 ─────────────────────────────────
+echo "=== [2/6] cppcheck 静的解析 ==="
 cppcheck \
     --enable=warning,performance,portability \
     --std=c++17 \
@@ -19,8 +19,8 @@ cppcheck \
     && echo "  cppcheck: 問題なし" \
     || echo "  [警告] cppcheck: 問題あり（続行）"
 
-# ── [3/7] 単体テスト: spi-hal ───────────────────────────────
-echo "=== [3/7] 単体テスト (spi-hal) ==="
+# ── [3/6] 単体テスト: spi-hal ───────────────────────────────
+echo "=== [3/6] 単体テスト (spi-hal) ==="
 cmake -S spi-hal -B build/spihal-debug -DCMAKE_BUILD_TYPE=Debug
 cmake --build build/spihal-debug -j"$(nproc)"
 cmake --install build/spihal-debug --prefix /usr/local
@@ -34,8 +34,8 @@ mkdir -p test-results
     && echo "  spi-hal テスト: PASS" \
     || echo "  [警告] spi-hal テスト: 失敗あり"
 
-# ── [3b/7] サニタイザービルド (ASAN + UBSAN) ────────────────
-echo "=== [3b/7] サニタイザービルド (ASAN + UBSAN) ==="
+# ── [3b/6] サニタイザービルド (ASAN + UBSAN) ────────────────
+echo "=== [3b/6] サニタイザービルド (ASAN + UBSAN) ==="
 cmake -S . -B build/sanitized \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
@@ -45,8 +45,8 @@ cmake --build build/sanitized -j"$(nproc)"
     && echo "  サニタイザービルド: OK" \
     || echo "  [警告] サニタイザービルド: 起動失敗（続行）"
 
-# ── [4/7] 単体テスト: libsensor ─────────────────────────────
-echo "=== [4/7] 単体テスト (libsensor) ==="
+# ── [4/6] 単体テスト: libsensor ─────────────────────────────
+echo "=== [4/6] 単体テスト (libsensor) ==="
 cmake -S libsensor -B build/libsensor-debug -DCMAKE_BUILD_TYPE=Debug
 cmake --build build/libsensor-debug -j"$(nproc)"
 cmake --install build/libsensor-debug --prefix /usr/local
@@ -60,19 +60,19 @@ cmake --build build/test-libsensor -j"$(nproc)"
     && echo "  libsensor テスト: PASS" \
     || echo "  [警告] libsensor テスト: 失敗あり"
 
-# ── [5/7] Doxygen ───────────────────────────────────────────
-echo "=== [5/7] Doxygen ==="
+# ── [5/6] Doxygen ───────────────────────────────────────────
+echo "=== [5/6] Doxygen ==="
 mkdir -p docs/doxygen
 doxygen Doxyfile
 
-# ── [6/7] pandoc Markdown → PDF ─────────────────────────────
-echo "=== [6/7] pandoc Markdown → PDF ==="
+# ── [6/6] pandoc Markdown → PDF ─────────────────────────────
+echo "=== [6/6] pandoc Markdown → PDF ==="
 mkdir -p output/pdf
 for f in \
     docs/deliverables/01_requirements/requirements-spec.md \
     docs/deliverables/02_basic-design/system-architecture.md \
-    docs/deliverables/03_detailed-design/driver-design.md \
-    docs/deliverables/04_api-spec/libdevice-api.md \
+    docs/deliverables/03_detailed-design/spihal-design.md \
+    docs/deliverables/04_api-spec/libsensor-api.md \
     docs/deliverables/05_interface-spec/spi-hardware-if.md \
     docs/deliverables/06_test/test-plan.md \
     docs/deliverables/07_delivery/release-notes/v1.1.0.md; do
@@ -90,14 +90,9 @@ for f in \
     fi
 done
 
-# ── [7/7] Excel / CSV ドキュメント生成 ──────────────────────
-echo "=== [7/7] Excelドキュメント生成 (tools/gen_docs.py) ==="
-python3 tools/gen_docs.py
-
 echo ""
 echo "=== 完了 ==="
 echo "  バイナリ         : build/cli/device-ctl, build/libsensor/libsensor.so"
 echo "  テスト結果       : test-results/"
 echo "  APIドキュメント  : docs/doxygen/html/index.html"
 echo "  PDF              : output/pdf/"
-echo "  Excelドキュメント: docs/"
