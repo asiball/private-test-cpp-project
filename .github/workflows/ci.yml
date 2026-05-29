@@ -224,7 +224,7 @@ jobs:
             echo "ERROR: PR タイトルが Conventional Commits 形式に合っていません"
             echo "  受け取った値: $TITLE"
             echo "  期待する形式: feat|fix|docs|refactor|test|ci|chore: <概要>"
-            echo "  例: feat(libsensor): read_async にタイムアウトを追加"
+            echo "  例: feat(libsensor): read_raw_async にタイムアウトを追加"
             exit 1
           fi
 
@@ -333,7 +333,7 @@ jobs:
           sudo cmake --install build/libsensor-tsan --prefix /usr/local
           sudo ldconfig
 
-      - name: Libsensor unit tests (TSAN) — read_async スレッド検査
+      - name: Libsensor unit tests (TSAN) — read_raw_async スレッド検査
         run: |
           cmake -S tests/unit/libsensor -B build/test-libsensor-tsan \
             -DCMAKE_BUILD_TYPE=Debug \

@@ -21,16 +21,16 @@
       "is_root": true
     },
     {
-      "spdx_id": "SPDXRef-Package-spi-driver",
-      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
-      "name": "spi-driver",
+      "spdx_id": "SPDXRef-Package-spihal",
+      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal",
+      "name": "spihal",
       "version": "1.1.0",
       "cdx_type": "library",
       "supplier": "asiball",
-      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#driver",
+      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#spi-hal",
       "license": "MIT",
       "copyright": "Copyright (c) 2024 asiball",
-      "description": "Linux SPI device driver static library (libspi_driver.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
+      "description": "Linux SPI userspace HAL static library (libspihal.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
     },
     {
       "spdx_id": "SPDXRef-Package-my-spi-driver",
@@ -45,16 +45,16 @@
       "description": "Linux kernel SPI device driver module (my_spi_driver.ko). Registers with Linux SPI subsystem via probe(), exposes /dev/my_spi_dev character device, controlled via MY_SPI_IOC_CONFIG/MY_SPI_IOC_TRANSFER ioctl. Requires running Linux kernel with SPI subsystem enabled."
     },
     {
-      "spdx_id": "SPDXRef-Package-libdevice",
-      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
-      "name": "libdevice",
+      "spdx_id": "SPDXRef-Package-libsensor",
+      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
+      "name": "libsensor",
       "version": "1.1.0",
       "cdx_type": "library",
       "supplier": "asiball",
-      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#lib",
+      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#libsensor",
       "license": "MIT",
       "copyright": "Copyright (c) 2024 asiball",
-      "description": "Device abstraction shared library (libdevice.so). PIMPL idiom, dependency injection, async API."
+      "description": "MCP3008 sensor shared library (libsensor.so). High-level Sensor class providing read_raw / read_voltage / read_raw_async over MCP3008 (8ch / 10bit SPI ADC). PIMPL idiom, dependency injection on ISpiDriver."
     },
     {
       "spdx_id": "SPDXRef-Package-device-ctl",
@@ -91,7 +91,7 @@
       "download_location": "NOASSERTION",
       "license": "LGPL-2.1-or-later",
       "copyright": "NOASSERTION",
-      "description": "GNU C Library. Provides POSIX interfaces used across driver and library components: pthread (thread management in libdevice), syslog.h (logger.hpp in driver), fcntl.h/unistd.h (file operations in spi_driver.cpp and kernel_spi_driver.cpp), sys/ioctl.h (ioctl calls in both drivers)."
+      "description": "GNU C Library. Provides POSIX interfaces used across driver and library components: pthread (thread management in libsensor), syslog.h (logger.hpp in spi-hal), fcntl.h/unistd.h (file operations in spi_driver.cpp and kernel_spi_driver.cpp), sys/ioctl.h (ioctl calls in both drivers)."
     },
     {
       "spdx_id": "SPDXRef-Package-linux-kernel-headers",
@@ -120,20 +120,20 @@
   ],
   "relationships": [
     {"element": "SPDXRef-DOCUMENT",                      "type": "DESCRIBES",              "related": "SPDXRef-Package-root"},
-    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-spi-driver"},
+    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-spihal"},
     {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-my-spi-driver"},
-    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-libdevice"},
+    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-libsensor"},
     {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-device-ctl"},
-    {"element": "SPDXRef-Package-device-ctl",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libdevice"},
-    {"element": "SPDXRef-Package-libdevice",             "type": "STATIC_LINK",            "related": "SPDXRef-Package-spi-driver"},
-    {"element": "SPDXRef-Package-libdevice",             "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
-    {"element": "SPDXRef-Package-libdevice",             "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libstdcxx"},
-    {"element": "SPDXRef-Package-spi-driver",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
-    {"element": "SPDXRef-Package-linux-kernel-headers",  "type": "BUILD_DEPENDENCY_OF",    "related": "SPDXRef-Package-spi-driver"},
+    {"element": "SPDXRef-Package-device-ctl",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libsensor"},
+    {"element": "SPDXRef-Package-libsensor",             "type": "STATIC_LINK",            "related": "SPDXRef-Package-spihal"},
+    {"element": "SPDXRef-Package-libsensor",             "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
+    {"element": "SPDXRef-Package-libsensor",             "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libstdcxx"},
+    {"element": "SPDXRef-Package-spihal",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
+    {"element": "SPDXRef-Package-linux-kernel-headers",  "type": "BUILD_DEPENDENCY_OF",    "related": "SPDXRef-Package-spihal"},
     {"element": "SPDXRef-Package-linux-kernel-headers",  "type": "BUILD_DEPENDENCY_OF",    "related": "SPDXRef-Package-my-spi-driver"},
-    {"element": "SPDXRef-Package-my-spi-driver",         "type": "OPTIONAL_DEPENDENCY_OF", "related": "SPDXRef-Package-spi-driver"},
-    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-spi-driver"},
-    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-libdevice"},
+    {"element": "SPDXRef-Package-my-spi-driver",         "type": "OPTIONAL_DEPENDENCY_OF", "related": "SPDXRef-Package-spihal"},
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-spihal"},
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-libsensor"},
     {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-device-ctl"}
   ]
 }

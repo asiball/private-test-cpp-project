@@ -18,7 +18,7 @@
 //   syslog のみ。
 //
 // 使い方:
-//   LOG_OPEN("spi-driver");  // main() の先頭で1回呼ぶ
+//   LOG_OPEN("device-ctl");  // main() の先頭で1回呼ぶ
 //   LOGI("opened %s", path);
 //   LOGW("retry %d/3", n);
 //   LOGE("transfer failed: %d", errno_val);

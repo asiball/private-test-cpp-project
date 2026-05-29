@@ -4,7 +4,7 @@
   "serialNumber": "urn:uuid:d8e140bb-0db0-5811-8c40-29a4c745fe7d",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-05-26T09:42:26Z",
+    "timestamp": "2026-05-26T10:07:47Z",
     "tools": {
       "components": [
         {
@@ -44,12 +44,12 @@
   "components": [
     {
       "type": "library",
-      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal",
       "supplier": {
         "name": "asiball"
       },
-      "name": "spi-driver",
-      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "name": "spihal",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal",
       "licenses": [
         {
           "license": {
@@ -59,7 +59,7 @@
       ],
       "version": "1.1.0",
       "copyright": "Copyright (c) 2024 asiball",
-      "description": "Linux SPI device driver static library (libspi_driver.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
+      "description": "Linux SPI userspace HAL static library (libspihal.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
     },
     {
       "type": "firmware",
@@ -82,12 +82,12 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
       "supplier": {
         "name": "asiball"
       },
-      "name": "libdevice",
-      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "name": "libsensor",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
       "licenses": [
         {
           "license": {
@@ -97,7 +97,7 @@
       ],
       "version": "1.1.0",
       "copyright": "Copyright (c) 2024 asiball",
-      "description": "Device abstraction shared library (libdevice.so). PIMPL idiom, dependency injection, async API."
+      "description": "MCP3008 sensor shared library (libsensor.so). High-level Sensor class providing read_raw / read_voltage / read_raw_async over MCP3008 (8ch / 10bit SPI ADC). PIMPL idiom, dependency injection on ISpiDriver."
     },
     {
       "type": "application",
@@ -153,7 +153,7 @@
           }
         }
       ],
-      "description": "GNU C Library. Provides POSIX interfaces used across driver and library components: pthread (thread management in libdevice), syslog.h (logger.hpp in driver), fcntl.h/unistd.h (file operations in spi_driver.cpp and kernel_spi_driver.cpp), sys/ioctl.h (ioctl calls in both drivers)."
+      "description": "GNU C Library. Provides POSIX interfaces used across driver and library components: pthread (thread management in libsensor), syslog.h (logger.hpp in spi-hal), fcntl.h/unistd.h (file operations in spi_driver.cpp and kernel_spi_driver.cpp), sys/ioctl.h (ioctl calls in both drivers)."
     },
     {
       "type": "library",
@@ -191,13 +191,13 @@
       "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0",
       "dependsOn": [
         "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
-        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
-        "pkg:github/asiball/private-test-cpp-project@1.1.0#lib"
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
       ]
     },
     {
-      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#driver",
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal",
       "dependsOn": [
         "pkg:generic/glibc",
         "pkg:generic/linux-kernel-headers"
@@ -207,21 +207,21 @@
       "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
       "dependsOn": [
         "pkg:generic/linux-kernel-headers",
-        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver"
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
       ]
     },
     {
-      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#lib",
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
       "dependsOn": [
         "pkg:generic/glibc",
         "pkg:generic/libstdc%2B%2B",
-        "pkg:github/asiball/private-test-cpp-project@1.1.0#driver"
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
       ]
     },
     {
       "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
       "dependsOn": [
-        "pkg:github/asiball/private-test-cpp-project@1.1.0#lib"
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor"
       ]
     },
     {

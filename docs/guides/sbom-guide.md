@@ -95,7 +95,7 @@ tools/sbom-metadata.json   ← 手動管理・依存関係の定義
 | パッケージ名 | 種別 | バージョン | ライセンス | 理由 |
 |---|---|---|---|---|
 | embedded-device-suite | 自プロジェクト（ルート） | 1.1.0 | MIT | SBOM の対象プロダクト |
-| spi-driver | 自プロジェクト（静的ライブラリ） | 1.1.0 | MIT | 内部コンポーネント |
+| spihal | 自プロジェクト（静的ライブラリ） | 1.1.0 | MIT | 内部コンポーネント |
 | my-spi-driver | 自プロジェクト（カーネルモジュール） | 1.1.0 | GPL-2.0-only | 内部コンポーネント |
 | libsensor | 自プロジェクト（共有ライブラリ） | 1.1.0 | MIT | 内部コンポーネント |
 | device-ctl | 自プロジェクト（実行ファイル） | 1.1.0 | MIT | 内部コンポーネント |
@@ -240,7 +240,7 @@ git commit -m "docs(sbom): update SBOM for <変更内容>"
 |---|---|
 | PR（`CMakeLists.txt` または `sbom-metadata.json` 変更） | `--verify` モードで整合性チェック。不一致なら CI が失敗しコメントが付く |
 | main へのプッシュ（同ファイル変更） | SBOM を再生成し自動コミット |
-| リリースタグ（`spi-hal/v*`, `lib/v*`, `cli/v*`） | SBOM を再生成し GitHub Release にアセットとして添付 |
+| リリースタグ（`spi-hal/v*`, `libsensor/v*`, `cli/v*`） | SBOM を再生成し GitHub Release にアセットとして添付 |
 
 ---
 
@@ -253,7 +253,7 @@ git commit -m "docs(sbom): update SBOM for <変更内容>"
 | ライセンス | **GPL-2.0-only**（Linux カーネルはそれ以外のモジュールのロードを公式サポートしない） |
 | バージョン | カーネルモジュールのバイナリはビルドしたカーネルバージョンに固有。SBOM には本リポジトリの `version: 1.1.0` を記載し、カーネルバージョンは NOASSERTION |
 | CycloneDX type | `firmware`（実行可能バイナリだがユーザー空間アプリではないため） |
-| 依存関係 | ユーザー空間ドライバ（`spi-driver`）から `OPTIONAL_DEPENDENCY_OF` として参照。`KernelSpiDriver` 使用時のみカーネルモジュールが必要なため |
+| 依存関係 | ユーザー空間 HAL（`spihal`）から `OPTIONAL_DEPENDENCY_OF` として参照。`KernelSpiDriver` 使用時のみカーネルモジュールが必要なため |
 | リンク | カーネルモジュールは glibc・libstdc++ にはリンクしない。`linux-kernel-headers` のみが `BUILD_DEPENDENCY_OF` |
 
 ---
