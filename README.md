@@ -295,7 +295,9 @@ CH0  raw=512  voltage=1.650 V
   [静的解析](docs/guides/tooling/static-analysis-guide.md) ・
   [カバレッジ](docs/guides/tooling/coverage-guide.md) ・
   [サニタイザー](docs/guides/tooling/sanitizers-guide.md) ・
-  [Linux カーネルモジュール](docs/guides/tooling/kernel-module-guide.md)
+  [Linux カーネルモジュール](docs/guides/tooling/kernel-module-guide.md) ・
+  [Docker](docs/guides/tooling/docker-guide.md) ・
+  [コミット規約 / git-cliff](docs/guides/tooling/commit-conventions-guide.md)
 - [SBOM ガイド](docs/guides/sbom-guide.md)
 
 ### 案件成果物（`docs/deliverables/`）
