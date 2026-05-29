@@ -1,5 +1,5 @@
 #pragma once
-#include "../../driver/include/ispi_driver.hpp"
+#include "../../spi-hal/include/ispi_driver.hpp"
 #include <gmock/gmock.h>
 
 namespace embedded {
@@ -8,7 +8,7 @@ namespace embedded {
  * @brief ISpiDriver のテスト用モック実装
  *
  * SpiDriver（実機依存）の代わりにテストで使用する。
- * ISpiDriver を継承しているため、Device::Impl に差し込める。
+ * ISpiDriver を継承しているため、Sensor::Impl に差し込める。
  */
 class MockSpiDriver : public ISpiDriver {
 public:

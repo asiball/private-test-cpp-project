@@ -9,8 +9,8 @@ name: SBOM
 on:
   push:
     tags:
-      - 'driver/v*'
-      - 'lib/v*'
+      - 'spi-hal/v*'
+      - 'libsensor/v*'
       - 'cli/v*'
     branches:
       - main

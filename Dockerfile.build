@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         # PDF generation (pandoc + Japanese xelatex)
         pandoc texlive-xetex texlive-fonts-recommended \
         texlive-lang-japanese fonts-noto-cjk lmodern \
-        # Python (tools/gen_docs.py)
-        python3 python3-openpyxl \
+        # Python (tools/generate-sbom.py 等)
+        python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Build and install Google Test

@@ -7,7 +7,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 > 実案件レベルの組み込みSW開発**運用フロー**をまるごと体験・学習するための例として構築されています。
 > C++の設計パターンだけでなく、仕様策定→設計→実装→テスト→CI/CD→納品 という
 > **開発ライフサイクル全体**が一つのリポジトリで追えます。
-> まずは [学習ガイド](docs/00_project/learning-guide.md) をお読みください。
+> まずは [学習ガイド](docs/guides/learning-guide.md) をお読みください。
 
 ---
 
@@ -21,11 +21,11 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├─────────────────────────────────────────────────────────────────┤
 │  01 要件定義  →  requirements-spec.md        機能要件・制約     │
 │  02 基本設計  →  system-architecture.md     システム構成図      │
-│  03 詳細設計  →  driver-design.md / lib-design.md  クラス設計   │
-│  04 API仕様   →  spi-driver-api.md / libdevice-api.md  公開API  │
+│  03 詳細設計  →  spihal-design.md / libsensor-design.md  クラス設計 │
+│  04 API仕様   →  spi-driver-api.md / libsensor-api.md  公開API   │
 │  05 IF仕様    →  spi-hardware-if.md          HW接続仕様         │
-│  06 テスト    →  test-plan.md + 各種spec.xlsx テスト計画・仕様  │
-│  07 納品      →  delivery-checklist.xlsx / release-notes/       │
+│  06 テスト    →  test-plan.md + tests/*/test-cases.md           │
+│  07 納品      →  release-notes/                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -37,17 +37,17 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 ```
 .
-├── driver/          # SPIドライバ（静的ライブラリ: libspi_driver.a）
-├── lib/             # libdevice（動的共有ライブラリ: libdevice.so）
+├── spi-hal/         # SPI HAL（静的ライブラリ: libspihal.a）
+├── libsensor/       # libsensor（動的共有ライブラリ: libsensor.so）
 ├── cli/             # device-ctl（CLIツール）
+├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
 ├── tests/
 │   ├── mocks/       #   MockSpiDriver（テスト用）
-│   ├── unit/        #   単体テスト（driver / lib）
+│   ├── unit/        #   単体テスト（spi-hal / libsensor）
 │   └── integration/ #   結合テスト（実機必須）
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
-├── tools/           # ドキュメント生成スクリプト（gen_docs.py）
+├── tools/           # SBOM 生成スクリプト（generate-sbom.py 等）
 ├── .github/         # GitHub Actions CI
-├── .gitlab-ci.yml   # GitLab CI/CD
 ├── Doxyfile         # Doxygen 設定
 ├── Dockerfile.build # Docker ビルド環境
 └── CMakeLists.txt   # トップレベル CMake
@@ -57,11 +57,11 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 | コンポーネント | 種別 | 理由 |
 |---|---|---|
-| `driver/` (spi-driver) | 静的ライブラリ | Linuxカーネル依存コードを隔離。HWが変わっても`lib/`以上への影響を最小化 |
-| `lib/` (libdevice) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
-| `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからread/writeを繰り返し実行できる。 |
+| `spi-hal/` (libspihal) | 静的ライブラリ | Linux SPI 依存コードを隔離。HWが変わっても `libsensor/` 以上への影響を最小化 |
+| `libsensor/` (libsensor) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
+| `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからMCP3008の各チャネル読み出しを繰り返し実行できる。 |
 
-コンポーネントごとに独立した git タグを持ち（`driver/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
+コンポーネントごとに独立した git タグを持ち（`spi-hal/v1.1.0`、`libsensor/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
 
 ---
 
@@ -84,16 +84,15 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
     │       ▼
     │   docs（Doxygen HTML / PDF）
     │
-    └─ タグ push（driver/vX.Y.Z 等）
+    └─ タグ push（spi-hal/vX.Y.Z 等）
             │
             ▼
-        package:release（.tar.gz アーカイブ生成）
+        release（git-cliff で CHANGELOG.md 生成 + GitHub Release 作成）
 ```
 
 | プラットフォーム | 設定ファイル | 特徴 |
 |---|---|---|
 | GitHub Actions | `.github/workflows/ci.yml` | push/PRで自動実行（ビルド・テスト・カバレッジ・Doxygen） |
-| GitLab CI | `.gitlab-ci.yml` | 差分ビルド・clang-tidy・PDF生成・リリースパッケージ作成 |
 
 ---
 
@@ -101,9 +100,9 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 | レベル | 対象 | ツール | 自動化 | 実行環境 |
 |---|---|---|---|---|
-| 単体テスト (UT) | SpiDriver / Device クラス | Google Test + GMock | ✓ CI | Docker（実機不要） |
-| 結合テスト (IT) | SPIループバック通信 | Google Test | 一部 | Raspberry Pi 4B |
-| 受入テスト (AT) | システム全体 | 手動 + Excel仕様書 | - | 実機 + 顧客確認 |
+| 単体テスト (UT) | SpiDriver / Sensor クラス | Google Test + GMock | ✓ CI | GitHub Actions ubuntu-24.04 / ローカルは `./docker-build.sh`（実機不要） |
+| 結合テスト (IT) | MCP3008 実機読み出し | Google Test | 一部 | Raspberry Pi 3B+ + MCP3008 |
+| 受入テスト (AT) | システム全体 | 手動 + チェックリスト（Markdown） | - | 実機 + 顧客確認 |
 
 カバレッジ目標: 主要モジュール **80%以上**（gcovr/lcovで計測）
 
@@ -111,22 +110,29 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 ## ドキュメント読み進めガイド
 
-ドキュメントは開発フローの順番に番号が振られています。
+ドキュメントは「学習者向けガイド」と「プロジェクト成果物（納品物サンプル）」に分けています。
 
 ```
-01_requirements/   → 何を作るかを決める（要件定義書）
-02_basic-design/   → どう作るかの全体像（システム構成・アーキテクチャ）
-03_detailed-design/→ クラス設計の詳細（SpiDriver・Device）
-04_api-spec/       → 公開APIの仕様書（使う側の視点）
-05_interface-spec/ → ハードウェアとのインターフェース仕様
-06_test/           → テスト計画・仕様書
-07_delivery/       → リリースノート・納品物チェックリスト
+docs/
+├── guides/             ← 学習者向けガイド（このリポジトリの読み方など）
+│   ├── learning-guide.md
+│   └── sbom-guide.md
+├── deliverables/       ← プロジェクト成果物（要件→設計→テスト→納品の順）
+│   ├── 01_requirements/   何を作るかを決める（要件定義書）
+│   ├── 02_basic-design/   どう作るかの全体像（システム構成・アーキテクチャ）
+│   ├── 03_detailed-design/クラス設計の詳細（SpiDriver・Sensor）
+│   ├── 04_api-spec/       公開 API の仕様書（使う側の視点）
+│   ├── 05_interface-spec/ ハードウェアとのインターフェース仕様
+│   ├── 06_test/           テスト計画・仕様書
+│   └── 07_delivery/       リリースノート・納品物チェックリスト
+├── wiki/               ← 運用情報（リリースマトリックス等）
+└── assets/             ← Doxygen 用 CSS 等
 ```
 
 コードを読む場合のお勧め順序:
-1. `driver/include/ispi_driver.hpp` — インターフェース設計
-2. `driver/include/spi_driver.hpp` / `driver/src/spi_driver.cpp` — 実機ドライバ実装
-3. `lib/include/device.hpp` / `lib/src/device.cpp` — PIMPL + 非同期API
+1. `spi-hal/include/ispi_driver.hpp` — インターフェース設計
+2. `spi-hal/include/spi_driver.hpp` / `spi-hal/src/spi_driver.cpp` — 実機ドライバ実装
+3. `libsensor/include/sensor.hpp` / `libsensor/src/sensor.cpp` — PIMPL + 非同期API
 4. `tests/mocks/mock_spi_driver.hpp` — モック実装
 5. `tests/unit/` — ユニットテスト
 
@@ -156,19 +162,19 @@ cmake --build build
 ### 単体テストの実行
 
 ```bash
-# driver 単体テスト
-cmake -S driver -B build/driver -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/driver
-cmake -S tests/unit/driver -B build/test-driver
-cmake --build build/test-driver
-./build/test-driver/test_spi_driver
+# spi-hal 単体テスト
+cmake -S spi-hal -B build/spihal -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/spihal
+cmake -S tests/unit/spi-hal -B build/test-spihal
+cmake --build build/test-spihal
+./build/test-spihal/test_spi_driver
 
-# lib 単体テスト
-cmake -S lib -B build/lib -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/lib
-cmake -S tests/unit/lib -B build/test-lib
-cmake --build build/test-lib
-./build/test-lib/test_device
+# libsensor 単体テスト
+cmake -S libsensor -B build/libsensor -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/libsensor
+cmake -S tests/unit/libsensor -B build/test-libsensor
+cmake --build build/test-libsensor
+./build/test-libsensor/test_sensor
 ```
 
 ### Doxygen ドキュメントの生成
@@ -183,44 +189,47 @@ doxygen Doxyfile
 ```bash
 cppcheck --enable=warning,performance,portability --std=c++17 \
          --suppress=missingIncludeSystem --error-exitcode=1 \
-         driver/src/ lib/src/ cli/src/
+         spi-hal/src/ libsensor/src/ cli/src/
 ```
 
 ### device-ctl の使い方
 
 ```bash
-# デフォルトデバイス (/dev/spidev0.0) で起動
-./build/device-ctl
+# デフォルトデバイス (/dev/spidev0.0) / Vref 3.3V で起動
+./build/cli/device-ctl
 
 # デバイスパスを指定して起動
-./build/device-ctl -d /dev/spidev0.1
+./build/cli/device-ctl -d /dev/spidev0.1
+
+# Vref を指定して起動（例: 5.0V）
+./build/cli/device-ctl --vref 5.0
 
 # 非同期readモードで起動
-./build/device-ctl --async
+./build/cli/device-ctl --async
 
 # バージョン確認
-./build/device-ctl --version
+./build/cli/device-ctl --version
 ```
 
-起動後は対話メニューが表示され、read/writeを繰り返し実行できます。
-バックグラウンドで1分ごとにデバイス (reg=0x00, 4バイト) を自動読み出しし、
-次のメニュー表示時に `[MONITOR]` プレフィックス付きで結果を表示します。
+起動後は対話メニューが表示され、MCP3008 の各チャネル（0〜7）の読み出しを繰り返し実行できます。
+読み出し値は 10bit raw（0〜1023）と Vref から換算した電圧の両方を表示します。
+バックグラウンドで1分ごとに CH0 を自動読み出しし、次のメニュー表示時に
+`[MONITOR]` プレフィックス付きで結果を表示します。
 
 ```
-device-ctl 対話モード (デバイス: /dev/spidev0.0)
+device-ctl 対話モード (デバイス: /dev/spidev0.0, Vref=3.30 V)
 
-[1] read
-[2] write
+[1] チャネル指定読み出し
+[2] 全チャネルスキャン
 [3] 終了
 選択: 1
-  レジスタ (hex): 0x00
-  バイト数: 4
-00 1a ff 03
+  チャネル (0-7): 0
+CH0  raw=512  voltage=1.650 V
 
-[MONITOR] 00 1a ff 03
+[MONITOR] CH0 raw=512 voltage=1.650 V
 
-[1] read
-[2] write
+[1] チャネル指定読み出し
+[2] 全チャネルスキャン
 [3] 終了
 選択: 3
 終了します。
@@ -232,11 +241,11 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 
 | ツール | バージョン |
 |---|---|
-| GCC | 7.5 以上（C++17対応） |
+| GCC | 13 以上（C++17対応、CI/開発環境は Ubuntu 24.04 同梱の g++ 13） |
 | CMake | 3.10 以上 |
 | Google Test | 1.14（単体テスト用） |
 | Doxygen | 1.9 以上（ドキュメント生成用） |
-| Python 3 + openpyxl | （gen_docs.py 使用時のみ） |
+| Python 3 | （generate-sbom.py 等のスクリプト使用時のみ） |
 
 ---
 
@@ -246,8 +255,8 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 <component>/v<MAJOR>.<MINOR>.<PATCH>
 
 例:
-  driver/v1.0.0
-  lib/v1.0.0
+  spi-hal/v1.0.0
+  libsensor/v1.0.0
   cli/v1.0.0
 ```
 
@@ -258,26 +267,44 @@ device-ctl 対話モード (デバイス: /dev/spidev0.0)
 
 ## C++設計パターン
 
-実装で使用している主なC++パターンの一覧。詳細は [学習ガイド](docs/00_project/learning-guide.md) を参照。
+実装で使用している主なC++パターンの一覧。詳細は [学習ガイド](docs/guides/learning-guide.md) を参照。
 
 | パターン | 場所 | 概要 |
 |---|---|---|
-| **RAII** | `driver/src/spi_driver.cpp` | デストラクタで fd を自動 close |
-| **PIMPL イディオム** | `lib/src/device.cpp` | `Device::Impl` で実装を隠蔽し ABI を安定化 |
-| **インターフェース分離** | `driver/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
-| **依存注入 (DI)** | `lib/include/device.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
-| **`[[nodiscard]]` / `noexcept`** | `driver/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
-| **ロガーマクロ** | `driver/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
-| **バージョン自動生成** | `driver/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |
-| **Doxygen スニペット** | `driver/include/ispi_driver.hpp` | `@snippet` でテストコードをAPIドキュメントに引用 |
+| **RAII** | `spi-hal/src/spi_driver.cpp` | デストラクタで fd を自動 close |
+| **PIMPL イディオム** | `libsensor/src/sensor.cpp` | `Sensor::Impl` で実装を隠蔽し ABI を安定化 |
+| **インターフェース分離** | `spi-hal/include/ispi_driver.hpp` | 純粋仮想クラス `ISpiDriver` で実機とモックを交換可能に |
+| **依存注入 (DI)** | `libsensor/include/sensor.hpp` | テスト用コンストラクタで `ISpiDriver*` を外部注入 |
+| **`[[nodiscard]]` / `noexcept`** | `spi-hal/include/ispi_driver.hpp` | 戻り値無視の防止と例外を使わないエラー設計 |
+| **ロガーマクロ** | `spi-hal/include/logger.hpp` | DEBUGビルドは stderr+syslog、RELEASEは syslog のみ |
+| **バージョン自動生成** | `spi-hal/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |
+| **Doxygen スニペット** | `spi-hal/include/ispi_driver.hpp` | `@snippet` でテストコードをAPIドキュメントに引用 |
 | **GMock** | `tests/mocks/mock_spi_driver.hpp` | `MOCK_METHOD` で実機不要のユニットテスト |
 
 ---
 
 ## ドキュメント
 
-- [学習ガイド](docs/00_project/learning-guide.md)
-- [GitLab移行・運用ガイド](docs/gitlab-migration-guide.md)
+### 学習ガイド（`docs/guides/`）
+
+- [学習ガイド（C++ パターン総合）](docs/guides/learning-guide.md)
+- ツール別ガイド（`docs/guides/tooling/`）:
+  [CMake](docs/guides/tooling/cmake-guide.md) ・
+  [Google Test/GMock](docs/guides/tooling/gtest-guide.md) ・
+  [Doxygen](docs/guides/tooling/doxygen-guide.md) ・
+  [静的解析](docs/guides/tooling/static-analysis-guide.md) ・
+  [カバレッジ](docs/guides/tooling/coverage-guide.md) ・
+  [サニタイザー](docs/guides/tooling/sanitizers-guide.md) ・
+  [Linux カーネルモジュール](docs/guides/tooling/kernel-module-guide.md) ・
+  [Docker](docs/guides/tooling/docker-guide.md) ・
+  [コミット規約 / git-cliff](docs/guides/tooling/commit-conventions-guide.md)
+- [SBOM ガイド](docs/guides/sbom-guide.md)
+
+### 案件成果物（`docs/deliverables/`）
+
+- [API仕様書 — libsensor](docs/deliverables/04_api-spec/libsensor-api.md)
+- [API仕様書 — SpiDriver](docs/deliverables/04_api-spec/spi-driver-api.md)
+
+### 運用情報（`docs/wiki/`）
+
 - [リリースマトリックス](docs/wiki/release-matrix.md)
-- [API仕様書 — libdevice](docs/04_api-spec/libdevice-api.md)
-- [API仕様書 — SpiDriver](docs/04_api-spec/spi-driver-api.md)

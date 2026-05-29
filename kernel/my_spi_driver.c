@@ -26,7 +26,7 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 
-#include "../driver/include/my_spi_dev.h"
+#include "include/my_spi_dev.h"
 
 #define DRIVER_NAME   "my_spi_driver"
 #define DEVICE_NAME   "my_spi_dev"

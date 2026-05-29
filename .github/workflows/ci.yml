@@ -32,44 +32,44 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build -j$(nproc)
 
-      - name: Driver unit tests
+      - name: SPI HAL unit tests
         run: |
-          cmake -S driver -B build/driver-debug -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build/driver-debug -j$(nproc)
-          sudo cmake --install build/driver-debug --prefix /usr/local
-          cmake -S tests/unit/driver -B build/test-driver \
+          cmake -S spi-hal -B build/spihal-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/spihal-debug -j$(nproc)
+          sudo cmake --install build/spihal-debug --prefix /usr/local
+          cmake -S tests/unit/spi-hal -B build/test-spihal \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/driver/include"
-          cmake --build build/test-driver -j$(nproc)
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/spi-hal/include"
+          cmake --build build/test-spihal -j$(nproc)
           mkdir -p test-results
-          ./build/test-driver/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml
+          ./build/test-spihal/test_spi_driver \
+            --gtest_output=xml:test-results/spihal-unit.xml
 
-      - name: Lib unit tests
+      - name: Libsensor unit tests
         run: |
-          cmake -S lib -B build/lib-debug -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build/lib-debug -j$(nproc)
-          sudo cmake --install build/lib-debug --prefix /usr/local
+          cmake -S libsensor -B build/libsensor-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/libsensor-debug -j$(nproc)
+          sudo cmake --install build/libsensor-debug --prefix /usr/local
           sudo ldconfig
-          cmake -S tests/unit/lib -B build/test-lib \
+          cmake -S tests/unit/libsensor -B build/test-libsensor \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/tests/mocks"
-          cmake --build build/test-lib -j$(nproc)
-          ./build/test-lib/test_device \
-            --gtest_output=xml:test-results/lib-unit.xml
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/tests/mocks"
+          cmake --build build/test-libsensor -j$(nproc)
+          ./build/test-libsensor/test_sensor \
+            --gtest_output=xml:test-results/libsensor-unit.xml
 
       - name: Integration tests (compile + skip check)
         run: |
-          cmake -S lib -B build/lib-integ -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build/lib-integ -j$(nproc)
-          sudo cmake --install build/lib-integ --prefix /usr/local
+          cmake -S libsensor -B build/libsensor-integ -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/libsensor-integ -j$(nproc)
+          sudo cmake --install build/libsensor-integ --prefix /usr/local
           sudo ldconfig
           cmake -S tests/integration -B build/test-integration \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/driver/include"
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/spi-hal/include"
           cmake --build build/test-integration -j$(nproc)
           mkdir -p test-results
-          ./build/test-integration/test_spi_loopback \
+          ./build/test-integration/test_mcp3008 \
             --gtest_output=xml:test-results/integration.xml
 
       - name: Upload test results
@@ -100,41 +100,46 @@ jobs:
           cmake --build /tmp/gtest-build
           sudo cmake --install /tmp/gtest-build --prefix /usr/local
 
-      - name: Build driver with coverage flags
+      - name: Build spi-hal with coverage flags
         run: |
-          cmake -S driver -B build/driver-cov \
+          cmake -S spi-hal -B build/spihal-cov \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
-          cmake --build build/driver-cov -j$(nproc)
-          sudo cmake --install build/driver-cov --prefix /usr/local
+          cmake --build build/spihal-cov -j$(nproc)
+          sudo cmake --install build/spihal-cov --prefix /usr/local
 
-      - name: Build lib with coverage flags
+      - name: Build libsensor with coverage flags
         run: |
-          cmake -S lib -B build/lib-cov \
+          cmake -S libsensor -B build/libsensor-cov \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
-          cmake --build build/lib-cov -j$(nproc)
-          sudo cmake --install build/lib-cov --prefix /usr/local
+          cmake --build build/libsensor-cov -j$(nproc)
+          sudo cmake --install build/libsensor-cov --prefix /usr/local
           sudo ldconfig
 
-      - name: Run driver tests (coverage)
+      - name: Run spi-hal tests (coverage)
         run: |
-          cmake -S tests/unit/driver -B build/test-driver-cov \
+          # --coverage を付けずに静的ライブラリ libspihal.a (instrumented) と
+          # リンクすると __gcov_merge_add 等が未解決になるため、
+          # テスト側にも --coverage を渡す必要がある
+          cmake -S tests/unit/spi-hal -B build/test-spihal-cov \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/driver/include"
-          cmake --build build/test-driver-cov -j$(nproc)
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/spi-hal/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          cmake --build build/test-spihal-cov -j$(nproc)
           mkdir -p test-results
-          ./build/test-driver-cov/test_spi_driver \
-            --gtest_output=xml:test-results/driver-unit.xml
+          ./build/test-spihal-cov/test_spi_driver \
+            --gtest_output=xml:test-results/spihal-unit.xml
 
-      - name: Run lib tests (coverage)
+      - name: Run libsensor tests (coverage)
         run: |
-          cmake -S tests/unit/lib -B build/test-lib-cov \
+          cmake -S tests/unit/libsensor -B build/test-libsensor-cov \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/lib/include -I${{ github.workspace }}/tests/mocks"
-          cmake --build build/test-lib-cov -j$(nproc)
-          ./build/test-lib-cov/test_device \
-            --gtest_output=xml:test-results/lib-unit.xml
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          cmake --build build/test-libsensor-cov -j$(nproc)
+          ./build/test-libsensor-cov/test_sensor \
+            --gtest_output=xml:test-results/libsensor-unit.xml
 
       - name: Generate coverage report
         run: |
@@ -168,7 +173,7 @@ jobs:
             --std=c++17 \
             --suppress=missingIncludeSystem \
             --error-exitcode=1 \
-            driver/src/ lib/src/ cli/src/
+            spi-hal/src/ libsensor/src/ cli/src/
 
       - name: Run clang-tidy
         run: |
@@ -179,8 +184,8 @@ jobs:
             -p build-tidy/ \
             --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
             --warnings-as-errors='bugprone-*' \
-            driver/src/spi_driver.cpp \
-            lib/src/device.cpp \
+            spi-hal/src/spi_driver.cpp \
+            libsensor/src/sensor.cpp \
             cli/src/main.cpp
 
   docs:
@@ -224,7 +229,7 @@ jobs:
             echo "ERROR: PR タイトルが Conventional Commits 形式に合っていません"
             echo "  受け取った値: $TITLE"
             echo "  期待する形式: feat|fix|docs|refactor|test|ci|chore: <概要>"
-            echo "  例: feat(lib): read_async にタイムアウトを追加"
+            echo "  例: feat(libsensor): read_raw_async にタイムアウトを追加"
             exit 1
           fi
 
@@ -274,77 +279,77 @@ jobs:
           sudo cmake --install /tmp/gtest-build --prefix /usr/local
 
       # ── ASAN + UBSAN ──────────────────────────────────────────
-      - name: Build driver + lib with ASAN+UBSAN
+      - name: Build spi-hal + libsensor with ASAN+UBSAN
         run: |
-          cmake -S driver -B build/driver-asan \
+          cmake -S spi-hal -B build/spihal-asan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build/driver-asan -j$(nproc)
-          sudo cmake --install build/driver-asan --prefix /usr/local
-          cmake -S lib -B build/lib-asan \
+          cmake --build build/spihal-asan -j$(nproc)
+          sudo cmake --install build/spihal-asan --prefix /usr/local
+          cmake -S libsensor -B build/libsensor-asan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build/lib-asan -j$(nproc)
-          sudo cmake --install build/lib-asan --prefix /usr/local
+          cmake --build build/libsensor-asan -j$(nproc)
+          sudo cmake --install build/libsensor-asan --prefix /usr/local
           sudo ldconfig
 
-      - name: Driver unit tests (ASAN+UBSAN)
+      - name: SPI HAL unit tests (ASAN+UBSAN)
         run: |
-          cmake -S tests/unit/driver -B build/test-driver-asan \
+          cmake -S tests/unit/spi-hal -B build/test-spihal-asan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
-              -I${{ github.workspace }}/driver/include" \
+              -I${{ github.workspace }}/spi-hal/include" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build/test-driver-asan -j$(nproc)
+          cmake --build build/test-spihal-asan -j$(nproc)
           mkdir -p test-results
           ASAN_OPTIONS=detect_leaks=1 \
-          ./build/test-driver-asan/test_spi_driver \
-            --gtest_output=xml:test-results/driver-asan.xml
+          ./build/test-spihal-asan/test_spi_driver \
+            --gtest_output=xml:test-results/spihal-asan.xml
 
-      - name: Lib unit tests (ASAN+UBSAN)
+      - name: Libsensor unit tests (ASAN+UBSAN)
         run: |
-          cmake -S tests/unit/lib -B build/test-lib-asan \
+          cmake -S tests/unit/libsensor -B build/test-libsensor-asan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
-              -I${{ github.workspace }}/lib/include \
+              -I${{ github.workspace }}/libsensor/include \
               -I${{ github.workspace }}/tests/mocks" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build/test-lib-asan -j$(nproc)
+          cmake --build build/test-libsensor-asan -j$(nproc)
           ASAN_OPTIONS=detect_leaks=1 \
-          ./build/test-lib-asan/test_device \
-            --gtest_output=xml:test-results/lib-asan.xml
+          ./build/test-libsensor-asan/test_sensor \
+            --gtest_output=xml:test-results/libsensor-asan.xml
 
       # ── TSAN ─────────────────────────────────────────────────
-      - name: Build lib with TSAN
+      - name: Build libsensor with TSAN
         run: |
-          cmake -S driver -B build/driver-tsan \
+          cmake -S spi-hal -B build/spihal-tsan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
-          cmake --build build/driver-tsan -j$(nproc)
-          sudo cmake --install build/driver-tsan --prefix /usr/local
-          cmake -S lib -B build/lib-tsan \
+          cmake --build build/spihal-tsan -j$(nproc)
+          sudo cmake --install build/spihal-tsan --prefix /usr/local
+          cmake -S libsensor -B build/libsensor-tsan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
-          cmake --build build/lib-tsan -j$(nproc)
-          sudo cmake --install build/lib-tsan --prefix /usr/local
+          cmake --build build/libsensor-tsan -j$(nproc)
+          sudo cmake --install build/libsensor-tsan --prefix /usr/local
           sudo ldconfig
 
-      - name: Lib unit tests (TSAN) — read_async スレッド検査
+      - name: Libsensor unit tests (TSAN) — read_raw_async スレッド検査
         run: |
-          cmake -S tests/unit/lib -B build/test-lib-tsan \
+          cmake -S tests/unit/libsensor -B build/test-libsensor-tsan \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer \
-              -I${{ github.workspace }}/lib/include \
+              -I${{ github.workspace }}/libsensor/include \
               -I${{ github.workspace }}/tests/mocks" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
-          cmake --build build/test-lib-tsan -j$(nproc)
+          cmake --build build/test-libsensor-tsan -j$(nproc)
           TSAN_OPTIONS=halt_on_error=1 \
-          ./build/test-lib-tsan/test_device \
-            --gtest_output=xml:test-results/lib-tsan.xml
+          ./build/test-libsensor-tsan/test_sensor \
+            --gtest_output=xml:test-results/libsensor-tsan.xml
 
       - name: Upload sanitizer test results
         if: always()

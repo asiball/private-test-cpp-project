@@ -38,18 +38,6 @@ docs/doxygen/doxygen-warnings.log
 # ── 生成ドキュメント（pandoc PDF）────────────────────────────
 output/
 
-# ── gen_docs.py が生成する Excel / CSV ──────────────────────
-# tools/gen_docs.py で毎回再生成されるため追跡不要。
-# ソースは tools/gen_docs.py。
-*.xlsx
-docs/01_requirements/change-log.csv
-
-# ── Excel/Word ロックファイル ────────────────────────────────
-# Excelが開いている間だけ生成される一時ファイル
-~$*.xlsx
-~$*.docx
-~$*.xls
-
 # ── Python ──────────────────────────────────────────────────
 __pycache__/
 *.pyc
@@ -68,4 +56,4 @@ Thumbs.db
 test-results/
 
 # ── 生成ヘッダ（CMake configure_file の出力）─────────────────
-driver/include/version.hpp
+spi-hal/include/version.hpp
