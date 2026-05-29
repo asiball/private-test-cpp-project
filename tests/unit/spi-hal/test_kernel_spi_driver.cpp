@@ -1,5 +1,6 @@
 #include "kernel_spi_driver.hpp"
 #include <gtest/gtest.h>
+#include <cerrno>
 #include <unistd.h>
 
 using namespace embedded;
@@ -68,6 +69,7 @@ TEST(KernelSpiDriverTransfer, NotOpenReturnsMinusOne) {
     KernelSpiDriver drv("/dev/my_spi_dev");
     uint8_t tx[4] = {}, rx[4] = {};
     EXPECT_EQ(drv.transfer(tx, rx, 4), -1);
+    EXPECT_EQ(drv.last_errno(), EBADF);
 }
 //! [UT-KDRV-006]
 
