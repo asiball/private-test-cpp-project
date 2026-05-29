@@ -1,5 +1,6 @@
 #include "spi_driver.hpp"
 #include <gtest/gtest.h>
+#include <cerrno>
 
 using namespace embedded;
 
@@ -50,22 +51,23 @@ TEST(SpiDriverClose, DoubleCloseIsSafe) {
 }
 //! [UT-DRV-004]
 
-//! [UT-DRV-006]
-// UT-DRV-006: 未open状態でtransfer()は-1を返す
+//! [UT-DRV-005]
+// UT-DRV-005: 未open状態でtransfer()は-1を返す
 TEST(SpiDriverTransfer, NotOpenReturnsMinusOne) {
     SpiDriver drv("/dev/spidev0.0");
     uint8_t tx[4] = {}, rx[4] = {};
     EXPECT_EQ(drv.transfer(tx, rx, 4), -1);
+    EXPECT_EQ(drv.last_errno(), EBADF);
 }
-//! [UT-DRV-006]
+//! [UT-DRV-005]
 
-// UT-DRV-008: コピーが禁止されていることをコンパイル時に確認
+// UT-DRV-006: コピーが禁止されていることをコンパイル時に確認
 TEST(SpiDriverCopyable, IsNotCopyConstructible) {
     EXPECT_FALSE(std::is_copy_constructible<SpiDriver>::value);
     EXPECT_FALSE(std::is_copy_assignable<SpiDriver>::value);
 }
 
-// UT-DRV-009: close()なしで2回open()するとエラーを返す
+// UT-DRV-007: close()なしで2回open()するとエラーを返す
 TEST(SpiDriverOpen, DoubleOpenWithoutCloseReturnsFalse) {
     const char* dev = "/dev/spidev0.0";
     if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";

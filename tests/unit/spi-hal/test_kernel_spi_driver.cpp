@@ -4,7 +4,7 @@
 
 using namespace embedded;
 
-// UT-KRN-001: 有効パス（/dev/my_spi_dev）でopen()成功
+// UT-KDRV-001: 有効パス（/dev/my_spi_dev）でopen()成功
 TEST(KernelSpiDriverOpen, ValidDeviceReturnsTrue) {
     // my_spi_driver.ko がロードされた実機環境のみパス。
     // CI環境ではスキップ（GTEST_SKIP）。
@@ -17,8 +17,8 @@ TEST(KernelSpiDriverOpen, ValidDeviceReturnsTrue) {
     EXPECT_TRUE(drv.is_open());
 }
 
-//! [UT-KRN-002]
-// UT-KRN-002: 存在しないパスでopen()失敗
+//! [UT-KDRV-002]
+// UT-KDRV-002: 存在しないパスでopen()失敗
 TEST(KernelSpiDriverOpen, InvalidDeviceReturnsFalse) {
     KernelSpiDriver drv("/dev/no_such_device");
     KernelSpiDriver::Config cfg{1000000, 8, 0};
@@ -26,9 +26,9 @@ TEST(KernelSpiDriverOpen, InvalidDeviceReturnsFalse) {
     EXPECT_FALSE(drv.is_open());
     EXPECT_NE(drv.last_errno(), 0);
 }
-//! [UT-KRN-002]
+//! [UT-KDRV-002]
 
-// UT-KRN-003: open後にis_open()==true
+// UT-KDRV-003: open後にis_open()==true
 TEST(KernelSpiDriverOpen, AfterOpenIsOpenTrue) {
     const char* dev = "/dev/my_spi_dev";
     if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
@@ -39,7 +39,7 @@ TEST(KernelSpiDriverOpen, AfterOpenIsOpenTrue) {
     EXPECT_TRUE(drv.is_open());
 }
 
-// UT-KRN-004: close()後にis_open()==false
+// UT-KDRV-004: close()後にis_open()==false
 TEST(KernelSpiDriverClose, AfterCloseIsOpenFalse) {
     const char* dev = "/dev/my_spi_dev";
     if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
@@ -51,8 +51,8 @@ TEST(KernelSpiDriverClose, AfterCloseIsOpenFalse) {
     EXPECT_FALSE(drv.is_open());
 }
 
-//! [UT-KRN-005]
-// UT-KRN-005: 未openのままclose()しても安全
+//! [UT-KDRV-005]
+// UT-KDRV-005: 未openのままclose()しても安全
 TEST(KernelSpiDriverClose, DoubleCloseIsSafe) {
     KernelSpiDriver drv("/dev/no_such_device");
     EXPECT_NO_FATAL_FAILURE({
@@ -60,24 +60,24 @@ TEST(KernelSpiDriverClose, DoubleCloseIsSafe) {
         drv.close();
     });
 }
-//! [UT-KRN-005]
+//! [UT-KDRV-005]
 
-//! [UT-KRN-006]
-// UT-KRN-006: 未open状態でtransfer()は-1を返す
+//! [UT-KDRV-006]
+// UT-KDRV-006: 未open状態でtransfer()は-1を返す
 TEST(KernelSpiDriverTransfer, NotOpenReturnsMinusOne) {
     KernelSpiDriver drv("/dev/my_spi_dev");
     uint8_t tx[4] = {}, rx[4] = {};
     EXPECT_EQ(drv.transfer(tx, rx, 4), -1);
 }
-//! [UT-KRN-006]
+//! [UT-KDRV-006]
 
-// UT-KRN-007: コピーが禁止されていることをコンパイル時に確認
+// UT-KDRV-007: コピーが禁止されていることをコンパイル時に確認
 TEST(KernelSpiDriverCopyable, IsNotCopyConstructible) {
     EXPECT_FALSE(std::is_copy_constructible<KernelSpiDriver>::value);
     EXPECT_FALSE(std::is_copy_assignable<KernelSpiDriver>::value);
 }
 
-// UT-KRN-008: nullptr tx でtransfer()は-1を返す
+// UT-KDRV-008: nullptr tx でtransfer()は-1を返す
 TEST(KernelSpiDriverTransfer, NullTxReturnsMinusOne) {
     const char* dev = "/dev/my_spi_dev";
     if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
@@ -90,7 +90,7 @@ TEST(KernelSpiDriverTransfer, NullTxReturnsMinusOne) {
     EXPECT_EQ(drv.transfer(nullptr, rx, 4), -1);
 }
 
-// UT-KRN-009: len==0 のtransfer()は0を返す（no-op）
+// UT-KDRV-009: len==0 のtransfer()は0を返す（no-op）
 TEST(KernelSpiDriverTransfer, ZeroLenReturnsZero) {
     const char* dev = "/dev/my_spi_dev";
     if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
@@ -103,7 +103,7 @@ TEST(KernelSpiDriverTransfer, ZeroLenReturnsZero) {
     EXPECT_EQ(drv.transfer(tx, rx, 0), 0);
 }
 
-// UT-KRN-010: close()なしで2回open()するとエラーを返す（既存fdはリークしない）
+// UT-KDRV-010: close()なしで2回open()するとエラーを返す（既存fdはリークしない）
 TEST(KernelSpiDriverOpen, DoubleOpenWithoutCloseReturnsFalse) {
     KernelSpiDriver drv("/dev/no_such_device");
     KernelSpiDriver::Config cfg{1000000, 8, 0};

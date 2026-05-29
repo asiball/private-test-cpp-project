@@ -44,8 +44,8 @@ public:
      * @return 転送バイト数。エラー時は -1
      * @note 戻り値の確認を必須とする（[[nodiscard]]）
      *
-     * **テストケース（UT-DRV-006）** — 未オープン時は -1 を返す:
-     * @snippet test_spi_driver.cpp UT-DRV-006
+     * **テストケース（UT-DRV-005）** — 未オープン時は -1 を返す:
+     * @snippet test_spi_driver.cpp UT-DRV-005
      */
     [[nodiscard]] virtual int transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept = 0;
 
