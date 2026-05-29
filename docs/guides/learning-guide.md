@@ -36,6 +36,8 @@ CI設定（`.github/`）まで一貫して追えます。
 | gcov / gcovr（カバレッジ） | [coverage-guide.md](tooling/coverage-guide.md) |
 | ASan / UBSan / TSan（サニタイザー）| [sanitizers-guide.md](tooling/sanitizers-guide.md) |
 | Linux カーネルモジュール | [kernel-module-guide.md](tooling/kernel-module-guide.md) |
+| Docker（再現性あるビルド環境） | [docker-guide.md](tooling/docker-guide.md) |
+| Conventional Commits / git-cliff | [commit-conventions-guide.md](tooling/commit-conventions-guide.md) |
 | SBOM（成果物管理）| [sbom-guide.md](sbom-guide.md) |
 
 ---
@@ -205,8 +207,10 @@ configure_file(version.hpp.in version.hpp @ONLY)
 
 ```cpp
 // version.hpp — cmake が自動生成する
-inline constexpr const char* SPIHAL = "spi-hal/v1.0.1";
+namespace embedded::version {
+inline constexpr const char* SPIHAL     = "spi-hal/v1.0.1";
 inline constexpr const char* GIT_COMMIT = "f92d00f";
+}  // 利用側: embedded::version::SPIHAL
 ```
 
 **なぜ重要か**:

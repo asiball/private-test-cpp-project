@@ -116,7 +116,7 @@ clang-format --dry-run --Werror --style=file spi-hal/src/*.cpp \
 
 ## 運用 Tips
 
-- **chesks の絞り込みは重要**: clang-tidy 全 ON にすると数千行の警告が出る。
+- **checks の絞り込みは重要**: clang-tidy 全 ON にすると数千行の警告が出る。
   `bugprone-*` / `modernize-*` / `performance-*` あたりから段階的に有効化
 - **NOLINT で局所抑制**:
 
