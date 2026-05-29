@@ -87,7 +87,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
     └─ タグ push（spi-hal/vX.Y.Z 等）
             │
             ▼
-        package:release（.tar.gz アーカイブ生成）
+        release（git-cliff で CHANGELOG.md 生成 + GitHub Release 作成）
 ```
 
 | プラットフォーム | 設定ファイル | 特徴 |
@@ -100,7 +100,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 | レベル | 対象 | ツール | 自動化 | 実行環境 |
 |---|---|---|---|---|
-| 単体テスト (UT) | SpiDriver / Sensor クラス | Google Test + GMock | ✓ CI | Docker（実機不要） |
+| 単体テスト (UT) | SpiDriver / Sensor クラス | Google Test + GMock | ✓ CI | GitHub Actions ubuntu-24.04 / ローカルは `./docker-build.sh`（実機不要） |
 | 結合テスト (IT) | MCP3008 実機読み出し | Google Test | 一部 | Raspberry Pi 3B+ + MCP3008 |
 | 受入テスト (AT) | システム全体 | 手動 + チェックリスト（Markdown） | - | 実機 + 顧客確認 |
 
@@ -196,19 +196,19 @@ cppcheck --enable=warning,performance,portability --std=c++17 \
 
 ```bash
 # デフォルトデバイス (/dev/spidev0.0) / Vref 3.3V で起動
-./build/device-ctl
+./build/cli/device-ctl
 
 # デバイスパスを指定して起動
-./build/device-ctl -d /dev/spidev0.1
+./build/cli/device-ctl -d /dev/spidev0.1
 
 # Vref を指定して起動（例: 5.0V）
-./build/device-ctl --vref 5.0
+./build/cli/device-ctl --vref 5.0
 
 # 非同期readモードで起動
-./build/device-ctl --async
+./build/cli/device-ctl --async
 
 # バージョン確認
-./build/device-ctl --version
+./build/cli/device-ctl --version
 ```
 
 起動後は対話メニューが表示され、MCP3008 の各チャネル（0〜7）の読み出しを繰り返し実行できます。
@@ -241,7 +241,7 @@ CH0  raw=512  voltage=1.650 V
 
 | ツール | バージョン |
 |---|---|
-| GCC | 7.5 以上（C++17対応） |
+| GCC | 13 以上（C++17対応、CI/開発環境は Ubuntu 24.04 同梱の g++ 13） |
 | CMake | 3.10 以上 |
 | Google Test | 1.14（単体テスト用） |
 | Doxygen | 1.9 以上（ドキュメント生成用） |
