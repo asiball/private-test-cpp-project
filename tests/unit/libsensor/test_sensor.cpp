@@ -115,13 +115,14 @@ TEST(SensorReadRawAsync, NotOpenCallbackReceivesError) {
     std::optional<uint16_t> received_raw;
     int                     received_err = 0;
 
+    // 共有データ (received_raw / received_err / done) は mtx で保護する。
+    // detach されたワーカースレッドのライフタイム vs テスト関数スコープの
+    // 競合 (cv の破棄 vs notify_one) を避けるため、notify_one もロック内で呼ぶ。
     s.read_raw_async(0, [&](std::optional<uint16_t> raw, int err) {
+        std::lock_guard<std::mutex> lk(mtx);
         received_raw = raw;
         received_err = err;
-        {
-            std::lock_guard<std::mutex> lk(mtx);
-            done = true;
-        }
+        done         = true;
         cv.notify_one();
     });
 

@@ -92,13 +92,13 @@ static void do_read_channel(embedded::Sensor& sensor, bool async_mode)
         std::optional<uint16_t> result;
         int                     cb_err = 0;
 
+        // 共有データ (result / cb_err / done) は mtx で保護する。
+        // notify_one もロック内で呼び、detach されたワーカーと cv 破棄の競合を避ける。
         sensor.read_raw_async(ch, [&](std::optional<uint16_t> raw, int err) {
+            std::lock_guard<std::mutex> lk(mtx);
             result = raw;
             cb_err = err;
-            {
-                std::lock_guard<std::mutex> lk(mtx);
-                done = true;
-            }
+            done   = true;
             cv.notify_one();
         });
 

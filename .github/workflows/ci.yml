@@ -119,9 +119,13 @@ jobs:
 
       - name: Run spi-hal tests (coverage)
         run: |
+          # --coverage を付けずに静的ライブラリ libspihal.a (instrumented) と
+          # リンクすると __gcov_merge_add 等が未解決になるため、
+          # テスト側にも --coverage を渡す必要がある
           cmake -S tests/unit/spi-hal -B build/test-spihal-cov \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/spi-hal/include"
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/spi-hal/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
           cmake --build build/test-spihal-cov -j$(nproc)
           mkdir -p test-results
           ./build/test-spihal-cov/test_spi_driver \
@@ -131,7 +135,8 @@ jobs:
         run: |
           cmake -S tests/unit/libsensor -B build/test-libsensor-cov \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/tests/mocks"
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
           cmake --build build/test-libsensor-cov -j$(nproc)
           ./build/test-libsensor-cov/test_sensor \
             --gtest_output=xml:test-results/libsensor-unit.xml
