@@ -60,10 +60,12 @@ void SpiDriver::close() noexcept
 int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
 {
     if (fd_ < 0) {
+        last_errno_ = EBADF;
         LOGE("SpiDriver::transfer called on closed device");
         return -1;
     }
     if (!tx || !rx) {
+        last_errno_ = EINVAL;
         LOGE("SpiDriver::transfer null pointer: tx=%p rx=%p",
              static_cast<const void*>(tx), static_cast<void*>(rx));
         return -1;
@@ -72,6 +74,7 @@ int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
         return 0;
     }
     if (len > static_cast<size_t>(UINT32_MAX)) {
+        last_errno_ = EOVERFLOW;
         LOGE("SpiDriver::transfer length overflow: %zu", len);
         return -1;
     }

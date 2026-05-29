@@ -65,10 +65,12 @@ void KernelSpiDriver::close() noexcept
 int KernelSpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
 {
     if (fd_ < 0) {
+        last_errno_ = EBADF;
         LOGE("KernelSpiDriver::transfer called on closed device");
         return -1;
     }
     if (!tx || !rx) {
+        last_errno_ = EINVAL;
         LOGE("KernelSpiDriver::transfer null pointer: tx=%p rx=%p",
              static_cast<const void*>(tx), static_cast<void*>(rx));
         return -1;
