@@ -20,7 +20,7 @@
 <詳細（任意）>
 ```
 
-**type 一覧:** `feat` / `fix` / `docs` / `refactor` / `test` / `ci` / `chore`
+**type 一覧:** `feat` / `fix` / `docs` / `refactor` / `test` / `ci` / `chore` / `build`
 
 ```
 # 例

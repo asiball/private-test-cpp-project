@@ -64,8 +64,9 @@ git log origin/main..HEAD --format="%s" | while IFS= read -r msg; do
 done
 ```
 
-> **注意**：PR タイトルは 7 種、コミットメッセージは 8 種（`build` を含む）と差がある。
-> 厳密化したい場合は両者を揃える、または CONTRIBUTING.md に `build` を追記する。
+> **注意**：PR タイトルは `build` を含まない 7 種、コミットメッセージは `build` を含む 8 種を受理する。
+> PR タイトルの validator が `build` を弾く設計のため、`build(scope): ...` を PR タイトルに使うと CI が失敗する。
+> 完全に揃えたい場合は `ci.yml` の `Validate PR title format` の正規表現に `build` を追加する。
 
 ### Breaking change
 
