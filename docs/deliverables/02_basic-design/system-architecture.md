@@ -78,5 +78,5 @@ graph TD
 |---|---|
 | ハードウェア | Raspberry Pi 3B+ |
 | OS | Linux kernel 5.10.x |
-| コンパイラ | GCC 7.5 (C++17) |
+| コンパイラ | GCC 13 / Ubuntu 24.04（C++17） |
 | SPIデバイス | /dev/spidev0.0（最大 2MHz） |

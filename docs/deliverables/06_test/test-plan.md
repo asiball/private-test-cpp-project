@@ -27,7 +27,8 @@
 
 | 用途 | 環境 |
 |---|---|
-| 単体テスト（CI） | Docker `gcc:7.5` + Google Test 1.14 |
+| 単体テスト（CI） | GitHub Actions `ubuntu-24.04` runner / g++ 13 / Google Test 1.14 |
+| 単体テスト（ローカル） | `./docker-build.sh`（Ubuntu 24.04 ベース、`Dockerfile.build` を参照） |
 | 結合テスト | Raspberry Pi 3B+ / Linux 5.10 / MCP3008 接続治具 |
 | 受け入れテスト | 発注者会議室（RPi 3B+ 現物） |
 

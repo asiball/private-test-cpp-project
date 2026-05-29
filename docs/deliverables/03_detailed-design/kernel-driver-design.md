@@ -30,7 +30,7 @@
 
 - プロジェクト固有の処理をカーネル空間で実装できる
 - 独自の ioctl インターフェースで拡張しやすい
-- Sensor Tree でデバイスを記述し、自動バインドが可能
+- Device Tree でデバイスを記述し、自動バインドが可能
 
 ---
 
@@ -76,9 +76,10 @@
 ```
 kernel/
 ├── Makefile           # カーネルビルドシステム用 Makefile
-└── my_spi_driver.c    # モジュール本体
-spi-hal/include/
-└── my_spi_dev.h       # カーネル・ユーザー空間共有 ioctl 定義
+├── my_spi_driver.c    # モジュール本体
+└── include/
+    └── my_spi_dev.h   # カーネル・ユーザー空間共有 ioctl 定義
+                       # （spi-hal/CMakeLists.txt の include path 経由でユーザ空間からも参照）
 ```
 
 ### 3.2 モジュール主要コンポーネント
@@ -248,7 +249,7 @@ echo "my_spi_driver" | sudo tee /etc/modules-load.d/my-spi.conf
 
 ---
 
-## 6. Sensor Tree オーバーレイ（Raspberry Pi 例）
+## 6. Device Tree オーバーレイ（Raspberry Pi 例）
 
 カーネルモジュールが SPI バスにバインドするためにはデバイスツリーへの登録が必要。
 
