@@ -143,7 +143,7 @@ docs/
 ### Docker を使う（推奨）
 
 ```bash
-# ビルド・テスト・静的解析・Doxygenを一括実行
+# ビルド・テスト・静的解析・Doxygen・PDF生成を一括実行
 ./docker-build.sh
 ```
 
@@ -159,38 +159,8 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DDEBUG=1 .
 cmake --build build
 ```
 
-### 単体テストの実行
-
-```bash
-# spi-hal 単体テスト
-cmake -S spi-hal -B build/spihal -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/spihal
-cmake -S tests/unit/spi-hal -B build/test-spihal
-cmake --build build/test-spihal
-./build/test-spihal/test_spi_driver
-
-# libsensor 単体テスト
-cmake -S libsensor -B build/libsensor -DCMAKE_BUILD_TYPE=Debug
-cmake --build build/libsensor
-cmake -S tests/unit/libsensor -B build/test-libsensor
-cmake --build build/test-libsensor
-./build/test-libsensor/test_sensor
-```
-
-### Doxygen ドキュメントの生成
-
-```bash
-doxygen Doxyfile
-# 出力先: docs/doxygen/html/index.html
-```
-
-### cppcheck（静的解析）
-
-```bash
-cppcheck --enable=warning,performance,portability --std=c++17 \
-         --suppress=missingIncludeSystem --error-exitcode=1 \
-         spi-hal/src/ libsensor/src/ cli/src/
-```
+単体テスト・静的解析・Doxygen・サニタイザービルドなどの詳細な手順は
+[ビルドガイド](docs/guides/tooling/build-guide.md) を参照してください。
 
 ### device-ctl の使い方
 
@@ -289,6 +259,7 @@ CH0  raw=512  voltage=1.650 V
 
 - [学習ガイド（C++ パターン総合）](docs/guides/learning-guide.md)
 - ツール別ガイド（`docs/guides/tooling/`）:
+  [ビルドガイド](docs/guides/tooling/build-guide.md) ・
   [CMake](docs/guides/tooling/cmake-guide.md) ・
   [Google Test/GMock](docs/guides/tooling/gtest-guide.md) ・
   [Doxygen](docs/guides/tooling/doxygen-guide.md) ・

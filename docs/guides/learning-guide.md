@@ -29,6 +29,7 @@ CI設定（`.github/`）まで一貫して追えます。
 
 | ツール | ガイド |
 |---|---|
+| ビルドシステム（一括） | [build-guide.md](tooling/build-guide.md) |
 | CMake | [cmake-guide.md](tooling/cmake-guide.md) |
 | Google Test / GMock | [gtest-guide.md](tooling/gtest-guide.md) |
 | Doxygen | [doxygen-guide.md](tooling/doxygen-guide.md) |
