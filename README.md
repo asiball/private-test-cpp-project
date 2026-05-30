@@ -237,7 +237,7 @@ CH0  raw=512  voltage=1.650 V
 
 ## C++設計パターン
 
-実装で使用している主なC++パターンの一覧。詳細は [学習ガイド](docs/guides/learning-guide.md) を参照。
+実装で使用している主なC++パターンの一覧。詳細は [C++設計パターンガイド](docs/guides/tooling/cpp-patterns-guide.md) を参照。
 
 | パターン | 場所 | 概要 |
 |---|---|---|
@@ -257,8 +257,9 @@ CH0  raw=512  voltage=1.650 V
 
 ### 学習ガイド（`docs/guides/`）
 
-- [学習ガイド（C++ パターン総合）](docs/guides/learning-guide.md)
-- ツール別ガイド（`docs/guides/tooling/`）:
+- [学習ガイド（全体トップページ）](docs/guides/learning-guide.md)
+- 分野別・ツール別ガイド（`docs/guides/tooling/`）:
+  [C++設計パターン](docs/guides/tooling/cpp-patterns-guide.md) ・
   [ビルドガイド](docs/guides/tooling/build-guide.md) ・
   [CMake](docs/guides/tooling/cmake-guide.md) ・
   [Google Test/GMock](docs/guides/tooling/gtest-guide.md) ・
