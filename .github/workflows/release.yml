@@ -1,11 +1,12 @@
 name: Release
 
-# spi-hal/v*, libsensor/v*, cli/v* のいずれかのタグが push されたときに実行
+# spi-hal/v*, libsensor/v*, libadxl345/v*, cli/v* のいずれかのタグが push されたときに実行
 on:
   push:
     tags:
       - 'spi-hal/v*'
       - 'libsensor/v*'
+      - 'libadxl345/v*'
       - 'cli/v*'
 
 # CHANGELOG.md の commit push と GitHub Release 作成に書き込み権限が必要

@@ -77,4 +77,5 @@ configure_file(
 
 add_subdirectory(spi-hal)
 add_subdirectory(libsensor)
+add_subdirectory(libadxl345)
 add_subdirectory(cli)
