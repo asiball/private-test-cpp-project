@@ -10,6 +10,8 @@ on:
   push:
     tags:
       - 'spi-hal/v*'
+      - 'i2c-hal/v*'
+      - 'gpio/v*'
       - 'libsensor/v*'
       - 'cli/v*'
     branches:
