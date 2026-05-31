@@ -38,7 +38,8 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ```
 .
 ├── spi-hal/         # SPI HAL（静的ライブラリ: libspihal.a）
-├── libsensor/       # libsensor（動的共有ライブラリ: libsensor.so）
+├── libsensor/       # libsensor（動的共有ライブラリ: libsensor.so / MCP3008）
+├── libadxl345/      # libadxl345（動的共有ライブラリ: libadxl345.so / ADXL345・レジスタ型）
 ├── cli/             # device-ctl（CLIツール）
 ├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
 ├── tests/
@@ -53,12 +54,13 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 └── CMakeLists.txt   # トップレベル CMake
 ```
 
-### なぜ3コンポーネントに分割するか
+### なぜコンポーネントを分割するか
 
 | コンポーネント | 種別 | 理由 |
 |---|---|---|
 | `spi-hal/` (libspihal) | 静的ライブラリ | Linux SPI 依存コードを隔離。HWが変わっても `libsensor/` 以上への影響を最小化 |
 | `libsensor/` (libsensor) | 共有ライブラリ | PIMPLでABIを安定化。ライブラリバージョンを独立して管理・リリース可能にする |
+| `libadxl345/` (libadxl345) | 共有ライブラリ | **レジスタ型デバイスの例**。spi-hal の生転送の上にレジスタアクセス層（read/write/update_bits）を構築し、ビット単位で設定する。レジスタマップは [adxl345-register-map.md](docs/deliverables/05_interface-spec/adxl345-register-map.md) と 1:1 対応 |
 | `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからMCP3008の各チャネル読み出しを繰り返し実行できる。 |
 
 コンポーネントごとに独立した git タグを持ち（`spi-hal/v1.1.0`、`libsensor/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
@@ -280,6 +282,7 @@ CH0  raw=512  voltage=1.650 V
 | **バージョン自動生成** | `spi-hal/include/version.hpp.in` | CMake `configure_file` + `git describe` でビルド情報を埋め込み |
 | **Doxygen スニペット** | `spi-hal/include/ispi_driver.hpp` | `@snippet` でテストコードをAPIドキュメントに引用 |
 | **GMock** | `tests/mocks/mock_spi_driver.hpp` | `MOCK_METHOD` で実機不要のユニットテスト |
+| **レジスタマップ / read-modify-write** | `libadxl345/include/adxl345_reg.hpp` | アドレス・ビットフィールドを `constexpr` で定義し、`update_bits` で対象ビットのみ更新。IF仕様書のビットマップ図とコードを 1:1 対応させる |
 
 ---
 

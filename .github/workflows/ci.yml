@@ -58,6 +58,19 @@ jobs:
           ./build/test-libsensor/test_sensor \
             --gtest_output=xml:test-results/libsensor-unit.xml
 
+      - name: Libadxl345 unit tests
+        run: |
+          cmake -S libadxl345 -B build/libadxl345-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/libadxl345-debug -j$(nproc)
+          sudo cmake --install build/libadxl345-debug --prefix /usr/local
+          sudo ldconfig
+          cmake -S tests/unit/libadxl345 -B build/test-libadxl345 \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libadxl345/include -I${{ github.workspace }}/tests/mocks"
+          cmake --build build/test-libadxl345 -j$(nproc)
+          ./build/test-libadxl345/test_adxl345 \
+            --gtest_output=xml:test-results/libadxl345-unit.xml
+
       - name: Integration tests (compile + skip check)
         run: |
           cmake -S libsensor -B build/libsensor-integ -DCMAKE_BUILD_TYPE=Debug
@@ -117,6 +130,15 @@ jobs:
           sudo cmake --install build/libsensor-cov --prefix /usr/local
           sudo ldconfig
 
+      - name: Build libadxl345 with coverage flags
+        run: |
+          cmake -S libadxl345 -B build/libadxl345-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
+          cmake --build build/libadxl345-cov -j$(nproc)
+          sudo cmake --install build/libadxl345-cov --prefix /usr/local
+          sudo ldconfig
+
       - name: Run spi-hal tests (coverage)
         run: |
           # --coverage を付けずに静的ライブラリ libspihal.a (instrumented) と
@@ -140,6 +162,16 @@ jobs:
           cmake --build build/test-libsensor-cov -j$(nproc)
           ./build/test-libsensor-cov/test_sensor \
             --gtest_output=xml:test-results/libsensor-unit.xml
+
+      - name: Run libadxl345 tests (coverage)
+        run: |
+          cmake -S tests/unit/libadxl345 -B build/test-libadxl345-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libadxl345/include -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          cmake --build build/test-libadxl345-cov -j$(nproc)
+          ./build/test-libadxl345-cov/test_adxl345 \
+            --gtest_output=xml:test-results/libadxl345-unit.xml
 
       - name: Generate coverage report
         run: |
@@ -173,7 +205,7 @@ jobs:
             --std=c++17 \
             --suppress=missingIncludeSystem \
             --error-exitcode=1 \
-            spi-hal/src/ libsensor/src/ cli/src/
+            spi-hal/src/ libsensor/src/ libadxl345/src/ cli/src/
 
       - name: Run clang-tidy
         run: |
@@ -186,6 +218,7 @@ jobs:
             --warnings-as-errors='bugprone-*' \
             spi-hal/src/spi_driver.cpp \
             libsensor/src/sensor.cpp \
+            libadxl345/src/adxl345.cpp \
             cli/src/main.cpp
 
   docs:
@@ -293,6 +326,12 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build/libsensor-asan -j$(nproc)
           sudo cmake --install build/libsensor-asan --prefix /usr/local
+          cmake -S libadxl345 -B build/libadxl345-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/libadxl345-asan -j$(nproc)
+          sudo cmake --install build/libadxl345-asan --prefix /usr/local
           sudo ldconfig
 
       - name: SPI HAL unit tests (ASAN+UBSAN)
@@ -320,6 +359,19 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           ./build/test-libsensor-asan/test_sensor \
             --gtest_output=xml:test-results/libsensor-asan.xml
+
+      - name: Libadxl345 unit tests (ASAN+UBSAN)
+        run: |
+          cmake -S tests/unit/libadxl345 -B build/test-libadxl345-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I${{ github.workspace }}/libadxl345/include \
+              -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/test-libadxl345-asan -j$(nproc)
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-libadxl345-asan/test_adxl345 \
+            --gtest_output=xml:test-results/libadxl345-asan.xml
 
       # ── TSAN ─────────────────────────────────────────────────
       - name: Build libsensor with TSAN
