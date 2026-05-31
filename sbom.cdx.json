@@ -4,7 +4,7 @@
   "serialNumber": "urn:uuid:d8e140bb-0db0-5811-8c40-29a4c745fe7d",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-05-26T10:07:47Z",
+    "timestamp": "2026-05-29T08:41:42Z",
     "tools": {
       "components": [
         {
@@ -60,6 +60,63 @@
       "version": "1.1.0",
       "copyright": "Copyright (c) 2024 asiball",
       "description": "Linux SPI userspace HAL static library (libspihal.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "i2chal",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux I2C userspace HAL static library (libi2chal.a). I2cDriver wraps i2c-dev (ioctl I2C_SLAVE / I2C_RDWR for repeated-start register reads). Independent of spi-hal; uses common/logger.hpp for logging."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#gpio",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "gpio",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#gpio",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "GPIO edge-interrupt static library (libgpio.a). GpioLine uses the Linux GPIO character device v2 uABI (GPIO_V2_GET_LINE_IOCTL) and waits for edge events with epoll. No external dependency (no libgpiod)."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor-ads1115",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "ads1115",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor-ads1115",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "ADS1115 sensor shared library (libads1115.so). High-level Ads1115 class providing read_raw / read_voltage over ADS1115 (4ch / 16bit I2C ADC). PIMPL idiom, dependency injection on II2cDriver. Built only when i2c-hal is present."
     },
     {
       "type": "firmware",
@@ -191,8 +248,11 @@
       "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0",
       "dependsOn": [
         "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#gpio",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor-ads1115",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
       ]
     },
@@ -201,6 +261,26 @@
       "dependsOn": [
         "pkg:generic/glibc",
         "pkg:generic/linux-kernel-headers"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal",
+      "dependsOn": [
+        "pkg:generic/glibc"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#gpio",
+      "dependsOn": [
+        "pkg:generic/glibc"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor-ads1115",
+      "dependsOn": [
+        "pkg:generic/glibc",
+        "pkg:generic/libstdc%2B%2B",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal"
       ]
     },
     {

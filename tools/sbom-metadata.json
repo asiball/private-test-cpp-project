@@ -33,6 +33,42 @@
       "description": "Linux SPI userspace HAL static library (libspihal.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access."
     },
     {
+      "spdx_id": "SPDXRef-Package-i2chal",
+      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal",
+      "name": "i2chal",
+      "version": "1.1.0",
+      "cdx_type": "library",
+      "supplier": "asiball",
+      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#i2c-hal",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "Linux I2C userspace HAL static library (libi2chal.a). I2cDriver wraps i2c-dev (ioctl I2C_SLAVE / I2C_RDWR for repeated-start register reads). Independent of spi-hal; uses common/logger.hpp for logging."
+    },
+    {
+      "spdx_id": "SPDXRef-Package-gpio",
+      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#gpio",
+      "name": "gpio",
+      "version": "1.1.0",
+      "cdx_type": "library",
+      "supplier": "asiball",
+      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#gpio",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "GPIO edge-interrupt static library (libgpio.a). GpioLine uses the Linux GPIO character device v2 uABI (GPIO_V2_GET_LINE_IOCTL) and waits for edge events with epoll. No external dependency (no libgpiod)."
+    },
+    {
+      "spdx_id": "SPDXRef-Package-ads1115",
+      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor-ads1115",
+      "name": "ads1115",
+      "version": "1.1.0",
+      "cdx_type": "library",
+      "supplier": "asiball",
+      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#libsensor",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "ADS1115 sensor shared library (libads1115.so). High-level Ads1115 class providing read_raw / read_voltage over ADS1115 (4ch / 16bit I2C ADC). PIMPL idiom, dependency injection on II2cDriver. Built only when i2c-hal is present."
+    },
+    {
       "spdx_id": "SPDXRef-Package-my-spi-driver",
       "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
       "name": "my-spi-driver",
@@ -134,6 +170,17 @@
     {"element": "SPDXRef-Package-my-spi-driver",         "type": "OPTIONAL_DEPENDENCY_OF", "related": "SPDXRef-Package-spihal"},
     {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-spihal"},
     {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-libsensor"},
-    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-device-ctl"}
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-device-ctl"},
+    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-i2chal"},
+    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-gpio"},
+    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-ads1115"},
+    {"element": "SPDXRef-Package-i2chal",                "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
+    {"element": "SPDXRef-Package-gpio",                  "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
+    {"element": "SPDXRef-Package-ads1115",              "type": "STATIC_LINK",            "related": "SPDXRef-Package-i2chal"},
+    {"element": "SPDXRef-Package-ads1115",              "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
+    {"element": "SPDXRef-Package-ads1115",              "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libstdcxx"},
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-i2chal"},
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-gpio"},
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-ads1115"}
   ]
 }

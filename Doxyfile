@@ -11,7 +11,10 @@ OUTPUT_DIRECTORY       = docs/doxygen
 
 # 解析対象（ヘッダのみで十分。実装コメントも含めるなら src も追加）
 INPUT                  = spi-hal/include \
+                         i2c-hal/include \
+                         gpio/include \
                          libsensor/include \
+                         libadxl345/include \
                          cli/src
 RECURSIVE              = YES
 FILE_PATTERNS          = *.hpp *.cpp

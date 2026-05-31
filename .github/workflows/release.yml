@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - 'spi-hal/v*'
+      - 'i2c-hal/v*'
+      - 'gpio/v*'
       - 'libsensor/v*'
       - 'libadxl345/v*'
       - 'cli/v*'
