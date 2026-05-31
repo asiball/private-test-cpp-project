@@ -7,6 +7,13 @@
 
 namespace embedded {
 
+namespace {
+// MCP3008 シングルエンドモードのコマンドバイト
+constexpr uint8_t MCP3008_START_BIT   = 0x01;  // スタートビット
+constexpr uint8_t MCP3008_SINGLE_MODE = 0x80;  // SGL/DIFF=1 (single-ended)
+constexpr uint8_t MCP3008_RESULT_MASK = 0x03;  // rx[1] の上位 2bit (10bit の bit9-8)
+}
+
 struct Sensor::Impl {
     ISpiDriver* driver;
     bool        owns_driver;  // Impl がドライバを所有しているか
@@ -62,15 +69,15 @@ std::optional<uint16_t> Sensor::read_raw(uint8_t channel)
     // MCP3008 シングルエンドモード:
     //   TX: [ 0x01,  0x80 | (channel << 4),  0x00 ]
     //   RX: [   _,        ----- 10 bit -----      ]
-    uint8_t tx[3] = { 0x01,
-                      static_cast<uint8_t>(0x80 | (channel << 4)),
+    uint8_t tx[3] = { MCP3008_START_BIT,
+                      static_cast<uint8_t>(MCP3008_SINGLE_MODE | (channel << 4)),
                       0x00 };
     uint8_t rx[3] = { 0, 0, 0 };
 
     if (impl_->driver->transfer(tx, rx, 3) < 0) {
         return std::nullopt;
     }
-    uint16_t raw = static_cast<uint16_t>((rx[1] & 0x03) << 8) | rx[2];
+    uint16_t raw = static_cast<uint16_t>((rx[1] & MCP3008_RESULT_MASK) << 8) | rx[2];
     return raw;
 }
 
