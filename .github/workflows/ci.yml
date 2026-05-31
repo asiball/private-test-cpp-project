@@ -45,7 +45,32 @@ jobs:
           ./build/test-spihal/test_spi_driver \
             --gtest_output=xml:test-results/spihal-unit.xml
 
-      - name: Libsensor unit tests
+      - name: I2C HAL unit tests
+        run: |
+          cmake -S i2c-hal -B build/i2chal-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/i2chal-debug -j$(nproc)
+          sudo cmake --install build/i2chal-debug --prefix /usr/local
+          cmake -S tests/unit/i2c-hal -B build/test-i2chal \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/i2c-hal/include"
+          cmake --build build/test-i2chal -j$(nproc)
+          mkdir -p test-results
+          ./build/test-i2chal/test_i2c_driver \
+            --gtest_output=xml:test-results/i2chal-unit.xml
+
+      - name: GPIO unit tests
+        run: |
+          cmake -S gpio -B build/gpio-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/gpio-debug -j$(nproc)
+          sudo cmake --install build/gpio-debug --prefix /usr/local
+          cmake -S tests/unit/gpio -B build/test-gpio \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/gpio/include"
+          cmake --build build/test-gpio -j$(nproc)
+          ./build/test-gpio/test_gpio_line \
+            --gtest_output=xml:test-results/gpio-unit.xml
+
+      - name: Libsensor unit tests (MCP3008 + ADS1115)
         run: |
           cmake -S libsensor -B build/libsensor-debug -DCMAKE_BUILD_TYPE=Debug
           cmake --build build/libsensor-debug -j$(nproc)
@@ -53,10 +78,12 @@ jobs:
           sudo ldconfig
           cmake -S tests/unit/libsensor -B build/test-libsensor \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/tests/mocks"
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/tests/mocks"
           cmake --build build/test-libsensor -j$(nproc)
           ./build/test-libsensor/test_sensor \
             --gtest_output=xml:test-results/libsensor-unit.xml
+          ./build/test-libsensor/test_ads1115 \
+            --gtest_output=xml:test-results/ads1115-unit.xml
 
       - name: Integration tests (compile + skip check)
         run: |
@@ -173,7 +200,7 @@ jobs:
             --std=c++17 \
             --suppress=missingIncludeSystem \
             --error-exitcode=1 \
-            spi-hal/src/ libsensor/src/ cli/src/
+            spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ cli/src/ examples/
 
       - name: Run clang-tidy
         run: |
@@ -185,7 +212,10 @@ jobs:
             --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
             --warnings-as-errors='bugprone-*' \
             spi-hal/src/spi_driver.cpp \
+            i2c-hal/src/i2c_driver.cpp \
+            gpio/src/gpio_line.cpp \
             libsensor/src/sensor.cpp \
+            libsensor/src/ads1115.cpp \
             cli/src/main.cpp
 
   docs:
