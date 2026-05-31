@@ -59,17 +59,22 @@ include パスやビルド手順が各所にコピーされており、1 系統�
 
 ---
 
-### #4 SBOM の網羅性を自動チェックする
-**現状**: `tools/generate-sbom.py --verify` は**メタデータと生成物（spdx/cdx）の整合**だけを見ており、
-**ソースツリーとの網羅性**は検証しない。そのため「コンポーネントを追加したのに
-`sbom-metadata.json` に書き忘れる」事故を検出できない（実際に `libadxl345` が SBOM 未登録のままになっていた）。
+### #4 SBOM の網羅性を自動チェックする ✅ 対応済み
+**もともとの課題**: `tools/generate-sbom.py --verify` は**メタデータと生成物（spdx/cdx）の整合**だけを見ており、
+**ソースツリーとの網羅性**は検証しなかった。そのため「コンポーネントを追加したのに
+`sbom-metadata.json` に書き忘れる」事故を検出できなかった（実際に `libadxl345` が SBOM 未登録のままになっていた）。
 
-**改善案**:
-- `verify` に**完全性チェック**を追加する: トップ CMake の `foreach(_component ...)` リスト
-  または `*/CMakeLists.txt` の存在を走査し、対応する SBOM package が無ければ失敗させる。
-- 余力があればメタデータの package 一覧を CMake ターゲットから半自動生成する。
+**対応内容**:
+- `--verify` に**完全性チェック**（`verify_completeness`）を追加した。トップ `CMakeLists.txt` の
+  `foreach(_component ...)` リストを走査し、各コンポーネント（`CMakeLists.txt` が存在＝実際にビルドされるもの）に
+  対応する SBOM package が無ければ**失敗**する。対応関係は package の `bom_ref` / `download_location` の
+  `#<component>` フラグメントで判定する。
+- SBOM 対象外のコンポーネント（`examples` のような install しない学習用デモ）は
+  `sbom-metadata.json` の `coverage_policy.exempt_components` に明示列挙する。
+  → 新規コンポーネントは「package を足す」か「除外に追記する」かのどちらかを必須化できる。
+- CI は既存の `Verify SBOM consistency` ジョブで `--verify` を実行しているため、追加の CI 変更は不要。
 
-**影響度: 中 / コスト: 低〜中**
+**残課題（任意）**: メタデータの package 一覧を CMake ターゲットから半自動生成する（コスト中・優先度低）。
 
 ---
 
@@ -83,6 +88,6 @@ include パスやビルド手順が各所にコピーされており、1 系統�
 
 ## まとめ（着手順の提案）
 
-1. **#1 + #2**（テストの CMake 統合 + CI 一元化）— 落とし穴の根を断つ。最優先。
-2. **#4**（SBOM 網羅性チェック）— 低コストで「書き忘れ」を仕組みで防ぐ。
-3. **#3**（GTest キャッシュ）— CI 体験の改善。
+1. **#1 + #2**（テストの CMake 統合 + CI 一元化）— 落とし穴の根を断つ。最優先。**未着手**。
+2. ~~**#4**（SBOM 網羅性チェック）~~ — ✅ 対応済み（`--verify` の完全性チェック）。
+3. **#3**（GTest キャッシュ）— CI 体験の改善。**未着手**。

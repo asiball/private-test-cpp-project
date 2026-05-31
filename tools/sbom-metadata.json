@@ -6,6 +6,10 @@
     "organization": "asiball",
     "namespace_base": "https://github.com/asiball/private-test-cpp-project/sbom"
   },
+  "coverage_policy": {
+    "_comment": "--verify はトップ CMakeLists.txt の foreach(_component ...) を走査し、各コンポーネントに対応する SBOM package があるか確認する。SBOM 対象外のコンポーネント（デプロイ成果物を install しない学習用デモ等）はここに列挙する。新規コンポーネントを追加したら package を足すか、ここに除外として追記すること。",
+    "exempt_components": ["examples"]
+  },
   "packages": [
     {
       "spdx_id": "SPDXRef-Package-root",
