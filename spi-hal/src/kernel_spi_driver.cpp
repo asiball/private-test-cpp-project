@@ -78,6 +78,11 @@ int KernelSpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexce
     if (len == 0) {
         return 0;
     }
+    if (len > static_cast<size_t>(UINT32_MAX)) {
+        last_errno_ = EOVERFLOW;
+        LOGE("KernelSpiDriver::transfer length overflow: %zu", len);
+        return -1;
+    }
 
     struct my_spi_transfer xfer;
     xfer.tx_buf = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tx));

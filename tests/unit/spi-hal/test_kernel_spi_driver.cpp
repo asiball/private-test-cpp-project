@@ -1,6 +1,7 @@
 #include "kernel_spi_driver.hpp"
 #include <gtest/gtest.h>
 #include <cerrno>
+#include <cstdint>
 #include <unistd.h>
 
 using namespace embedded;
@@ -103,6 +104,21 @@ TEST(KernelSpiDriverTransfer, ZeroLenReturnsZero) {
 
     uint8_t tx[4] = {}, rx[4] = {};
     EXPECT_EQ(drv.transfer(tx, rx, 0), 0);
+}
+
+// UT-KDRV-011: len > UINT32_MAX の transfer() は -1 (EOVERFLOW) を返す
+TEST(KernelSpiDriverTransfer, OverflowLenReturnsMinusOne) {
+    const char* dev = "/dev/my_spi_dev";
+    if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
+
+    KernelSpiDriver drv(dev);
+    KernelSpiDriver::Config cfg{1000000, 8, 0};
+    ASSERT_TRUE(drv.open(cfg));
+
+    uint8_t tx[1] = {}, rx[1] = {};
+    size_t huge = static_cast<size_t>(UINT32_MAX) + 1;  // 64bit 環境前提
+    EXPECT_EQ(drv.transfer(tx, rx, huge), -1);
+    EXPECT_EQ(drv.last_errno(), EOVERFLOW);
 }
 
 // UT-KDRV-010: close()なしで2回open()するとエラーを返す（既存fdはリークしない）
