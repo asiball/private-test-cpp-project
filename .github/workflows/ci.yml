@@ -20,12 +20,30 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             g++ cmake make git libgtest-dev gcovr
 
+      # GTest はソースからビルドして /usr/local に install する（落とし穴 #3）。
+      # ビルド成果物 /tmp/gtest-build をキャッシュし、キャッシュヒット時は
+      # ビルド（高コスト）を省略して install のみ実行する。
+      # キャッシュキーは libgtest-dev のバージョンに紐付け、apt 側が更新されたら自動失効させる。
+      - name: GTest cache key
+        id: gtest-key
+        run: echo "ver=$(dpkg-query -W -f='${Version}' libgtest-dev)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache GTest build
+        id: cache-gtest
+        uses: actions/cache@v4
+        with:
+          path: /tmp/gtest-build
+          key: gtest-${{ runner.os }}-${{ steps.gtest-key.outputs.ver }}
+
       - name: Build GTest from source
+        if: steps.cache-gtest.outputs.cache-hit != 'true'
         run: |
           cmake -B /tmp/gtest-build /usr/src/googletest \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build /tmp/gtest-build
-          sudo cmake --install /tmp/gtest-build --prefix /usr/local
+
+      - name: Install GTest
+        run: sudo cmake --install /tmp/gtest-build --prefix /usr/local
 
       - name: CMake Release build
         run: |
@@ -133,12 +151,30 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             g++ cmake make git libgtest-dev gcovr
 
+      # GTest はソースからビルドして /usr/local に install する（落とし穴 #3）。
+      # ビルド成果物 /tmp/gtest-build をキャッシュし、キャッシュヒット時は
+      # ビルド（高コスト）を省略して install のみ実行する。
+      # キャッシュキーは libgtest-dev のバージョンに紐付け、apt 側が更新されたら自動失効させる。
+      - name: GTest cache key
+        id: gtest-key
+        run: echo "ver=$(dpkg-query -W -f='${Version}' libgtest-dev)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache GTest build
+        id: cache-gtest
+        uses: actions/cache@v4
+        with:
+          path: /tmp/gtest-build
+          key: gtest-${{ runner.os }}-${{ steps.gtest-key.outputs.ver }}
+
       - name: Build GTest from source
+        if: steps.cache-gtest.outputs.cache-hit != 'true'
         run: |
           cmake -B /tmp/gtest-build /usr/src/googletest \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build /tmp/gtest-build
-          sudo cmake --install /tmp/gtest-build --prefix /usr/local
+
+      - name: Install GTest
+        run: sudo cmake --install /tmp/gtest-build --prefix /usr/local
 
       - name: Build spi-hal with coverage flags
         run: |
@@ -335,12 +371,30 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             g++ cmake make git libgtest-dev
 
+      # GTest はソースからビルドして /usr/local に install する（落とし穴 #3）。
+      # ビルド成果物 /tmp/gtest-build をキャッシュし、キャッシュヒット時は
+      # ビルド（高コスト）を省略して install のみ実行する。
+      # キャッシュキーは libgtest-dev のバージョンに紐付け、apt 側が更新されたら自動失効させる。
+      - name: GTest cache key
+        id: gtest-key
+        run: echo "ver=$(dpkg-query -W -f='${Version}' libgtest-dev)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache GTest build
+        id: cache-gtest
+        uses: actions/cache@v4
+        with:
+          path: /tmp/gtest-build
+          key: gtest-${{ runner.os }}-${{ steps.gtest-key.outputs.ver }}
+
       - name: Build GTest from source
+        if: steps.cache-gtest.outputs.cache-hit != 'true'
         run: |
           cmake -B /tmp/gtest-build /usr/src/googletest \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build /tmp/gtest-build
-          sudo cmake --install /tmp/gtest-build --prefix /usr/local
+
+      - name: Install GTest
+        run: sudo cmake --install /tmp/gtest-build --prefix /usr/local
 
       # ── ASAN + UBSAN ──────────────────────────────────────────
       - name: Build spi-hal + libsensor with ASAN+UBSAN
