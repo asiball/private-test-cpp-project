@@ -68,13 +68,19 @@ string(TIMESTAMP EDS_BUILD_DATE "%Y-%m-%d")
 message(STATUS "Version: spi-hal=${EDS_VERSION_SPIHAL} libsensor=${EDS_VERSION_LIBSENSOR} cli=${EDS_VERSION_CLI}")
 message(STATUS "Commit:  ${EDS_GIT_COMMIT}  Date: ${EDS_BUILD_DATE}")
 
-# version.hpp.in → spi-hal/include/version.hpp を生成
-configure_file(
-    ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in
-    ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp
-    @ONLY
-)
+# version.hpp.in → spi-hal/include/version.hpp を生成（spi-hal がある場合のみ）
+if(EXISTS ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in)
+    configure_file(
+        ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in
+        ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp
+        @ONLY
+    )
+endif()
 
-add_subdirectory(spi-hal)
-add_subdirectory(libsensor)
-add_subdirectory(cli)
+# ── コンポーネント（各ディレクトリは独立。存在するものだけビルドする）──────
+# 依存順に add_subdirectory する: i2c-hal は libsensor(ADS1115) より先に処理する。
+foreach(_component spi-hal i2c-hal gpio libsensor cli examples)
+    if(EXISTS ${CMAKE_SOURCE_DIR}/${_component}/CMakeLists.txt)
+        add_subdirectory(${_component})
+    endif()
+endforeach()
