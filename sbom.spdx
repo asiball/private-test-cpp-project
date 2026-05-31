@@ -29,6 +29,39 @@ PackageLicenseDeclared: MIT
 PackageCopyrightText: Copyright (c) 2024 asiball
 PackageComment: Linux SPI userspace HAL static library (libspihal.a). Includes SpiDriver (spidev ioctl interface) and KernelSpiDriver (custom kernel module ioctl interface). Uses syslog for logging, fcntl/unistd for device file access.
 
+PackageName: i2chal
+SPDXID: SPDXRef-Package-i2chal
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#i2c-hal
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: Linux I2C userspace HAL static library (libi2chal.a). I2cDriver wraps i2c-dev (ioctl I2C_SLAVE / I2C_RDWR for repeated-start register reads). Independent of spi-hal; uses common/logger.hpp for logging.
+
+PackageName: gpio
+SPDXID: SPDXRef-Package-gpio
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#gpio
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: GPIO edge-interrupt static library (libgpio.a). GpioLine uses the Linux GPIO character device v2 uABI (GPIO_V2_GET_LINE_IOCTL) and waits for edge events with epoll. No external dependency (no libgpiod).
+
+PackageName: ads1115
+SPDXID: SPDXRef-Package-ads1115
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#libsensor
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: ADS1115 sensor shared library (libads1115.so). High-level Ads1115 class providing read_raw / read_voltage over ADS1115 (4ch / 16bit I2C ADC). PIMPL idiom, dependency injection on II2cDriver. Built only when i2c-hal is present.
+
 PackageName: my-spi-driver
 SPDXID: SPDXRef-Package-my-spi-driver
 PackageVersion: 1.1.0
@@ -122,3 +155,14 @@ Relationship: SPDXRef-Package-my-spi-driver OPTIONAL_DEPENDENCY_OF SPDXRef-Packa
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-spihal
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-libsensor
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-device-ctl
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-i2chal
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-gpio
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-ads1115
+Relationship: SPDXRef-Package-i2chal DYNAMIC_LINK SPDXRef-Package-glibc
+Relationship: SPDXRef-Package-gpio DYNAMIC_LINK SPDXRef-Package-glibc
+Relationship: SPDXRef-Package-ads1115 STATIC_LINK SPDXRef-Package-i2chal
+Relationship: SPDXRef-Package-ads1115 DYNAMIC_LINK SPDXRef-Package-glibc
+Relationship: SPDXRef-Package-ads1115 DYNAMIC_LINK SPDXRef-Package-libstdcxx
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-i2chal
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-gpio
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-ads1115
