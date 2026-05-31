@@ -93,6 +93,18 @@
       "description": "MCP3008 sensor shared library (libsensor.so). High-level Sensor class providing read_raw / read_voltage / read_raw_async over MCP3008 (8ch / 10bit SPI ADC). PIMPL idiom, dependency injection on ISpiDriver."
     },
     {
+      "spdx_id": "SPDXRef-Package-libadxl345",
+      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libadxl345",
+      "name": "libadxl345",
+      "version": "1.1.0",
+      "cdx_type": "library",
+      "supplier": "asiball",
+      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#libadxl345",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "ADXL345 accelerometer shared library (libadxl345.so). High-level Adxl345 class providing register-map access (read_reg / write_reg / update_bits) and read_raw / read_g over ADXL345 (3-axis SPI accelerometer). Register-type device example contrasting MCP3008. PIMPL idiom, dependency injection on ISpiDriver; static-links spi-hal."
+    },
+    {
       "spdx_id": "SPDXRef-Package-device-ctl",
       "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
       "name": "device-ctl",
@@ -181,6 +193,11 @@
     {"element": "SPDXRef-Package-ads1115",              "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libstdcxx"},
     {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-i2chal"},
     {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-gpio"},
-    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-ads1115"}
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-ads1115"},
+    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-libadxl345"},
+    {"element": "SPDXRef-Package-libadxl345",            "type": "STATIC_LINK",            "related": "SPDXRef-Package-spihal"},
+    {"element": "SPDXRef-Package-libadxl345",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
+    {"element": "SPDXRef-Package-libadxl345",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libstdcxx"},
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-libadxl345"}
   ]
 }

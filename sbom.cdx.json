@@ -4,7 +4,7 @@
   "serialNumber": "urn:uuid:d8e140bb-0db0-5811-8c40-29a4c745fe7d",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-05-29T08:41:42Z",
+    "timestamp": "2026-05-31T22:44:57Z",
     "tools": {
       "components": [
         {
@@ -157,6 +157,25 @@
       "description": "MCP3008 sensor shared library (libsensor.so). High-level Sensor class providing read_raw / read_voltage / read_raw_async over MCP3008 (8ch / 10bit SPI ADC). PIMPL idiom, dependency injection on ISpiDriver."
     },
     {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libadxl345",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "libadxl345",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#libadxl345",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "ADXL345 accelerometer shared library (libadxl345.so). High-level Adxl345 class providing register-map access (read_reg / write_reg / update_bits) and read_raw / read_g over ADXL345 (3-axis SPI accelerometer). Register-type device example contrasting MCP3008. PIMPL idiom, dependency injection on ISpiDriver; static-links spi-hal."
+    },
+    {
       "type": "application",
       "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
       "supplier": {
@@ -251,6 +270,7 @@
         "pkg:github/asiball/private-test-cpp-project@1.1.0#gpio",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#libadxl345",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor-ads1115",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
@@ -292,6 +312,14 @@
     },
     {
       "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
+      "dependsOn": [
+        "pkg:generic/glibc",
+        "pkg:generic/libstdc%2B%2B",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libadxl345",
       "dependsOn": [
         "pkg:generic/glibc",
         "pkg:generic/libstdc%2B%2B",

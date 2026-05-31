@@ -5,7 +5,7 @@ DocumentName: embedded-device-suite-sbom
 DocumentNamespace: https://github.com/asiball/private-test-cpp-project/sbom/1.1.0-d8e140bb-0db0-5811-8c40-29a4c745fe7d
 Creator: Tool: tools/generate-sbom.py
 Creator: Organization: asiball ()
-Created: 2026-05-29T08:41:42Z
+Created: 2026-05-31T22:44:57Z
 
 PackageName: embedded-device-suite
 SPDXID: SPDXRef-Package-root
@@ -83,6 +83,17 @@ PackageLicenseConcluded: MIT
 PackageLicenseDeclared: MIT
 PackageCopyrightText: Copyright (c) 2024 asiball
 PackageComment: MCP3008 sensor shared library (libsensor.so). High-level Sensor class providing read_raw / read_voltage / read_raw_async over MCP3008 (8ch / 10bit SPI ADC). PIMPL idiom, dependency injection on ISpiDriver.
+
+PackageName: libadxl345
+SPDXID: SPDXRef-Package-libadxl345
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#libadxl345
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: ADXL345 accelerometer shared library (libadxl345.so). High-level Adxl345 class providing register-map access (read_reg / write_reg / update_bits) and read_raw / read_g over ADXL345 (3-axis SPI accelerometer). Register-type device example contrasting MCP3008. PIMPL idiom, dependency injection on ISpiDriver; static-links spi-hal.
 
 PackageName: device-ctl
 SPDXID: SPDXRef-Package-device-ctl
@@ -166,3 +177,8 @@ Relationship: SPDXRef-Package-ads1115 DYNAMIC_LINK SPDXRef-Package-libstdcxx
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-i2chal
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-gpio
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-ads1115
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-libadxl345
+Relationship: SPDXRef-Package-libadxl345 STATIC_LINK SPDXRef-Package-spihal
+Relationship: SPDXRef-Package-libadxl345 DYNAMIC_LINK SPDXRef-Package-glibc
+Relationship: SPDXRef-Package-libadxl345 DYNAMIC_LINK SPDXRef-Package-libstdcxx
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-libadxl345
