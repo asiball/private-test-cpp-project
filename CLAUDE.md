@@ -1,0 +1,106 @@
+# CLAUDE.md
+
+このファイルは、本リポジトリで作業する際に**先に知っておくと事故を防げること**だけをまとめたものです。
+全体構成・各コンポーネントの役割は [README.md](README.md) と [docs/](docs/) を参照してください（ここでは重複させません）。
+
+---
+
+## このプロジェクトの前提
+
+- **言語標準は C++17 固定**。`std::span` / `std::expected` / `std::jthread` など C++20 以降の機能は使わない（`std::optional` は可）。
+- 読者・貢献者には**組み込みで C 中心の開発者**を想定。新規の C++ 機能は「導入・ステップアップ」の位置づけで、不必要に重くしない。
+- 各コンポーネントは**独立**。一部を削除してもプロジェクトはビルド・動作する設計（→ [docs/adr/0001-optional-independent-components.md](docs/adr/0001-optional-independent-components.md)）。
+
+---
+
+## ⚠️ 最初に踏みやすい落とし穴
+
+> これらの改善案は [docs/reviews/future-improvements.md](docs/reviews/future-improvements.md) に今後の課題として整理してある。
+
+### 1. テストは「スタンドアロン configure + install 済みライブラリの名前解決」方式
+`tests/unit/*` と `tests/integration` は**トップレベル CMake からビルドされない**。
+各ライブラリを先に `--install` してから、テストディレクトリを個別に configure し、
+ライブラリは**インストール済みのものを名前でリンク**する。
+
+そのため、テストの **include パスは `target_include_directories` ではなく CI 側の
+`-DCMAKE_CXX_FLAGS="-I.../include"` 経由で効く**（CMakeLists 内の `${CMAKE_SOURCE_DIR}/...` は
+スタンドアロンビルドでは別パスに解決され、実質効かない）。
+
+→ **テストが新しいヘッダを include するなら、CI の該当ステップに `-I` を足す必要がある。**
+
+### 2. テスト用 include は CI の 3 系統すべてに反映する
+`.github/workflows/ci.yml` には同じテストを違うフラグでビルドする系統が複数ある：
+
+| ジョブ / ステップ | フラグ |
+|---|---|
+| `build-and-test` | 通常 Debug |
+| `coverage` | `--coverage` |
+| `sanitizer` | ASAN+UBSAN / TSAN |
+
+**1 系統だけ直すと他で落ちる。** 例: `tests/unit/libsensor` は `test_ads1115`（→ `i2c-hal/include` 依存）を
+含むため、`build-and-test` だけでなく `coverage` と `sanitizer` の libsensor テストにも
+`-I i2c-hal/include` が必要（過去にこの漏れで CI が赤になった実績あり）。
+
+### 3. GTest はソースからビルドして install する前提
+CI は `/usr/src/googletest` を `cmake` でビルドして `/usr/local` に install してからテストする。
+ローカル再現時も同様（`apt` の `libgtest-dev` はヘッダのみのことがある）。
+
+### 4. SBOM は手動メンテ
+新コンポーネントを足したら `tools/sbom-metadata.json` に **packages と relationships を追記** し、
+`python3 tools/generate-sbom.py` で `sbom.spdx` / `sbom.cdx.json` を再生成する。
+CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物の整合**をチェックする
+（ソースツリーとの網羅性は見ない）。スキーマキーは `spdx_id` / `bom_ref` / `cdx_type`。
+
+---
+
+## コード規約
+
+- **PIMPL + 依存注入(DI)** を基本に。公開ヘッダに実装詳細・OS 依存ヘッダを出さない（ABI 安定のため）。
+- ハードウェア/OS 境界は**純粋仮想インターフェース**（`ISpiDriver` / `II2cDriver` 等）で抽象化し、テストはモックを注入する。
+- リソースは **RAII**（デストラクタで解放）。`goto err` 方式は使わない。
+- 公開 API は基本 `noexcept`、返り値は `[[nodiscard]]`。失敗は例外でなく戻り値 / `std::optional` で表す。
+- 定数は `#define` でなく **`enum class` / `constexpr`**。実装内のマジックナンバーは
+  **無名 namespace の名前付き定数**にする（例: `MCP3008_START_BIT`）。
+- ログは `common/include/logger.hpp` の `LOGI/LOGW/LOGE/LOGD` を使う。
+
+---
+
+## 新しいコンポーネントを追加するときのチェックリスト
+
+1. ディレクトリを作り `CMakeLists.txt` を置く（独立してビルド/インストールできる単位にする）。
+2. トップ `CMakeLists.txt` の `foreach(_component ...)` リストに**依存順で**追加（EXISTS ガードで「あるものだけ」ビルド）。
+3. `tests/unit/<name>/` にテスト + `CMakeLists.txt`（既存の standalone 方式を踏襲）。実機が要るテストは `GTEST_SKIP()`。
+4. `.github/workflows/ci.yml`：ビルド/テストステップ追加、**cppcheck と clang-tidy の対象ファイルに追加**、
+   テスト include を **3 系統すべて**に反映（落とし穴 #2）。
+5. `Doxyfile` の `INPUT` にヘッダディレクトリを追加。
+6. `tools/sbom-metadata.json` に packages + relationships を追記し SBOM 再生成（落とし穴 #4）。
+7. リリース対象なら `.github/workflows/release.yml` / `sbom.yml` のタグトリガに `<name>/v*` を追加。
+8. README / `docs/guides/learning-guide.md` に導線を追加。
+
+---
+
+## コミット / PR
+
+- **Conventional Commits 必須**。`feat|fix|docs|refactor|test|ci|chore|build`（`(scope)` 可）。
+  CI の `commit-lint` が **PR タイトルと全コミットメッセージ**を検証する。
+- コンポーネントごとに独立したタグ（`spi-hal/v*` / `libsensor/v*` / `cli/v*` …）でリリースする。
+
+---
+
+## ローカル検証の最短コマンド
+
+```sh
+# フルビルド（全コンポーネント、トップレベル）
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
+
+# 静的解析（CI lint 相当）
+cppcheck --enable=warning,performance,portability --std=c++17 \
+  --suppress=missingIncludeSystem --error-exitcode=1 \
+  spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ cli/src/ examples/
+
+# SBOM 整合チェック
+python3 tools/generate-sbom.py --verify
+```
+
+テストは「ライブラリを install → テストを standalone configure（`-I` 付き）」の順で実行する（落とし穴 #1）。
+具体的なコマンドは `.github/workflows/ci.yml` の各ステップが最も正確なリファレンス。
