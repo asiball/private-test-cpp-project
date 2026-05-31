@@ -38,8 +38,12 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ```
 .
 ├── spi-hal/         # SPI HAL（静的ライブラリ: libspihal.a）
-├── libsensor/       # libsensor（動的共有ライブラリ: libsensor.so）
+├── i2c-hal/         # I2C HAL（静的ライブラリ: libi2chal.a）★任意
+├── gpio/            # GPIO 割り込み（静的ライブラリ: libgpio.a）★任意
+├── common/          # 共有ユーティリティ（logger.hpp 等）
+├── libsensor/       # libsensor（MCP3008/SPI: libsensor.so, ADS1115/I2C: libads1115.so ★任意）
 ├── cli/             # device-ctl（CLIツール）
+├── examples/        # サンプル（ads1115_alert_demo 等）★任意
 ├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
 ├── tests/
 │   ├── mocks/       #   MockSpiDriver（テスト用）
@@ -62,6 +66,27 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 | `cli/` (device-ctl) | 実行バイナリ | 対話型CLIツール。起動後メニューからMCP3008の各チャネル読み出しを繰り返し実行できる。 |
 
 コンポーネントごとに独立した git タグを持ち（`spi-hal/v1.1.0`、`libsensor/v1.1.0` 等）、差分ビルドで影響範囲を最小化します。
+
+### 任意コンポーネント（★）と独立性
+
+`i2c-hal/`・`gpio/`・ADS1115（`libsensor` 内の独立ターゲット）・`examples/` は **任意** です。
+トップレベル CMake は「存在するものだけ」をビルドするため、不要なコンポーネントをディレクトリごと
+削除しても、残り（SPI/MCP3008/CLI）はそのままビルド・動作します。設計意図は
+[ADR 0001](docs/adr/0001-optional-independent-components.md) を参照。
+
+| コンポーネント | バス | 役割 | 必須/任意 |
+|---|---|---|---|
+| `spi-hal` + `libsensor`(Sensor) | SPI | MCP3008（10bit ADC）| 必須 |
+| `i2c-hal` + `libsensor`(Ads1115) | I2C | ADS1115（16bit ADC）| 任意 |
+| `gpio` | — | GPIO エッジ割り込み（epoll）| 任意 |
+
+### C 開発者向けの学習ガイド
+
+C 中心の組み込み開発者が C++ へ踏み出すための導入資料を用意しています。
+
+- [C→C++ ステップアップガイド](docs/guides/c-to-cpp-stepping-stones.md)（不透明ポインタ→PIMPL、ops 表→インターフェース、RAII 等）
+- [I2C と ADS1115](docs/guides/i2c-and-ads1115.md)（バス抽象の引き直しと I2C プロトコル）
+- [GPIO 割り込みと epoll](docs/guides/gpio-interrupts-epoll.md)（ポーリング vs イベント駆動）
 
 ---
 
