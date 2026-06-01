@@ -62,6 +62,8 @@ jobs:
           mkdir -p test-results
           ./build/test-spihal/test_spi_driver \
             --gtest_output=xml:test-results/spihal-unit.xml
+          ./build/test-spihal/test_kernel_spi_driver \
+            --gtest_output=xml:test-results/spihal-kernel-unit.xml
 
       - name: I2C HAL unit tests
         run: |
@@ -215,6 +217,8 @@ jobs:
           mkdir -p test-results
           ./build/test-spihal-cov/test_spi_driver \
             --gtest_output=xml:test-results/spihal-unit.xml
+          ./build/test-spihal-cov/test_kernel_spi_driver \
+            --gtest_output=xml:test-results/spihal-kernel-unit.xml
 
       - name: Run libsensor tests (coverage)
         run: |
@@ -431,6 +435,9 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           ./build/test-spihal-asan/test_spi_driver \
             --gtest_output=xml:test-results/spihal-asan.xml
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-spihal-asan/test_kernel_spi_driver \
+            --gtest_output=xml:test-results/spihal-kernel-asan.xml
 
       - name: Libsensor unit tests (ASAN+UBSAN)
         run: |
