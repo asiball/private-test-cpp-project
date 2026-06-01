@@ -36,35 +36,28 @@
 
 ## 2. システム構成図
 
-```
-ユーザー空間:
-  ┌──────────────────────────────────────────────────────────┐
-  │  アプリケーション / libsensor                            │
-  │  ┌─────────────────────────┐  ┌────────────────────────┐│
-  │  │   ISpiDriver インターフェース                        ││
-  │  └──────────┬──────────────┘  └──────────┬─────────────┘│
-  │             │                            │              │
-  │  ┌──────────▼──────────┐  ┌─────────────▼────────────┐ │
-  │  │   SpiDriver         │  │   KernelSpiDriver         │ │
-  │  │ /dev/spidev0.0 使用 │  │ /dev/my_spi_dev 使用      │ │
-  │  └──────────┬──────────┘  └─────────────┬────────────┘ │
-  └─────────────┼───────────────────────────┼──────────────┘
-                │ ioctl(SPI_IOC_MESSAGE)     │ ioctl(MY_SPI_IOC_TRANSFER)
-                │                           │
-カーネル空間:   │                           │
-  ┌─────────────┼───────────────────────────┼──────────────┐
-  │  ┌──────────▼──────────┐  ┌─────────────▼────────────┐ │
-  │  │   spidev.ko         │  │  my_spi_driver.ko         │ │
-  │  │  （Linux 標準）     │  │  （このプロジェクト専用） │ │
-  │  └──────────┬──────────┘  └─────────────┬────────────┘ │
-  │             └──────────────┬─────────────┘              │
-  │                     Linux SPI サブシステム               │
-  │                     (spi_sync / spi_message)             │
-  └──────────────────────────┬──────────────────────────────┘
-                             │ SPI バス（物理）
-                         ┌───▼───┐
-                         │  HW   │
-                         └───────┘
+```mermaid
+flowchart TD
+    subgraph user["ユーザー空間"]
+        APP["アプリケーション / libsensor"]
+        IF["ISpiDriver インターフェース"]
+        SPI["SpiDriver<br/>/dev/spidev0.0 使用"]
+        KSPI["KernelSpiDriver<br/>/dev/my_spi_dev 使用"]
+        APP --> IF
+        IF --> SPI
+        IF --> KSPI
+    end
+    subgraph kernel["カーネル空間"]
+        SPIDEV["spidev.ko<br/>（Linux 標準）"]
+        MYDRV["my_spi_driver.ko<br/>（このプロジェクト専用）"]
+        SUBSYS["Linux SPI サブシステム<br/>(spi_sync / spi_message)"]
+        SPIDEV --> SUBSYS
+        MYDRV --> SUBSYS
+    end
+    HW["HW"]
+    SPI -->|"ioctl(SPI_IOC_MESSAGE)"| SPIDEV
+    KSPI -->|"ioctl(MY_SPI_IOC_TRANSFER)"| MYDRV
+    SUBSYS -->|"SPI バス（物理）"| HW
 ```
 
 ---
@@ -127,29 +120,15 @@ struct my_spi_transfer {
 
 ### 3.4 MY_SPI_IOC_TRANSFER の処理フロー
 
-```
-ioctl(MY_SPI_IOC_TRANSFER, &xfer)
-         │
-         ▼
-  copy_from_user(&xfer, uarg)
-         │
-         ▼
-  kmalloc(tx_buf, rx_buf)  ← カーネル空間にバッファ確保
-         │
-         ▼
-  copy_from_user(tx_buf, xfer.tx_buf, len)  ← TX データをカーネルへ
-         │
-         ▼
-  spi_message_init / spi_message_add_tail
-         │
-         ▼
-  spi_sync(spi, &message)  ← SPI サブシステムで転送実行
-         │
-         ▼
-  copy_to_user(xfer.rx_buf, rx_buf, len)    ← RX データをユーザーへ
-         │
-         ▼
-  kfree(tx_buf, rx_buf)
+```mermaid
+flowchart TD
+    A["ioctl(MY_SPI_IOC_TRANSFER, &xfer)"] --> B["copy_from_user(&xfer, uarg)"]
+    B --> C["kmalloc(tx_buf, rx_buf)<br/>カーネル空間にバッファ確保"]
+    C --> D["copy_from_user(tx_buf, xfer.tx_buf, len)<br/>TX データをカーネルへ"]
+    D --> E["spi_message_init / spi_message_add_tail"]
+    E --> F["spi_sync(spi, &message)<br/>SPI サブシステムで転送実行"]
+    F --> G["copy_to_user(xfer.rx_buf, rx_buf, len)<br/>RX データをユーザーへ"]
+    G --> H["kfree(tx_buf, rx_buf)"]
 ```
 
 ---
@@ -158,26 +137,24 @@ ioctl(MY_SPI_IOC_TRANSFER, &xfer)
 
 ### 4.1 クラス図
 
-```
-┌──────────────────────────────────────────┐
-│            KernelSpiDriver               │
-├──────────────────────────────────────────┤
-│ - device_path_ : std::string             │
-│ - fd_          : int                     │
-│ - last_errno_  : int                     │
-├──────────────────────────────────────────┤
-│ + KernelSpiDriver(device_path: string)   │
-│ + ~KernelSpiDriver()                     │
-│ + open(cfg: Config) : bool               │
-│ + close() : void                         │
-│ + transfer(tx, rx, len) : int            │
-│ + is_open() : bool                       │
-│ + last_errno() : int                     │
-└──────────────────────────────────────────┘
-         △ (継承)
-┌──────────────────────────────────────────┐
-│             ISpiDriver                   │
-└──────────────────────────────────────────┘
+```mermaid
+classDiagram
+    class ISpiDriver {
+        <<interface>>
+    }
+    class KernelSpiDriver {
+        -device_path_ std::string
+        -fd_ int
+        -last_errno_ int
+        +KernelSpiDriver(device_path)
+        +~KernelSpiDriver()
+        +open(cfg) bool
+        +close() void
+        +transfer(tx, rx, len) int
+        +is_open() bool
+        +last_errno() int
+    }
+    ISpiDriver <|.. KernelSpiDriver
 ```
 
 ### 4.2 open() の処理

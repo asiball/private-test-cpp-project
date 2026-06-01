@@ -11,45 +11,23 @@
 
 ## 1. システム全体構成
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                   ユーザ空間 (User Space)                │
-│                                                         │
-│   ┌──────────────┐      ┌─────────────────────────┐    │
-│   │  device-ctl  │      │  発注者アプリケーション  │    │
-│   │  (CLIツール) │      │  (将来的な利用者)        │    │
-│   └──────┬───────┘      └────────────┬────────────┘    │
-│          │                           │                  │
-│          └──────────┬────────────────┘                  │
-│                     │ C++ API                           │
-│          ┌──────────▼──────────────────┐               │
-│          │       libsensor.so          │               │
-│          │  Sensor クラス              │               │
-│          │  ・read_raw()/read_voltage()│               │
-│          │  ・read_raw_async()         │               │
-│          └──────────┬──────────────────┘               │
-│                     │ C++ API                           │
-│          ┌──────────▼──────────────────┐               │
-│          │       libspihal.a           │               │
-│          │  SpiDriver クラス           │               │
-│          │  ・open() / close()         │               │
-│          │  ・transfer()               │               │
-│          └──────────┬──────────────────┘               │
-└─────────────────────┼───────────────────────────────────┘
-                      │ ioctl (SPI_IOC_MESSAGE)
-┌─────────────────────┼───────────────────────────────────┐
-│           Linux Kernel (kernel 5.10)                    │
-│                     │                                   │
-│          ┌──────────▼──────────────────┐               │
-│          │     spidev カーネルドライバ  │               │
-│          │     /dev/spidev0.0          │               │
-│          └──────────┬──────────────────┘               │
-└─────────────────────┼───────────────────────────────────┘
-                      │ SPI (物理バス)
-              ┌───────▼────────┐
-              │  SPIデバイス    │
-              │  (センサ等)     │
-              └────────────────┘
+```mermaid
+flowchart TD
+    subgraph user["ユーザ空間 (User Space)"]
+        CLI["device-ctl<br/>(CLIツール)"]
+        APP["発注者アプリケーション<br/>(将来的な利用者)"]
+        LIB["libsensor.so<br/>Sensor クラス<br/>・read_raw() / read_voltage()<br/>・read_raw_async()"]
+        HAL["libspihal.a<br/>SpiDriver クラス<br/>・open() / close()<br/>・transfer()"]
+        CLI -->|C++ API| LIB
+        APP -->|C++ API| LIB
+        LIB -->|C++ API| HAL
+    end
+    subgraph kernel["Linux Kernel (kernel 5.10)"]
+        SPIDEV["spidev カーネルドライバ<br/>/dev/spidev0.0"]
+    end
+    DEV["SPIデバイス<br/>(センサ等)"]
+    HAL -->|"ioctl (SPI_IOC_MESSAGE)"| SPIDEV
+    SPIDEV -->|"SPI (物理バス)"| DEV
 ```
 
 > 図の Draw.io 版: [system-architecture.drawio](system-architecture.drawio)

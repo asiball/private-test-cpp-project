@@ -28,37 +28,35 @@
 
 ## 2. クラス図
 
-```
-┌──────────────────────────────────────────────────────┐
-│                    Sensor                            │
-├──────────────────────────────────────────────────────┤
-│ - impl_ : unique_ptr<Impl>                           │
-├──────────────────────────────────────────────────────┤
-│ + Sensor(spi_path, vref=3.3)  ← 実機用               │
-│ + Sensor(driver*, vref=3.3)   ← テスト用             │
-│ + ~Sensor()                                          │
-│ + open()        : bool                               │
-│ + close()       : void                               │
-│ + is_open()     : bool                               │
-│ + read_raw(channel)     : optional<uint16_t>         │
-│ + read_voltage(channel) : optional<double>           │
-│ + read_raw_async(channel, cb) : void                 │
-│ + vref() / set_vref(v)                               │
-└──────────────────────┬───────────────────────────────┘
-                       │ unique_ptr
-       ┌───────────────▼───────────────┐
-       │         Sensor::Impl          │
-       ├───────────────────────────────┤
-       │ + driver      : ISpiDriver*   │
-       │ + owns_driver : bool          │
-       └───────────────┬───────────────┘
-                       │ ポインタ（所有 or 非所有）
-       ┌───────────────┴───────────────┐
-       │                               │
-┌──────▼──────────────┐  ┌────────────▼────────────────┐
-│    SpiDriver        │  │      MockSpiDriver           │
-│  （実機用）         │  │     （テスト用）              │
-└─────────────────────┘  └─────────────────────────────┘
+```mermaid
+classDiagram
+    class Sensor {
+        -unique_ptr~Impl~ impl_
+        +Sensor(spi_path, vref) 実機用
+        +Sensor(driver, vref) テスト用
+        +~Sensor()
+        +open() bool
+        +close() void
+        +is_open() bool
+        +read_raw(channel) optional~uint16_t~
+        +read_voltage(channel) optional~double~
+        +read_raw_async(channel, cb) void
+        +vref() double
+        +set_vref(v) void
+    }
+    class Impl["Sensor::Impl"] {
+        +driver ISpiDriver
+        +owns_driver bool
+    }
+    class ISpiDriver {
+        <<interface>>
+    }
+    class SpiDriver["SpiDriver（実機用）"]
+    class MockSpiDriver["MockSpiDriver（テスト用）"]
+    Sensor *-- Impl : unique_ptr
+    Impl ..> ISpiDriver : driver（所有 or 非所有）
+    ISpiDriver <|.. SpiDriver
+    ISpiDriver <|.. MockSpiDriver
 ```
 
 ---
@@ -188,14 +186,17 @@ void Sensor::read_raw_async(uint8_t channel, ReadCallback cb)
 
 **重要**: `read_raw_async()` でデタッチしたスレッドは `Sensor` のデストラクタを待たない。
 
-```
-呼び出し元                スレッド
-    │                        │
-    ├─ read_raw_async() ─── start
-    │   (すぐ返る)           │
-    │                    read_raw() 実行中
-    ├─ Sensor が破棄される !!
-    │                    cb(result, err)  ← this が dangling pointer!
+```mermaid
+sequenceDiagram
+    participant Caller as 呼び出し元
+    participant Thread as デタッチスレッド
+    Caller->>Thread: read_raw_async()（すぐ返る）
+    activate Thread
+    Note over Thread: read_raw() 実行中
+    Note over Caller: Sensor が破棄される !!
+    Thread->>Thread: cb(result, err)
+    Note over Thread: this が dangling pointer !!
+    deactivate Thread
 ```
 
 **対策**: `Sensor` オブジェクトのライフタイムをコールバック完了まで呼び出し元が保証すること。
@@ -223,17 +224,17 @@ void Sensor::read_raw_async(uint8_t channel, ReadCallback cb)
 
 ## 8. シーケンス図（同期読み出し）
 
-```
-呼び出し元          Sensor          Sensor::Impl       ISpiDriver
-    │                 │                  │                  │
-    ├── read_raw(0) ────────────────────►│                  │
-    │                 │                  │                  │
-    │                 │  tx = [0x01, 0x80, 0x00]            │
-    │                 │  rx = [0,    0,    0]               │
-    │                 │                  │                  │
-    │                 ├── transfer(tx, rx, 3) ─────────────►│
-    │                 │                  │                  │
-    │                 │◄─── 3（バイト数） ──────────────────┤
-    │                 │                  │                  │
-    │◄ raw=((rx[1]&3)<<8)|rx[2] ─────────┤                  │
+```mermaid
+sequenceDiagram
+    participant Caller as 呼び出し元
+    participant Sensor
+    participant Impl as Sensor::Impl
+    participant Driver as ISpiDriver
+    Caller->>Sensor: read_raw(0)
+    Sensor->>Impl: read_raw(0)
+    Note over Impl: tx = [0x01, 0x80, 0x00]<br/>rx = [0, 0, 0]
+    Impl->>Driver: transfer(tx, rx, 3)
+    Driver-->>Impl: 3（バイト数）
+    Impl-->>Sensor: raw
+    Sensor-->>Caller: raw = ((rx[1] & 0x03) << 8) | rx[2]
 ```
