@@ -37,6 +37,10 @@ CI設定（`.github/`）まで一貫して追えます。
 | 6. テスト設計 | [テスト計画書](../deliverables/06_test/test-plan.md) | テスト手法、UT/IT/STの範囲、カバレッジ目標 |
 | 7. 納品・リリース | [リリースノート](../deliverables/07_delivery/release-notes/v1.1.0.md) | バージョンごとの更新履歴、リリース手順 |
 
+> 上表は学習用に主要コンポーネント（SpiDriver / libsensor）を抜粋したもの。
+> **全コンポーネント（i2c-hal / gpio / libadxl345 / ADS1115 / device-ctl / kernel / logger）の
+> 詳細設計・API・IF 仕様の対応表は、[納品ドキュメント索引](../deliverables/README.md) を参照。**
+
 ---
 
 ## コードを読む場合のお勧め順序

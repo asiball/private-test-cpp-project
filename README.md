@@ -145,11 +145,13 @@ docs/
 │   ├── learning-guide.md
 │   └── sbom-guide.md
 ├── deliverables/       ← プロジェクト成果物（要件→設計→テスト→納品の順）
+│   ├── README.md          索引（読者別の入口・全コンポーネント対応表）
+│   ├── _templates/        新規文書のひな形
 │   ├── 01_requirements/   何を作るかを決める（要件定義書）
 │   ├── 02_basic-design/   どう作るかの全体像（システム構成・アーキテクチャ）
-│   ├── 03_detailed-design/クラス設計の詳細（SpiDriver・Sensor）
-│   ├── 04_api-spec/       公開 API の仕様書（使う側の視点）
-│   ├── 05_interface-spec/ ハードウェアとのインターフェース仕様
+│   ├── 03_detailed-design/各コンポーネントのクラス設計の詳細
+│   ├── 04_api-spec/       公開 API / CLI 操作の仕様書（使う側の視点）
+│   ├── 05_interface-spec/ ハードウェア・バス・レジスタの IF 仕様
 │   ├── 06_test/           テスト計画・仕様書
 │   └── 07_delivery/       リリースノート・納品物チェックリスト
 ├── wiki/               ← 運用情報（リリースマトリックス等）
@@ -170,7 +172,7 @@ docs/
 ### Docker を使う（推奨）
 
 ```bash
-# ビルド・テスト・静的解析・Doxygen・PDF生成を一括実行
+# ビルド・テスト・静的解析・Doxygen・PDF/Word生成を一括実行
 ./docker-build.sh
 ```
 
@@ -302,8 +304,10 @@ CH0  raw=512  voltage=1.650 V
 
 ### 案件成果物（`docs/deliverables/`）
 
-- [API仕様書 — libsensor](docs/deliverables/04_api-spec/libsensor-api.md)
-- [API仕様書 — SpiDriver](docs/deliverables/04_api-spec/spi-driver-api.md)
+成果物の全体像・読者別の入口（層構成 A/B/C）・コンポーネント別の対応表は **索引**に集約している。まずここを読む:
+
+- **[📑 納品ドキュメント索引](docs/deliverables/README.md)** … 層構成・対応表・文書番号規約・生成方法
+- 配布物（PDF / Word / HTML）の作り方: [`tools/build-docs.sh`](tools/build-docs.sh)（手順は索引の §5）
 
 ### 運用情報（`docs/wiki/`）
 
