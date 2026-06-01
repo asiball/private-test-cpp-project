@@ -297,6 +297,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # GitHub の mermaid はクライアント側描画のため構文エラーが検知されない。
+      # 全 *.md の mermaid ブロックを Docker(mmdc) で検証する（ローカル pre-push と共通スクリプト）。
+      - name: Validate mermaid diagrams
+        run: bash tools/check-mermaid.sh
+
       - name: Install Doxygen and Graphviz
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends doxygen graphviz
 
