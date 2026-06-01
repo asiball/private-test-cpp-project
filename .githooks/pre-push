@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# pre-push: push しようとしているコミットで変更された Markdown の mermaid 図を検証する。
+#
+# 有効化（各自一度だけ）:
+#   git config core.hooksPath .githooks
+#
+# 検証本体は tools/check-mermaid.sh（CI と共通）。Docker が無ければ警告スキップする。
+# push 差分に .md が含まれなければ即座に通過する（普段はノーコスト）。
+#
+set -euo pipefail
+
+readonly ZERO="0000000000000000000000000000000000000000"
+repo="$(git rev-parse --show-toplevel)"
+
+# stdin: <local_ref> <local_sha> <remote_ref> <remote_sha>
+changed=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # ブランチ削除（local_sha がゼロ）は検証不要
+  [[ "$local_sha" == "$ZERO" ]] && continue
+
+  if [[ "$remote_sha" == "$ZERO" ]]; then
+    # 新規ブランチ: まだどのリモートにも無い新規コミット群を対象にする
+    new_commits="$(git rev-list "$local_sha" --not --remotes || true)"
+    [[ -z "$new_commits" ]] && continue
+    oldest="$(echo "$new_commits" | tail -1)"
+    if base="$(git rev-parse --verify --quiet "${oldest}^")"; then
+      range="${base} ${local_sha}"
+    else
+      # oldest がルートコミット: 空ツリーと比較
+      range="$(git hash-object -t tree /dev/null) ${local_sha}"
+    fi
+  else
+    range="${remote_sha} ${local_sha}"
+  fi
+
+  files="$(git diff --name-only --diff-filter=ACMR $range -- '*.md' || true)"
+  [[ -n "$files" ]] && changed+="${files}"$'\n'
+done
+
+# 重複除去・空行除去
+mapfile -t md_files < <(printf '%s' "$changed" | sort -u | sed '/^$/d')
+
+if [[ "${#md_files[@]}" -eq 0 ]]; then
+  exit 0
+fi
+
+exec "$repo/tools/check-mermaid.sh" "${md_files[@]}"

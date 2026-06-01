@@ -65,6 +65,23 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 
 ---
 
+## ドキュメントの図（mermaid）
+
+図は **mermaid** で書く。GitHub はクライアント側描画なので**構文エラーが push/PR 時に検知されず**、
+閲覧して初めて壊れに気づく（過去に `[/dev/spidev0.0]` がパーサに平行四辺形構文と誤認され崩れた実績）。
+
+そのため記法ルールを暗記するのではなく、**機械で弾く**：
+
+- 検証本体は `tools/check-mermaid.sh`（Docker の `minlag/mermaid-cli` で全 `*.md` の mermaid を構文チェック）。
+  **CI（`docs` ジョブ）で常に実行**され、失敗で red。
+- ローカルは **pre-push フック**で push 差分の `.md` だけを検証する。各自一度だけ有効化:
+  ```sh
+  git config core.hooksPath .githooks
+  ```
+  Docker が無ければ警告してスキップ（強制は CI 側）。手動実行は `bash tools/check-mermaid.sh`。
+
+---
+
 ## 新しいコンポーネントを追加するときのチェックリスト
 
 1. ディレクトリを作り `CMakeLists.txt` を置く（独立してビルド/インストールできる単位にする）。
@@ -100,6 +117,9 @@ cppcheck --enable=warning,performance,portability --std=c++17 \
 
 # SBOM 整合チェック
 python3 tools/generate-sbom.py --verify
+
+# ドキュメントの mermaid 図を検証（Docker 必須。無ければ警告スキップ）
+bash tools/check-mermaid.sh
 ```
 
 テストは「ライブラリを install → テストを standalone configure（`-I` 付き）」の順で実行する（落とし穴 #1）。

@@ -38,7 +38,7 @@ flowchart TD
 graph TD
     CLI[device-ctl] --> LIB[libsensor.so]
     LIB --> DRV[libspihal.a]
-    DRV --> SPIDEV[/dev/spidev0.0]
+    DRV --> SPIDEV["/dev/spidev0.0"]
     APP[発注者App] --> LIB
 ```
 
