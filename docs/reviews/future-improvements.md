@@ -46,30 +46,38 @@ include パスやビルド手順が各所にコピーされており、1 系統�
 
 ---
 
-### #3 GTest のソースビルドをキャッシュ / 共有する
-**現状**: `build-and-test` / `coverage` / `sanitizer` の各ジョブが毎回
-`/usr/src/googletest` をソースからビルドして install している（ジョブ間で重複）。
+### #3 GTest のソースビルドをキャッシュ / 共有する ✅ 対応済み
+**もともとの課題**: `build-and-test` / `coverage` / `sanitizer` の各ジョブが毎回
+`/usr/src/googletest` をソースからビルドして install していた（ジョブ間で重複）。
 
-**改善案**:
-- `actions/cache` で GTest のビルド成果物（`/usr/local/lib/libgtest*` 等）をキャッシュする。
-- もしくは GTest をプリインストールしたビルド用コンテナイメージ（`Dockerfile.build` 拡張）を使う。
-- CI 時間短縮にも効く。
+**対応内容**:
+- 各ジョブで `actions/cache` を使い、GTest の**ビルド成果物 `/tmp/gtest-build`** をキャッシュするようにした。
+  キャッシュヒット時は `cmake --build`（高コスト部分）を省略し、`sudo cmake --install` のみ実行する。
+- キャッシュ対象は user-writable な `/tmp/gtest-build` に限定し、`/usr/local` への install は
+  従来どおり毎回 `sudo` で行う（権限問題・install マニフェストのパス不整合を避ける）。
+- キャッシュキーは `libgtest-dev` のパッケージバージョン（`dpkg-query`）に紐付け、apt 側が
+  更新されたら自動的に失効させる。キャッシュミス時の挙動は従来と完全に同一。
 
-**影響度: 中（主に CI 時間）/ コスト: 低**
+**補足**: さらに踏み込むなら GTest をプリインストールしたビルド用コンテナイメージ化も可能（コスト中・優先度低）。
 
 ---
 
-### #4 SBOM の網羅性を自動チェックする
-**現状**: `tools/generate-sbom.py --verify` は**メタデータと生成物（spdx/cdx）の整合**だけを見ており、
-**ソースツリーとの網羅性**は検証しない。そのため「コンポーネントを追加したのに
-`sbom-metadata.json` に書き忘れる」事故を検出できない（実際に `libadxl345` が SBOM 未登録のままになっていた）。
+### #4 SBOM の網羅性を自動チェックする ✅ 対応済み
+**もともとの課題**: `tools/generate-sbom.py --verify` は**メタデータと生成物（spdx/cdx）の整合**だけを見ており、
+**ソースツリーとの網羅性**は検証しなかった。そのため「コンポーネントを追加したのに
+`sbom-metadata.json` に書き忘れる」事故を検出できなかった（実際に `libadxl345` が SBOM 未登録のままになっていた）。
 
-**改善案**:
-- `verify` に**完全性チェック**を追加する: トップ CMake の `foreach(_component ...)` リスト
-  または `*/CMakeLists.txt` の存在を走査し、対応する SBOM package が無ければ失敗させる。
-- 余力があればメタデータの package 一覧を CMake ターゲットから半自動生成する。
+**対応内容**:
+- `--verify` に**完全性チェック**（`verify_completeness`）を追加した。トップ `CMakeLists.txt` の
+  `foreach(_component ...)` リストを走査し、各コンポーネント（`CMakeLists.txt` が存在＝実際にビルドされるもの）に
+  対応する SBOM package が無ければ**失敗**する。対応関係は package の `bom_ref` / `download_location` の
+  `#<component>` フラグメントで判定する。
+- SBOM 対象外のコンポーネント（`examples` のような install しない学習用デモ）は
+  `sbom-metadata.json` の `coverage_policy.exempt_components` に明示列挙する。
+  → 新規コンポーネントは「package を足す」か「除外に追記する」かのどちらかを必須化できる。
+- CI は既存の `Verify SBOM consistency` ジョブで `--verify` を実行しているため、追加の CI 変更は不要。
 
-**影響度: 中 / コスト: 低〜中**
+**残課題（任意）**: メタデータの package 一覧を CMake ターゲットから半自動生成する（コスト中・優先度低）。
 
 ---
 
@@ -83,6 +91,6 @@ include パスやビルド手順が各所にコピーされており、1 系統�
 
 ## まとめ（着手順の提案）
 
-1. **#1 + #2**（テストの CMake 統合 + CI 一元化）— 落とし穴の根を断つ。最優先。
-2. **#4**（SBOM 網羅性チェック）— 低コストで「書き忘れ」を仕組みで防ぐ。
-3. **#3**（GTest キャッシュ）— CI 体験の改善。
+1. **#1 + #2**（テストの CMake 統合 + CI 一元化）— 落とし穴の根を断つ。最優先。**未着手**（コスト中のため後回し）。
+2. ~~**#4**（SBOM 網羅性チェック）~~ — ✅ 対応済み（`--verify` の完全性チェック）。
+3. ~~**#3**（GTest キャッシュ）~~ — ✅ 対応済み（`actions/cache` で `/tmp/gtest-build` をキャッシュ）。

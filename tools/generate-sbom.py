@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import uuid
@@ -20,6 +21,7 @@ REPO_ROOT = SCRIPT_DIR.parent
 METADATA = SCRIPT_DIR / "sbom-metadata.json"
 SPDX_OUT = REPO_ROOT / "sbom.spdx"
 CDX_OUT = REPO_ROOT / "sbom.cdx.json"
+TOP_CMAKE = REPO_ROOT / "CMakeLists.txt"
 
 _SIMPLE_SPDX_IDS = {
     "MIT", "BSD-3-Clause", "Apache-2.0",
@@ -189,6 +191,56 @@ def generate_cdx(meta: dict, timestamp: str, doc_uuid: str) -> dict:
 
 # ── verification ──────────────────────────────────────────────────────────────
 
+def _cmake_components() -> list[str]:
+    """Extract the component names from the top-level foreach(_component ...) list."""
+    if not TOP_CMAKE.exists():
+        return []
+    m = re.search(r"foreach\(\s*_component\b([^)]*)\)", TOP_CMAKE.read_text())
+    if not m:
+        return []
+    return m.group(1).split()
+
+
+def _covered_components(meta: dict) -> set[str]:
+    """Components that have at least one SBOM package, keyed by the '#<component>'
+    fragment of either bom_ref or download_location."""
+    covered: set[str] = set()
+    for pkg in meta["packages"]:
+        for field in (pkg.get("download_location", ""), pkg.get("bom_ref", "")):
+            if "#" in field:
+                covered.add(field.rsplit("#", 1)[1])
+    return covered
+
+
+def verify_completeness(meta: dict) -> bool:
+    """Fail if a build component (top CMakeLists foreach) lacks an SBOM package and
+    is not explicitly exempted in coverage_policy.exempt_components."""
+    components = _cmake_components()
+    if not components:
+        print("WARN: could not read foreach(_component ...) from CMakeLists.txt; "
+              "skipping completeness check", file=sys.stderr)
+        return True
+
+    exempt = set(meta.get("coverage_policy", {}).get("exempt_components", []))
+    covered = _covered_components(meta)
+    ok = True
+    for comp in components:
+        if comp in exempt:
+            continue
+        if not (REPO_ROOT / comp / "CMakeLists.txt").exists():
+            continue  # not actually built; nothing to register
+        if comp not in covered:
+            print(f"sbom-metadata.json: component '{comp}' is built but has no SBOM "
+                  f"package (add one, or list it in coverage_policy.exempt_components)",
+                  file=sys.stderr)
+            ok = False
+    if ok:
+        checked = [c for c in components if c not in exempt]
+        print(f"OK component coverage  ({len(checked)} components, "
+              f"{len(exempt)} exempt)")
+    return ok
+
+
 def verify(meta: dict) -> bool:
     expected = {p["name"] for p in meta["packages"]}
     ok = True
@@ -230,6 +282,9 @@ def verify(meta: dict) -> bool:
             ok = False
         else:
             print(f"OK sbom.cdx.json  ({len(found)} packages)")
+
+    if not verify_completeness(meta):
+        ok = False
 
     return ok
 
