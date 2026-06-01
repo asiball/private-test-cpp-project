@@ -15,27 +15,27 @@
 
 ## 2. クラス図
 
-```
-┌──────────────────────────────────────┐
-│             SpiDriver                │
-├──────────────────────────────────────┤
-│ - device_path_ : std::string         │
-│ - fd_          : int                 │
-│ - last_errno_  : int                 │
-├──────────────────────────────────────┤
-│ + SpiDriver(device_path: string)     │
-│ + ~SpiDriver()                       │
-│ + open(cfg: Config) : bool           │
-│ + close() : void                     │
-│ + transfer(tx, rx, len) : int        │
-│ + is_open() : bool                   │
-│ + last_errno() : int                 │
-├──────────────────────────────────────┤
-│ «struct» Config                      │
-│   speed_hz      : uint32_t           │
-│   bits_per_word : uint8_t            │
-│   mode          : uint8_t            │
-└──────────────────────────────────────┘
+```mermaid
+classDiagram
+    class SpiDriver {
+        -device_path_ std::string
+        -fd_ int
+        -last_errno_ int
+        +SpiDriver(device_path)
+        +~SpiDriver()
+        +open(cfg) bool
+        +close() void
+        +transfer(tx, rx, len) int
+        +is_open() bool
+        +last_errno() int
+    }
+    class Config {
+        <<struct>>
+        +speed_hz uint32_t
+        +bits_per_word uint8_t
+        +mode uint8_t
+    }
+    SpiDriver ..> Config : open() で受け取る
 ```
 
 ## 3. メソッド詳細
@@ -55,30 +55,19 @@
 
 ### 3.2 transfer() — リトライシーケンス
 
-```
-┌─────────────────────────────────────────┐
-│ transfer(tx, rx, len)                   │
-│                                         │
-│  ┌──────────────────────────────┐       │
-│  │ spi_ioc_transfer 構造体を設定 │       │
-│  └──────────────┬───────────────┘       │
-│                 │                       │
-│         retry = 0                       │
-│                 │                       │
-│  ┌──────────────▼──────────────┐        │
-│  │  ioctl(SPI_IOC_MESSAGE(1))  │        │
-│  └──────────────┬──────────────┘        │
-│                 │                       │
-│            成功？ ──── Yes ──→ return n  │
-│                 │ No                    │
-│          errno == EAGAIN？              │
-│           No ──────────────→ return -1  │
-│                 │ Yes                   │
-│          retry < 3？                   │
-│           No ──────────────→ return -1  │
-│                 │ Yes                   │
-│          retry++ → 先頭へ戻る           │
-└─────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["transfer(tx, rx, len)"] --> B["spi_ioc_transfer 構造体を設定"]
+    B --> C["retry = 0"]
+    C --> D["ioctl(SPI_IOC_MESSAGE(1))"]
+    D --> E{"成功？"}
+    E -- Yes --> F["return n（転送バイト数）"]
+    E -- No --> G{"errno == EAGAIN？"}
+    G -- No --> H["return -1"]
+    G -- Yes --> I{"retry < 3？"}
+    I -- No --> H
+    I -- Yes --> J["retry++"]
+    J --> D
 ```
 
 ## 4. エラーハンドリング方針
