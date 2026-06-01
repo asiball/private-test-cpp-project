@@ -15,7 +15,7 @@
 
 ## ⚠️ 最初に踏みやすい落とし穴
 
-> これらの改善案は [docs/reviews/future-improvements.md](docs/reviews/future-improvements.md) に今後の課題として整理してある。
+> これらの改善案は GitHub Issues（[#20 テストの CMake 統合](https://github.com/asiball/private-test-cpp-project/issues/20) / [#21 CI 一元化](https://github.com/asiball/private-test-cpp-project/issues/21) ほか）に今後の課題として整理してある。
 
 ### 1. テストは「スタンドアロン configure + install 済みライブラリの名前解決」方式
 `tests/unit/*` と `tests/integration` は**トップレベル CMake からビルドされない**。
