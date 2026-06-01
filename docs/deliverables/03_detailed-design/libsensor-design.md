@@ -1,4 +1,6 @@
-# 詳細設計書 — libsensor（Sensor クラス）
+# 詳細設計書 — libsensor（Sensor / Ads1115）
+
+> 本書は libsensor の 2 製品を扱う。§1〜§8 は `Sensor`（MCP3008 / SPI）、§9 は `Ads1115`（ADS1115 / I2C, 任意ターゲット）。
 
 | 項目 | 内容 |
 |---|---|
@@ -238,3 +240,43 @@ sequenceDiagram
     Impl-->>Sensor: raw
     Sensor-->>Caller: raw = ((rx[1] & 0x03) << 8) | rx[2]
 ```
+
+---
+
+## 9. Ads1115（I2C, 任意ターゲット）
+
+`Ads1115` は ADS1115（4ch / 16bit I2C ADC）への高レベルアクセス。`Sensor`（MCP3008 / SPI）と対をなし、**`II2cDriver` への DI + PIMPL** という同じ設計パターンで作る。`i2c-hal` がある場合のみビルドされる独立ターゲット（`-lads1115`）。レジスタ詳細は [IF-ADS-001](../05_interface-spec/ads1115-register-map.md)。
+
+### 9.1 クラス構成 / 依存注入
+
+`Impl` は `II2cDriver* driver` / `bool owns_driver` / `uint16_t addr` / `Gain gain` / `bool rdy_pin_enabled` を持つ。`Ads1115(path, addr)` は `I2cDriver` を `new`（所有）、`Ads1115(II2cDriver*, addr)` は借用（テストでは `MockI2cDriver` を注入）。16bit レジスタ I/O はヘルパで行う:
+
+| ヘルパ | 動作 |
+|---|---|
+| `write_reg16(reg, val)` | `[ reg, MSB, LSB ]` の 3 バイトを `driver->write()` |
+| `read_reg16(reg, out)` | `driver->write_read(&reg, 1, rx, 2)`（リピーテッドスタート）|
+
+### 9.2 read_raw() — シングルショット + OS ポーリング
+
+```
+入力: channel(0〜3)。範囲外は nullopt
+1. Config を組み立てる:
+   OS_SINGLE | (MUX_SINGLE | channel<<12) | pga_bits(gain) | MODE_SINGLE | DR_128SPS | comp_que
+   comp_que = rdy_pin_enabled ? COMP_QUE_ONE(0x0000) : COMP_QUE_DISABLE(0x0003)
+2. write_reg16(CONFIG, config)        // OS=1 で変換開始
+3. 変換完了待ち: read_reg16(CONFIG) の OS(bit15)==1 まで（最大16回・500us間隔）
+4. read_reg16(CONVERSION) → (int16_t)
+出力: optional<int16_t>
+```
+
+### 9.3 read_voltage() / ゲイン
+
+`read_voltage = raw * full_scale(gain) / 32768`。`set_gain` / `gain` / `full_scale_volts` で PGA（±6.144V〜±0.256V）を管理する。
+
+### 9.4 enable_conversion_ready_pin()
+
+`Hi_thresh(0x03)=0x8000` / `Lo_thresh(0x02)=0x0000` を書き、`rdy_pin_enabled=true` にする。以降の `read_raw` の Config は `COMP_QUE_ONE` を使い、変換完了で ALERT/RDY をアサートさせる。GPIO 割り込み（[DES-GPIO-001](gpio-design.md)）と組み合わせると、OS ポーリングの代わりに割り込み駆動で読み出せる。
+
+### 9.5 スレッド安全性
+
+スレッドセーフではない。`Sensor` と異なり非同期 API は持たず、割り込み駆動は `GpioLine` 側で実現する。
