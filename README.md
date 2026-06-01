@@ -302,8 +302,10 @@ CH0  raw=512  voltage=1.650 V
 
 ### 案件成果物（`docs/deliverables/`）
 
-- [API仕様書 — libsensor](docs/deliverables/04_api-spec/libsensor-api.md)
-- [API仕様書 — SpiDriver](docs/deliverables/04_api-spec/spi-driver-api.md)
+成果物の全体像・読者別の入口（層構成 A/B/C）・コンポーネント別の対応表は **索引**に集約している。まずここを読む:
+
+- **[📑 納品ドキュメント索引](docs/deliverables/README.md)** … 層構成・対応表・文書番号規約・生成方法
+- 配布物（PDF / Word / HTML）の作り方: [`tools/build-docs.sh`](tools/build-docs.sh)（手順は索引の §5）
 
 ### 運用情報（`docs/wiki/`）
 

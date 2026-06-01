@@ -1,0 +1,16 @@
+# pandoc 共通メタデータ（PDF / Word 生成時に --metadata-file で読み込む）
+# tools/build-docs.sh から参照される。案件ごとに author などを調整する。
+# 注: 体裁のうち geometry / mainfont は PDF(xelatex) 用。
+#     Word の体裁は tools/docs-reference.docx 側で管理する（ここでは効かない）。
+
+lang: ja
+toc-title: "目次"
+
+# 案件に合わせて変更する
+author: "（株）〇〇 開発チーム"
+
+# --- PDF(xelatex) 体裁 ---
+geometry: "margin=25mm"
+mainfont: "Noto Serif CJK JP"
+colorlinks: true
+linkcolor: "blue"

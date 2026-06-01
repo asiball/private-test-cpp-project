@@ -15,9 +15,12 @@ INPUT                  = spi-hal/include \
                          gpio/include \
                          libsensor/include \
                          libadxl345/include \
+                         common/include \
+                         kernel/include \
                          cli/src
 RECURSIVE              = YES
-FILE_PATTERNS          = *.hpp *.cpp
+# C++ ヘッダ/実装に加え、common(logger) と kernel(C ドライバ) も網羅対象にする
+FILE_PATTERNS          = *.hpp *.cpp *.h *.c
 
 # snippet タグのソース探索パス
 EXAMPLE_PATH           = tests/unit/spi-hal \
