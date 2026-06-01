@@ -170,7 +170,7 @@ docs/
 ### Docker を使う（推奨）
 
 ```bash
-# ビルド・テスト・静的解析・Doxygen・PDF生成を一括実行
+# ビルド・テスト・静的解析・Doxygen・PDF/Word生成を一括実行
 ./docker-build.sh
 ```
 

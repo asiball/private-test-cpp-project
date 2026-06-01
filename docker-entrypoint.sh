@@ -65,34 +65,15 @@ echo "=== [5/6] Doxygen ==="
 mkdir -p docs/doxygen
 doxygen Doxyfile
 
-# ── [6/6] pandoc Markdown → PDF ─────────────────────────────
-echo "=== [6/6] pandoc Markdown → PDF ==="
-mkdir -p output/pdf
-for f in \
-    docs/deliverables/01_requirements/requirements-spec.md \
-    docs/deliverables/02_basic-design/system-architecture.md \
-    docs/deliverables/03_detailed-design/spihal-design.md \
-    docs/deliverables/04_api-spec/libsensor-api.md \
-    docs/deliverables/05_interface-spec/spi-hardware-if.md \
-    docs/deliverables/06_test/test-plan.md \
-    docs/deliverables/07_delivery/release-notes/v1.1.0.md; do
-    name=$(basename "$f" .md)
-    if [ -f "$f" ]; then
-        pandoc "$f" \
-            --pdf-engine=xelatex \
-            -V mainfont="Noto Serif CJK JP" \
-            -V geometry:margin=25mm \
-            -o "output/pdf/${name}.pdf" \
-            && echo "  converted: ${name}.pdf" \
-            || echo "  [警告] ${name}.pdf 変換失敗（スキップ）"
-    else
-        echo "  [スキップ] ${f} が見つかりません"
-    fi
-done
+# ── [6/6] ドキュメント生成（pandoc → PDF + Word）────────────
+echo "=== [6/6] ドキュメント生成 (pandoc → PDF + Word) ==="
+# docs/deliverables 配下を走査して PDF と Word(.docx) を生成する（索引・テンプレは自動除外）。
+# Doxygen HTML は [5/6] で生成済みのため、ここでは pdf docx のみ指定する。
+bash tools/build-docs.sh pdf docx
 
 echo ""
 echo "=== 完了 ==="
 echo "  バイナリ         : build/cli/device-ctl, build/libsensor/libsensor.so"
 echo "  テスト結果       : test-results/"
 echo "  APIドキュメント  : docs/doxygen/html/index.html"
-echo "  PDF              : output/pdf/"
+echo "  PDF / Word       : output/pdf/, output/docx/"
