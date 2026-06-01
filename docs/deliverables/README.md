@@ -44,11 +44,11 @@ flowchart LR
 | **libsensor**（ADS1115 / I2C） | ライブラリ | ✅ [libsensor-design §9](03_detailed-design/libsensor-design.md) | ✅ [ads1115-api](04_api-spec/ads1115-api.md) | ✅ [ads1115-register-map](05_interface-spec/ads1115-register-map.md) |
 | **libadxl345** | ライブラリ | ✅ [libadxl345-design](03_detailed-design/libadxl345-design.md) | ✅ [adxl345-api](04_api-spec/adxl345-api.md) | ✅ [adxl345-register-map](05_interface-spec/adxl345-register-map.md) |
 | **cli**（device-ctl） | CLI | ✅ [cli-design](03_detailed-design/cli-design.md) | ✅ [cli-device-ctl-spec](04_api-spec/cli-device-ctl-spec.md)（操作仕様） | — |
-| **kernel**（オプション拡張） | C ドライバ | ✅ [kernel-driver-design](03_detailed-design/kernel-driver-design.md) | — | ⬜ `kernel-module-if.md` |
-| **common**（logger） | 共通基盤 | — | ⬜ `common-logger-api.md` | — |
+| **kernel**（オプション拡張） | C ドライバ | ✅ [kernel-driver-design](03_detailed-design/kernel-driver-design.md) | — | ✅ [kernel-module-if](05_interface-spec/kernel-module-if.md) |
+| **common**（logger） | 共通基盤 | — | ✅ [common-logger-api](04_api-spec/common-logger-api.md) | — |
 
 > **C層（Doxygen）は全コンポーネント横断で自動生成**される（`Doxyfile` の `INPUT` に各 `include/` と `cli/src`・`common/include`・`kernel/include` を登録済み）。
-> ただし**ヘッダの Doxygen コメントが不足している箇所はリファレンスが空になる**ため、各コンポーネント整備時に併せて補充する（既知の不足例：`common/include/logger.hpp`, `spi-hal/include/logger.hpp` がコメント0）。
+> ヘッダの Doxygen コメントが不足しているとリファレンスが空になるため整備時に補充する。`common/include/logger.hpp` は API-COM-001 と対で Doxygen 化済み。`spi-hal/include/logger.hpp` は同一 API の複製のため未 Doxygen 化のまま残している。
 
 ### 工程横断の文書（コンポーネントに依らない）
 
