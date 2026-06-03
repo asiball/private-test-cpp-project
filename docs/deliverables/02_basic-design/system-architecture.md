@@ -58,3 +58,22 @@ graph TD
 | OS | Linux kernel 5.10.x |
 | コンパイラ | GCC 13 / Ubuntu 24.04（C++17） |
 | SPIデバイス | /dev/spidev0.0（最大 2MHz） |
+
+## 5. オプション拡張コンポーネント
+
+§1〜§4 は**必須経路（SPI / MCP3008）**を示す。以降に追加された下表のコンポーネントは
+**任意（★）**で、トップ CMake が「存在するものだけ」をビルドするため、ディレクトリごと
+削除しても必須経路は影響を受けない（独立性の設計意図は [ADR 0001](../../adr/0001-optional-independent-components.md)）。
+各コンポーネントの詳細設計・API・IF 仕様は [納品ドキュメント索引 §2](../README.md) を参照。
+
+| コンポーネント | バス | 役割 | 成果物 |
+|---|---|---|---|
+| `i2c-hal` | I2C | I2C 通信の HAL | `libi2chal.a` |
+| `libsensor`（Ads1115） | I2C | ADS1115（16bit ADC） | `libads1115.so` |
+| `libadxl345` | SPI | ADXL345（レジスタ型加速度センサ） | `libadxl345.so` |
+| `gpio` | — | GPIO エッジ割り込み（epoll） | `libgpio.a` |
+| `kernel` | SPI | 独自 SPI カーネルドライバ（学習用拡張） | `my_spi_driver.ko` |
+
+> これらは必須経路と同じ設計原則（インターフェース分離 + DI + PIMPL、コンポーネント別バージョンタグ）に
+> 従う。`libadxl345` は `spi-hal` を、`libsensor`(Ads1115) は `i2c-hal` を再利用し、`ISpiDriver` /
+> `II2cDriver` という同型の抽象で実機/モックを差し替えられる。
