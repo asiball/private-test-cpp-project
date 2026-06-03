@@ -2,6 +2,13 @@
 #include <cstdio>
 #include <syslog.h>
 
+// NOTE: これは common/include/logger.hpp と同一 API のログマクロ定義です。
+//       共有の正本は common/include/logger.hpp（API-COM-001 / Doxygen 化済み）。
+//       spi-hal は「単体で取り出してもビルドできる独立コンポーネント」という方針のため、
+//       common/ に依存せず済むよう、あえて同じ内容のコピーを自前で持っています
+//       （docs/deliverables/README.md §2 の注記参照）。
+//       挙動を変更する場合は両ファイルを同時に更新してください。
+
 // ─────────────────────────────────────────────────────────────
 // ログマクロ
 //

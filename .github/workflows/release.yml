@@ -1,6 +1,6 @@
 name: Release
 
-# spi-hal/v*, libsensor/v*, libadxl345/v*, cli/v* のいずれかのタグが push されたときに実行
+# spi-hal/v*, i2c-hal/v*, gpio/v*, libsensor/v*, libadxl345/v*, cli/v* のいずれかのタグが push されたときに実行
 on:
   push:
     tags:

@@ -64,7 +64,7 @@ void               close() noexcept;
 ### read_raw()
 
 ```cpp
-[[nodiscard]] std::optional<uint16_t> read_raw(uint8_t channel);
+[[nodiscard]] std::optional<uint16_t> read_raw(uint8_t channel) noexcept;
 ```
 
 **説明**: 指定チャネルの 10bit raw 値（0〜`ADC_MAX`）を同期読み出しする。
@@ -83,7 +83,7 @@ void               close() noexcept;
 ### read_voltage()
 
 ```cpp
-[[nodiscard]] std::optional<double> read_voltage(uint8_t channel);
+[[nodiscard]] std::optional<double> read_voltage(uint8_t channel) noexcept;
 ```
 
 **説明**: 指定チャネルを読み出し、電圧 [V] に換算して返す。
@@ -111,6 +111,9 @@ void read_raw_async(uint8_t channel, ReadCallback cb);
 | `cb` | 完了コールバック。第1引数: raw 値（失敗時 `std::nullopt`）、第2引数: errno（成功時0） |
 
 > **注意**: `Sensor` オブジェクトのライフタイムはコールバック完了まで呼び出し元が保証すること。
+>
+> 同期版の `read_raw` / `read_voltage` は `noexcept` だが、本メソッドは内部で `std::thread` を
+> 生成するため **`noexcept` ではない**（スレッド生成失敗時に `std::system_error` を送出しうる）。
 
 ---
 

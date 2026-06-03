@@ -2,15 +2,17 @@
 
 | 項目 | 内容 |
 |---|---|
-| 対象モジュール | `libsensor/` (libsensor.so) |
-| 対象クラス | `Sensor`（MCP3008 制御） |
+| 対象モジュール | `libsensor/` (libsensor.so / libads1115.so) |
+| 対象クラス | `Sensor`（MCP3008 / SPI）・`Ads1115`（ADS1115 / I2C ★任意） |
 | テストフレームワーク | Google Test + GMock |
-| 実行コマンド | `./build/test-libsensor/test_sensor` |
+| 実行コマンド | `./build/test-libsensor/test_sensor` / `./build/test-libsensor/test_ads1115` |
 | カバレッジ目標 | 主要メソッド 80% 以上 |
 
-実装は `test_sensor.cpp` にあり、各テストケース ID は GTest の
-`TEST(Suite, Name)` と 1:1 で対応します。Mock を使った実機不要の
-ケースが中心です。
+`Sensor`（MCP3008）の UT-LIB-* は `test_sensor.cpp`、`Ads1115`（ADS1115）の UT-ADS-* は
+`test_ads1115.cpp` にあり、各テストケース ID は GTest の `TEST(Suite, Name)` と 1:1 で
+対応します。Mock を使った実機不要のケースが中心です。
+ADS1115 のレジスタ仕様は
+[ads1115-register-map.md](../../../docs/deliverables/05_interface-spec/ads1115-register-map.md) を参照。
 
 ---
 
@@ -103,3 +105,79 @@
 | 期待 | コピー構築 / 代入とも false |
 | 種別 | 正常系 |
 | 実装 | `test_sensor.cpp:SensorCopyable.IsNotCopyConstructible` |
+
+---
+
+## Ads1115（ADS1115 / I2C ★任意）— `test_ads1115.cpp`
+
+`II2cDriver` のモック（`MockI2cDriver`）を注入し、実機 I2C なしで検証する。
+
+### UT-ADS-001 無効パスで `open()` 失敗
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | デバイス不在（実機ドライバ経由） |
+| 入力 | `/dev/i2cXX` を開く |
+| 期待 | `open()` false、`is_open()` false |
+| 種別 | 異常系 |
+| 実装 | `test_ads1115.cpp:Ads1115Open.InvalidDeviceReturnsFalse` |
+
+### UT-ADS-002 範囲外チャネルは `std::nullopt`
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock の write / write_read は呼ばれない想定 |
+| 入力 | `read_raw(CHANNEL_COUNT)` / `read_raw(255)` |
+| 期待 | `std::nullopt`、バスアクセスは発生しない |
+| 種別 | 異常系 |
+| 実装 | `test_ads1115.cpp:Ads1115ReadRaw.InvalidChannelReturnsNullopt` |
+
+### UT-ADS-003 `read_raw()` が変換レジスタの値を返す
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock が OS=1（変換完了）と raw=0x4000 を返す |
+| 入力 | `read_raw(0)` |
+| 期待 | `0x4000`（16384） |
+| 種別 | 正常系 |
+| 実装 | `test_ads1115.cpp:Ads1115ReadRaw.ReturnsConversionValueViaMock` |
+
+### UT-ADS-004 `read_voltage()` がフルスケールとゲインで換算
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock が raw=16384、ゲインはデフォルト ±2.048V |
+| 入力 | `read_voltage(0)` |
+| 期待 | `16384 * 2.048 / 32768` ≒ 1.024V（誤差 1e-9） |
+| 種別 | 正常系 |
+| 実装 | `test_ads1115.cpp:Ads1115ReadVoltage.ScalesByFullScale` |
+
+### UT-ADS-005 `set_gain()` で `full_scale_volts()` が変わる
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | デフォルトゲイン ±2.048V |
+| 入力 | `set_gain(FSR_4_096V)` |
+| 期待 | `full_scale_volts()` が 2.048 → 4.096 |
+| 種別 | 正常系 |
+| 実装 | `test_ads1115.cpp:Ads1115Gain.SetGainChangesFullScale` |
+
+### UT-ADS-006 `read_raw()` の Config が OS + シングルエンド MUX を含む
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock が write 引数をキャプチャ |
+| 入力 | `read_raw(0)`（CH0） |
+| 期待 | TX = `{0x01, 0xC5, 0x83}`（Config=0xC583: OS\|MUX_A0\|±2.048V\|single\|128SPS\|comp無効） |
+| 種別 | プロトコル確認 |
+| 実装 | `test_ads1115.cpp:Ads1115ReadRaw.SendsCorrectConfig` |
+
+### UT-ADS-007 コピー禁止確認
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | — |
+| 入力 | 型特性 |
+| 期待 | コピー構築 / 代入とも false |
+| 種別 | 正常系 |
+| 実装 | `test_ads1115.cpp:Ads1115Copyable.IsNotCopyConstructible` |

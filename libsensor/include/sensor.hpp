@@ -1,4 +1,8 @@
 #pragma once
+// spi-hal は別コンポーネント。相対パスで直接指すのは、各テストを「インストール済み
+// ライブラリ名でリンクするスタンドアロン configure」方式でビルドするため（CLAUDE.md
+// 落とし穴 #1）。この相対 include なら -I を足さずに ISpiDriver を解決できる。
+// モノレポビルドでは CMake の target_include_directories でも解決される（二重に安全）。
 #include "../../spi-hal/include/ispi_driver.hpp"
 
 #include <cstdint>
@@ -101,7 +105,7 @@ public:
      * **テストケース（UT-LIB-004）** — 無効チャネルは std::nullopt:
      * @snippet test_sensor.cpp UT-LIB-004
      */
-    [[nodiscard]] std::optional<uint16_t> read_raw(uint8_t channel);
+    [[nodiscard]] std::optional<uint16_t> read_raw(uint8_t channel) noexcept;
 
     /**
      * @brief 指定チャネルの電圧を読む [V]
@@ -114,7 +118,7 @@ public:
      * **テストケース（UT-LIB-005）** — vref に応じて電圧が計算される:
      * @snippet test_sensor.cpp UT-LIB-005
      */
-    [[nodiscard]] std::optional<double> read_voltage(uint8_t channel);
+    [[nodiscard]] std::optional<double> read_voltage(uint8_t channel) noexcept;
 
     /**
      * @brief 非同期で ADC 生値を読む
@@ -123,6 +127,9 @@ public:
      *
      * @param channel チャネル番号（0〜7）
      * @param cb      完了コールバック
+     * @note 同期版の read_raw / read_voltage と異なり、本メソッドは noexcept ではない。
+     *       内部で std::thread を生成するため、スレッド生成に失敗すると
+     *       std::system_error を送出しうる（同期版は I/O 失敗を std::nullopt で表す）。
      * @warning Sensor オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
      *
      * **テストケース（UT-LIB-007）** — 未オープン時もコールバックが呼ばれる:

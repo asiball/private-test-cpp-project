@@ -94,14 +94,24 @@ add_subdirectory(cli)
 
 ## 本プロジェクトでの使われ方
 
-モノレポ構成で、ルートと 3 つのサブディレクトリに `CMakeLists.txt` が分散している。
+モノレポ構成で、ルートと各サブディレクトリに `CMakeLists.txt` が分散している。
+トップの `foreach(_component ...)` が「存在するものだけ」を依存順に取り込むため、
+★任意コンポーネントはディレクトリごと削除しても残りはビルドできる（→ ADR 0001）。
 
 ```
-CMakeLists.txt              ← トップレベル（共通設定 + サブディレクトリ取り込み）
-├── spi-hal/CMakeLists.txt  ← 静的ライブラリ libspihal.a
-├── libsensor/CMakeLists.txt← 共有ライブラリ libsensor.so
-└── cli/CMakeLists.txt      ← 実行バイナリ device-ctl
+CMakeLists.txt               ← トップレベル（共通設定 + サブディレクトリ取り込み）
+├── spi-hal/CMakeLists.txt   ← 静的ライブラリ libspihal.a
+├── i2c-hal/CMakeLists.txt   ← 静的ライブラリ libi2chal.a   ★任意
+├── gpio/CMakeLists.txt      ← 静的ライブラリ libgpio.a     ★任意
+├── libsensor/CMakeLists.txt ← 共有ライブラリ libsensor.so（+ libads1115.so ★任意）
+├── libadxl345/CMakeLists.txt← 共有ライブラリ libadxl345.so
+├── cli/CMakeLists.txt       ← 実行バイナリ device-ctl
+└── examples/CMakeLists.txt  ← サンプル（ads1115_alert_demo）★任意
 ```
+
+> 以降の「工夫ポイント」は `libsensor`(SPI 系) を代表例に説明するが、`i2c-hal` / `gpio` /
+> `libadxl345` も**同じ仕組み**（`if(TARGET ...)` でモノレポ/スタンドアロン両対応、
+> コンポーネント別バージョンタグ）を踏襲している。
 
 ### 工夫ポイント
 

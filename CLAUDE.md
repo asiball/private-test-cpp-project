@@ -62,6 +62,12 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 - 定数は `#define` でなく **`enum class` / `constexpr`**。実装内のマジックナンバーは
   **無名 namespace の名前付き定数**にする（例: `MCP3008_START_BIT`）。
 - ログは `common/include/logger.hpp` の `LOGI/LOGW/LOGE/LOGD` を使う。
+- **公開 API の `noexcept` は読み出し系まで一貫させる**（例外を投げず `std::optional` / 戻り値で失敗を表すため）。
+  例外: 内部で `std::thread` を生成するなど送出しうるものは非 `noexcept`（例: `Sensor::read_raw_async`）。
+- **別コンポーネントのヘッダ include**：`sensor.hpp` / `adxl345.hpp` が
+  `#include "../../spi-hal/include/ispi_driver.hpp"` のように相対パスで指すのは
+  **意図的**（スタンドアロンテストが `-I` 無しで解決できるようにするため。落とし穴 #1）。
+  整理目的で単純名 include に変えると、テストの `-I` を 3 系統すべてに足す必要が出るので注意。
 
 ---
 
@@ -86,7 +92,7 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 
 1. ディレクトリを作り `CMakeLists.txt` を置く（独立してビルド/インストールできる単位にする）。
 2. トップ `CMakeLists.txt` の `foreach(_component ...)` リストに**依存順で**追加（EXISTS ガードで「あるものだけ」ビルド）。
-3. `tests/unit/<name>/` にテスト + `CMakeLists.txt`（既存の standalone 方式を踏襲）。実機が要るテストは `GTEST_SKIP()`。
+3. `tests/unit/<name>/` にテスト + `CMakeLists.txt` + `test-cases.md`（既存の standalone 方式を踏襲）。実機が要るテストは `GTEST_SKIP()`。`test-cases.md` の各 ID は `TEST(Suite, Name)` と 1:1 対応させ、`docs/deliverables/06_test/test-plan.md` §4 のスイート一覧にも 1 行追加する。
 4. `.github/workflows/ci.yml`：ビルド/テストステップ追加、**cppcheck と clang-tidy の対象ファイルに追加**、
    テスト include を **3 系統すべて**に反映（落とし穴 #2）。
 5. `Doxyfile` の `INPUT` にヘッダディレクトリを追加。

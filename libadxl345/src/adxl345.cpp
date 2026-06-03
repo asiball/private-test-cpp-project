@@ -76,7 +76,7 @@ bool Adxl345::is_open() const noexcept
     return impl_->driver->is_open();
 }
 
-std::optional<uint8_t> Adxl345::read_reg(uint8_t addr)
+std::optional<uint8_t> Adxl345::read_reg(uint8_t addr) noexcept
 {
     // TX: [ READ | addr,  dummy ]   RX: [ _, value ]
     uint8_t tx[2] = {
@@ -90,7 +90,7 @@ std::optional<uint8_t> Adxl345::read_reg(uint8_t addr)
     return rx[1];
 }
 
-bool Adxl345::write_reg(uint8_t addr, uint8_t value)
+bool Adxl345::write_reg(uint8_t addr, uint8_t value) noexcept
 {
     // TX: [ WRITE | addr,  value ]
     uint8_t tx[2] = {
@@ -103,7 +103,7 @@ bool Adxl345::write_reg(uint8_t addr, uint8_t value)
 
 // addr/mask/value は同型だが、レジスタ操作の慣用シグネチャ（read-modify-write）として踏襲する
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-bool Adxl345::update_bits(uint8_t addr, uint8_t mask, uint8_t value)
+bool Adxl345::update_bits(uint8_t addr, uint8_t mask, uint8_t value) noexcept
 {
     auto current = read_reg(addr);
     if (!current) {
@@ -113,12 +113,12 @@ bool Adxl345::update_bits(uint8_t addr, uint8_t mask, uint8_t value)
     return write_reg(addr, updated);
 }
 
-std::optional<uint8_t> Adxl345::read_device_id()
+std::optional<uint8_t> Adxl345::read_device_id() noexcept
 {
     return read_reg(reg::DEVID);
 }
 
-std::optional<Adxl345::AccelRaw> Adxl345::read_raw()
+std::optional<Adxl345::AccelRaw> Adxl345::read_raw() noexcept
 {
     // DATAX0 から 6 バイトを連続(マルチバイト)読み出し
     //   TX: [ READ | MB | DATAX0,  dummy x6 ]
@@ -140,7 +140,7 @@ std::optional<Adxl345::AccelRaw> Adxl345::read_raw()
     return a;
 }
 
-std::optional<Adxl345::AccelG> Adxl345::read_g()
+std::optional<Adxl345::AccelG> Adxl345::read_g() noexcept
 {
     auto raw = read_raw();
     if (!raw) {

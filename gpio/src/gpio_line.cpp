@@ -35,6 +35,13 @@ bool GpioLine::request_edge_events(Edge edge) noexcept
         return false;
     }
 
+    // GPIO v2 uABI（Linux 5.10+）で 1 本のラインを要求する。
+    // この ioctl は「どのラインを・どう使うか」を req にまとめて渡し、
+    // 成功すると req.fd に “そのラインだけを表す” 専用 fd が返る仕組み。
+    //   - num_lines / offsets[]: 要求するライン数と、チップ内のオフセット番号
+    //   - consumer:            このラインを誰が使っているかの表示名（debugfs 等に出る）
+    //   - config.flags:        入力 + どのエッジを検出するか（下で設定）
+    // memset で 0 クリアしてから必要フィールドだけ埋める（未使用フィールドの0初期化が必須）。
     struct gpio_v2_line_request req;
     std::memset(&req, 0, sizeof(req));
     req.num_lines  = 1;

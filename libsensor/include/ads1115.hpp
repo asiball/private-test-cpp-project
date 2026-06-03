@@ -94,14 +94,14 @@ public:
      * @param channel チャネル番号（0〜3）
      * @return ADC 値。失敗時は std::nullopt（無効チャネル / 未オープン / 転送失敗）
      */
-    [[nodiscard]] std::optional<int16_t> read_raw(uint8_t channel);
+    [[nodiscard]] std::optional<int16_t> read_raw(uint8_t channel) noexcept;
 
     /**
      * @brief 指定チャネルの電圧を読む [V]
      * @param channel チャネル番号（0〜3）
      * @return 電圧値（`raw * full_scale_volts() / 32768`）。失敗時は std::nullopt
      */
-    [[nodiscard]] std::optional<double> read_voltage(uint8_t channel);
+    [[nodiscard]] std::optional<double> read_voltage(uint8_t channel) noexcept;
 
     /**
      * @brief ALERT/RDY ピンを「変換完了通知（RDY）」として有効化する

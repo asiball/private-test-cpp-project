@@ -1,6 +1,8 @@
-#include "../../spi-hal/include/logger.hpp"
-#include "../../spi-hal/include/version.hpp"
-#include "../../libsensor/include/sensor.hpp"
+// device-ctl は libsensor を link する。CMake で sensor ターゲットが公開する
+// include パス（libsensor/include と spi-hal/include）を継承するため、単純名で include できる。
+#include "logger.hpp"
+#include "version.hpp"
+#include "sensor.hpp"
 
 #include <atomic>
 #include <condition_variable>

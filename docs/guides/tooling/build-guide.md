@@ -10,19 +10,31 @@
 
 ### コンポーネント依存関係
 
+必須は SPI 経路（`cli → libsensor → spi-hal`）。それ以外は ★任意で、無くても必須経路はビルドできる。
+
 ```mermaid
 graph TD
-    CLI[cli / device-ctl] -->|Link| LS[libsensor / libsensor.so]
-    LS -->|Link| SH[spi-hal / libspihal.a]
-    SH -->|System Call| Kernel[Linux Kernel /dev/spidev]
+    CLI["cli / device-ctl"] -->|Link| LS["libsensor / libsensor.so"]
+    DEMO["examples / ads1115_alert_demo ★任意"] -->|Link| ADS["libsensor / libads1115.so ★任意"]
+    DEMO -->|Link| GP["gpio / libgpio.a ★任意"]
+    LS -->|Link| SH["spi-hal / libspihal.a"]
+    ADX["libadxl345 / libadxl345.so"] -->|Link| SH
+    ADS -->|Link| I2C["i2c-hal / libi2chal.a ★任意"]
+    SH -->|System Call| KSPI["Linux Kernel: spidev"]
+    I2C -->|System Call| KI2C["Linux Kernel: i2c-dev"]
+    GP -->|System Call| KGP["Linux Kernel: gpiochip"]
 ```
 
 ### 主要ビルドターゲット
-| コンポーネント | ビルド生成物 | 説明 |
-|---|---|---|
-| `spi-hal` | `build/spi-hal/libspihal.a` | Linux SPI 通信を行う静的ライブラリ |
-| `libsensor` | `build/libsensor/libsensor.so` | MCP3008 等のセンサー値処理を行う共有ライブラリ |
-| `cli` | `build/cli/device-ctl` | 対話モードを提供するコマンドラインツール |
+| コンポーネント | ビルド生成物 | 必須/任意 | 説明 |
+|---|---|---|---|
+| `spi-hal` | `build/spi-hal/libspihal.a` | 必須 | Linux SPI 通信を行う静的ライブラリ |
+| `i2c-hal` | `build/i2c-hal/libi2chal.a` | ★任意 | Linux I2C 通信を行う静的ライブラリ |
+| `gpio` | `build/gpio/libgpio.a` | ★任意 | GPIO エッジ割り込み（epoll）の静的ライブラリ |
+| `libsensor` | `build/libsensor/libsensor.so`（+ `libads1115.so` ★任意） | 必須 | MCP3008（SPI）/ ADS1115（I2C ★任意）のセンサー処理 |
+| `libadxl345` | `build/libadxl345/libadxl345.so` | 任意 | ADXL345（レジスタ型）加速度センサーの共有ライブラリ |
+| `cli` | `build/cli/device-ctl` | 必須 | 対話モードを提供するコマンドラインツール |
+| `examples` | `build/examples/ads1115_alert_demo` | ★任意 | ポーリング vs 割り込みの対比デモ |
 
 ---
 
@@ -105,22 +117,32 @@ Release / Debug ビルドの基本コマンドは [README — クイックスタ
 ### 単体テストの実行手順
 各サブコンポーネントを個別に Debug ビルドしてインストールし、テストランナーを起動します。
 
+> **重要（落とし穴 #1）**: テストは「ライブラリを `--install` → テストを *スタンドアロン* configure」
+> 方式でビルドする。テスト側 CMake の `${CMAKE_SOURCE_DIR}/...` はスタンドアロン時に別パスへ
+> 解決され効かないため、**他コンポーネントの include は `-DCMAKE_CXX_FLAGS="-I..."` で渡す**必要がある。
+> 最も正確なコマンドは常に [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) の各テストステップを参照。
+
 ```bash
-# 1. spi-hal テスト実行
+# 1. spi-hal テスト実行（test_spi_driver と test_kernel_spi_driver がビルドされる）
 cmake -S spi-hal -B build/spihal-debug -DCMAKE_BUILD_TYPE=Debug
 cmake --build build/spihal-debug
-cmake --install build/spihal-debug --prefix /usr/local
+sudo cmake --install build/spihal-debug --prefix /usr/local
 cmake -S tests/unit/spi-hal -B build/test-spihal -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-I$(pwd)/spi-hal/include"
 cmake --build build/test-spihal
 ./build/test-spihal/test_spi_driver
+./build/test-spihal/test_kernel_spi_driver
 
-# 2. libsensor テスト実行
+# 2. libsensor テスト実行（test_sensor と test_ads1115 がビルドされる）
 cmake -S libsensor -B build/libsensor-debug -DCMAKE_BUILD_TYPE=Debug
 cmake --build build/libsensor-debug
-cmake --install build/libsensor-debug --prefix /usr/local
-cmake -S tests/unit/libsensor -B build/test-libsensor -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-I$(pwd)/libsensor/include -I$(pwd)/tests/mocks"
+sudo cmake --install build/libsensor-debug --prefix /usr/local
+sudo ldconfig   # libsensor.so / libads1115.so をローダーに認識させる
+# test_ads1115 が i2c-hal/include を要求するため -I を追加する（落とし穴 #1）
+cmake -S tests/unit/libsensor -B build/test-libsensor -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_CXX_FLAGS="-I$(pwd)/libsensor/include -I$(pwd)/i2c-hal/include -I$(pwd)/tests/mocks"
 cmake --build build/test-libsensor
 ./build/test-libsensor/test_sensor
+./build/test-libsensor/test_ads1115
 ```
 
 ### サニタイザービルドの手順
