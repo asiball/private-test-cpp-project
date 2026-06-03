@@ -83,6 +83,9 @@ int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
     tr.tx_buf        = reinterpret_cast<uintptr_t>(tx);
     tr.rx_buf        = reinterpret_cast<uintptr_t>(rx);
     tr.len           = static_cast<uint32_t>(len);
+    // speed_hz / bits_per_word に 0 を渡すと、この転送では open() で
+    // SPI_IOC_WR_* により設定したデバイス既定値がそのまま使われる
+    // （転送ごとに上書きしたいときだけ非 0 を入れる）。
     tr.speed_hz      = 0;
     tr.bits_per_word = 0;
 
