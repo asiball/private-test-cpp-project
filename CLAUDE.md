@@ -92,7 +92,7 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 
 1. ディレクトリを作り `CMakeLists.txt` を置く（独立してビルド/インストールできる単位にする）。
 2. トップ `CMakeLists.txt` の `foreach(_component ...)` リストに**依存順で**追加（EXISTS ガードで「あるものだけ」ビルド）。
-3. `tests/unit/<name>/` にテスト + `CMakeLists.txt`（既存の standalone 方式を踏襲）。実機が要るテストは `GTEST_SKIP()`。
+3. `tests/unit/<name>/` にテスト + `CMakeLists.txt` + `test-cases.md`（既存の standalone 方式を踏襲）。実機が要るテストは `GTEST_SKIP()`。`test-cases.md` の各 ID は `TEST(Suite, Name)` と 1:1 対応させ、`docs/deliverables/06_test/test-plan.md` §4 のスイート一覧にも 1 行追加する。
 4. `.github/workflows/ci.yml`：ビルド/テストステップ追加、**cppcheck と clang-tidy の対象ファイルに追加**、
    テスト include を **3 系統すべて**に反映（落とし穴 #2）。
 5. `Doxyfile` の `INPUT` にヘッダディレクトリを追加。
