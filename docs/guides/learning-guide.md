@@ -31,11 +31,14 @@ CI設定（`.github/`）まで一貫して追えます。
 | 2. 基本設計 | [基本設計書](../deliverables/02_basic-design/system-architecture.md) | システムの全体構成、コンポーネント配置、ビルド・デプロイ設計 |
 | 3. 詳細設計 | [詳細設計書（spi-hal）](../deliverables/03_detailed-design/spihal-design.md) | SPIドライバコンポーネントのクラス設計、状態遷移 |
 | | [詳細設計書（libsensor）](../deliverables/03_detailed-design/libsensor-design.md) | センサー制御ライブラリのクラス設計、スレッドモデル |
-| 4. インターフェース設計 | [IF仕様書](../deliverables/05_interface-spec/spi-hardware-if.md) | SPI通信の物理配線およびメッセージのプロトコル仕様 |
-| 5. API設計 | [API仕様書（SpiDriver）](../deliverables/04_api-spec/spi-driver-api.md) | SPIドライバが公開する関数・引数の詳細 |
+| 4. API設計 | [API仕様書（SpiDriver）](../deliverables/04_api-spec/spi-driver-api.md) | SPIドライバが公開する関数・引数の詳細 |
 | | [API仕様書（libsensor）](../deliverables/04_api-spec/libsensor-api.md) | センサー制御APIおよびコールバック仕様 |
+| 5. インターフェース設計 | [IF仕様書](../deliverables/05_interface-spec/spi-hardware-if.md) | SPI通信の物理配線およびメッセージのプロトコル仕様 |
 | 6. テスト設計 | [テスト計画書](../deliverables/06_test/test-plan.md) | テスト手法、UT/IT/STの範囲、カバレッジ目標 |
 | 7. 納品・リリース | [リリースノート](../deliverables/07_delivery/release-notes/v1.1.0.md) | バージョンごとの更新履歴、リリース手順 |
+
+> フェーズ番号はディレクトリ構成（`04_api-spec/` → `05_interface-spec/`）と一致させている。
+> README.md の「開発ライフサイクル」図と同じ並びなので、どちらから読んでも齟齬はない。
 
 > 上表は学習用に主要コンポーネント（SpiDriver / libsensor）を抜粋したもの。
 > **全コンポーネント（i2c-hal / gpio / libadxl345 / ADS1115 / device-ctl / kernel / logger）の
@@ -57,6 +60,18 @@ CI設定（`.github/`）まで一貫して追えます。
    - ユニットテストにおいて、実機のSPIドライバなしで動作をテストするために **Google Mock** を使用したモックの定義方法を学べます。
 5. **[tests/unit/](../../tests/unit/)（ユニットテスト）**
    - ドライバやライブラリの動作を担保するためのテストコードです。インターフェースを差し替えてモックで動作確認を行う **依存注入 (DI)** パターンの実践を学べます。
+
+ここまでで「SPI + コマンド型 ADC + PIMPL/DI」という 1 本の縦串を読み切れます。
+さらに視野を広げたい場合は、**同じ設計の枠組みが別の題材でどう引き直されるか**を以下で読み比べてください（いずれも任意コンポーネント）。
+
+6. **[libadxl345/include/adxl345.hpp](../../libadxl345/include/adxl345.hpp) / [libadxl345/src/adxl345.cpp](../../libadxl345/src/adxl345.cpp)（レジスタ型デバイス）**
+   - MCP3008 の「コマンド型」に対し、ADXL345 は **レジスタ型**。`read_reg`/`write_reg`/`update_bits`（read-modify-write）でビット単位に設定する例です。レジスタマップ（[adxl345-register-map.md](../deliverables/05_interface-spec/adxl345-register-map.md)）とコードの 1:1 対応を確認できます。
+7. **[gpio/include/gpio_line.hpp](../../gpio/include/gpio_line.hpp) / [gpio/src/gpio_line.cpp](../../gpio/src/gpio_line.cpp)（割り込み駆動）**
+   - 「ポーリングして待つ」代わりに **epoll でイベントを待つ** 設計です。組み込みらしいイベント駆動の入口として [GPIO 割り込みと epoll](gpio-interrupts-epoll.md) と合わせて読みます。
+8. **[i2c-hal/include/ii2c_driver.hpp](../../i2c-hal/include/ii2c_driver.hpp) / [libsensor/include/ads1115.hpp](../../libsensor/include/ads1115.hpp)（別バスへの引き直し）**
+   - SPI とは別の **I2C バス**で同じ「ADC を読む」仕事をする例です。`ISpiDriver` に対する `II2cDriver`、`Sensor` に対する `Ads1115` という対応で、抽象化の枠組みが再利用される様子が分かります（[I2C と ADS1115](i2c-and-ads1115.md)）。
+
+> 全コンポーネントの詳細設計・API・IF 仕様の対応表は [納品ドキュメント索引 §2](../deliverables/README.md#2-コンポーネント別-対応表ナビ兼整備状況) にあります。
 
 ---
 
