@@ -1,4 +1,8 @@
 #pragma once
+// spi-hal は別コンポーネント。相対パスで直接指すのは、各テストを「インストール済み
+// ライブラリ名でリンクするスタンドアロン configure」方式でビルドするため（CLAUDE.md
+// 落とし穴 #1）。この相対 include なら -I を足さずに ISpiDriver を解決できる。
+// モノレポビルドでは CMake の target_include_directories でも解決される（二重に安全）。
 #include "../../spi-hal/include/ispi_driver.hpp"
 #include "adxl345_reg.hpp"
 
@@ -87,7 +91,7 @@ public:
      * @param addr レジスタアドレス（0x00〜0x3F）
      * @return レジスタ値。転送失敗時は std::nullopt
      */
-    [[nodiscard]] std::optional<uint8_t> read_reg(uint8_t addr);
+    [[nodiscard]] std::optional<uint8_t> read_reg(uint8_t addr) noexcept;
 
     /**
      * @brief 1 バイトレジスタへ書く
@@ -95,7 +99,7 @@ public:
      * @param value 書き込む値
      * @return true: 成功 / false: 転送失敗
      */
-    [[nodiscard]] bool write_reg(uint8_t addr, uint8_t value);
+    [[nodiscard]] bool write_reg(uint8_t addr, uint8_t value) noexcept;
 
     /**
      * @brief レジスタの一部ビットだけを read-modify-write で更新する
@@ -104,7 +108,7 @@ public:
      * @param value 設定値（mask の範囲のみ反映）
      * @return true: 成功 / false: 読み or 書きの転送失敗
      */
-    [[nodiscard]] bool update_bits(uint8_t addr, uint8_t mask, uint8_t value);
+    [[nodiscard]] bool update_bits(uint8_t addr, uint8_t mask, uint8_t value) noexcept;
 
     // ── 高レベル API ──────────────────────────────────────
 
@@ -112,20 +116,20 @@ public:
      * @brief デバイス ID（DEVID, 0x00）を読む
      * @return 正常時 0xE5。転送失敗時は std::nullopt
      */
-    [[nodiscard]] std::optional<uint8_t> read_device_id();
+    [[nodiscard]] std::optional<uint8_t> read_device_id() noexcept;
 
     /**
      * @brief 3 軸の生値を一括（マルチバイト）読み出す
      * @return 各軸の符号付き 16bit 値。転送失敗時は std::nullopt
      */
-    [[nodiscard]] std::optional<AccelRaw> read_raw();
+    [[nodiscard]] std::optional<AccelRaw> read_raw() noexcept;
 
     /**
      * @brief 3 軸の加速度 [g] を読み出す
      * @return 各軸 [g]。転送失敗時は std::nullopt
      * @note 内部で read_raw() の各値に SCALE_G_PER_LSB を掛ける。
      */
-    [[nodiscard]] std::optional<AccelG> read_g();
+    [[nodiscard]] std::optional<AccelG> read_g() noexcept;
 
 private:
     struct Impl;

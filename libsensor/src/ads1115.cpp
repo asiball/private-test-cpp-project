@@ -120,7 +120,7 @@ double Ads1115::full_scale_volts() const noexcept
     return full_scale(impl_->gain);
 }
 
-std::optional<int16_t> Ads1115::read_raw(uint8_t channel)
+std::optional<int16_t> Ads1115::read_raw(uint8_t channel) noexcept
 {
     if (channel >= CHANNEL_COUNT) {
         return std::nullopt;
@@ -160,7 +160,7 @@ std::optional<int16_t> Ads1115::read_raw(uint8_t channel)
     return static_cast<int16_t>(raw);
 }
 
-std::optional<double> Ads1115::read_voltage(uint8_t channel)
+std::optional<double> Ads1115::read_voltage(uint8_t channel) noexcept
 {
     auto raw = read_raw(channel);
     if (!raw) return std::nullopt;

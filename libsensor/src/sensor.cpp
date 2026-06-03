@@ -60,7 +60,7 @@ bool Sensor::is_open() const noexcept
     return impl_->driver->is_open();
 }
 
-std::optional<uint16_t> Sensor::read_raw(uint8_t channel)
+std::optional<uint16_t> Sensor::read_raw(uint8_t channel) noexcept
 {
     if (channel >= CHANNEL_COUNT) {
         return std::nullopt;
@@ -81,7 +81,7 @@ std::optional<uint16_t> Sensor::read_raw(uint8_t channel)
     return raw;
 }
 
-std::optional<double> Sensor::read_voltage(uint8_t channel)
+std::optional<double> Sensor::read_voltage(uint8_t channel) noexcept
 {
     auto raw = read_raw(channel);
     if (!raw) return std::nullopt;
