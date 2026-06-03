@@ -165,6 +165,9 @@ docs/
 4. `tests/mocks/mock_spi_driver.hpp` — モック実装
 5. `tests/unit/` — ユニットテスト
 
+ここから先（レジスタ型 `libadxl345` / 割り込み駆動 `gpio` / 別バス `i2c-hal`+`ads1115`）まで
+広げた読み順は [学習ガイド](docs/guides/learning-guide.md#コードを読む場合のお勧め順序) を参照。
+
 ---
 
 ## クイックスタート
