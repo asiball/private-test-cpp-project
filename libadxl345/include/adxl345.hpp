@@ -20,7 +20,7 @@ namespace embedded {
  * （read_reg / write_reg / update_bits）の上に加速度読み出し API を提供する。
  *
  * MCP3008（レジスタ無しのコマンド型 ADC）とは対照的に、ADXL345 は
- * レジスタマップ（@ref adxl345_reg.hpp）を持ち、設定をビット単位で行う。
+ * レジスタマップ（@ref adxl345_reg.hpp に定義）を持ち、設定をビット単位で行う。
  *
  * - SPI モード: MODE 3（CPOL=1, CPHA=1）
  * - 既定設定: フル分解能（3.9 mg/LSB）+ ±16g レンジ + 測定開始
