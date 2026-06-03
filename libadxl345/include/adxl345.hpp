@@ -74,6 +74,12 @@ public:
      * いずれかに失敗した場合は close して false を返す。
      *
      * @return true: 成功 / false: 失敗（DEVID 不一致・転送失敗など）
+     *
+     * **テストケース（UT-ADXL-008）** — DEVID 一致で DATA_FORMAT/POWER_CTL を設定:
+     * @snippet test_adxl345.cpp UT-ADXL-008
+     *
+     * **テストケース（UT-ADXL-009）** — DEVID 不一致なら false（誤デバイス検出）:
+     * @snippet test_adxl345.cpp UT-ADXL-009
      */
     [[nodiscard]] bool open() noexcept;
 
@@ -90,6 +96,9 @@ public:
      * @brief 1 バイトレジスタを読む
      * @param addr レジスタアドレス（0x00〜0x3F）
      * @return レジスタ値。転送失敗時は std::nullopt
+     *
+     * **テストケース（UT-ADXL-003）** — READ ビット付きアドレスを送り rx[1] を返す:
+     * @snippet test_adxl345.cpp UT-ADXL-003
      */
     [[nodiscard]] std::optional<uint8_t> read_reg(uint8_t addr) noexcept;
 
@@ -98,6 +107,9 @@ public:
      * @param addr  レジスタアドレス（0x00〜0x3F）
      * @param value 書き込む値
      * @return true: 成功 / false: 転送失敗
+     *
+     * **テストケース（UT-ADXL-004）** — R/W=0 でアドレスと値を送る:
+     * @snippet test_adxl345.cpp UT-ADXL-004
      */
     [[nodiscard]] bool write_reg(uint8_t addr, uint8_t value) noexcept;
 
@@ -107,6 +119,9 @@ public:
      * @param mask  更新対象ビット（1 のビットだけ書き換える）
      * @param value 設定値（mask の範囲のみ反映）
      * @return true: 成功 / false: 読み or 書きの転送失敗
+     *
+     * **テストケース（UT-ADXL-005）** — read-modify-write で対象外ビットを保持:
+     * @snippet test_adxl345.cpp UT-ADXL-005
      */
     [[nodiscard]] bool update_bits(uint8_t addr, uint8_t mask, uint8_t value) noexcept;
 
@@ -121,6 +136,9 @@ public:
     /**
      * @brief 3 軸の生値を一括（マルチバイト）読み出す
      * @return 各軸の符号付き 16bit 値。転送失敗時は std::nullopt
+     *
+     * **テストケース（UT-ADXL-006）** — DATAX0 からのマルチバイト読みをリトルエンディアン合成:
+     * @snippet test_adxl345.cpp UT-ADXL-006
      */
     [[nodiscard]] std::optional<AccelRaw> read_raw() noexcept;
 
@@ -128,6 +146,9 @@ public:
      * @brief 3 軸の加速度 [g] を読み出す
      * @return 各軸 [g]。転送失敗時は std::nullopt
      * @note 内部で read_raw() の各値に SCALE_G_PER_LSB を掛ける。
+     *
+     * **テストケース（UT-ADXL-007）** — 3.9mg/LSB でスケールする:
+     * @snippet test_adxl345.cpp UT-ADXL-007
      */
     [[nodiscard]] std::optional<AccelG> read_g() noexcept;
 

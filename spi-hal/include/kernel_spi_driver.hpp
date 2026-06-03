@@ -46,10 +46,18 @@ public:
      *
      * @param cfg 転送速度・ビット幅・モードを指定する Config 構造体
      * @return true: 成功 / false: 失敗（last_errno() で原因を確認）
+     *
+     * **テストケース（UT-KDRV-002）** — 無効なパスでは false を返す:
+     * @snippet test_kernel_spi_driver.cpp UT-KDRV-002
      */
     [[nodiscard]] bool open(const Config& cfg) noexcept override;
 
-    /** @brief デバイスをクローズする。未オープン時は何もしない */
+    /**
+     * @brief デバイスをクローズする。未オープン時は何もしない
+     *
+     * **テストケース（UT-KDRV-005）** — 二重 close は安全:
+     * @snippet test_kernel_spi_driver.cpp UT-KDRV-005
+     */
     void close() noexcept override;
 
     /**
@@ -61,6 +69,9 @@ public:
      * @param rx  受信バッファ（len バイト）
      * @param len 転送バイト数（最大 4096）
      * @return 転送バイト数。エラー時は -1（last_errno() で原因を確認）
+     *
+     * **テストケース（UT-KDRV-006）** — 未オープン時は -1 を返す:
+     * @snippet test_kernel_spi_driver.cpp UT-KDRV-006
      */
     [[nodiscard]] int transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept override;
 

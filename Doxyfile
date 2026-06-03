@@ -22,9 +22,10 @@ RECURSIVE              = YES
 # C++ ヘッダ/実装に加え、common(logger) と kernel(C ドライバ) も網羅対象にする
 FILE_PATTERNS          = *.hpp *.cpp *.h *.c
 
-# snippet タグのソース探索パス
+# snippet タグのソース探索パス（@snippet が参照するテストファイルの場所）
 EXAMPLE_PATH           = tests/unit/spi-hal \
-                         tests/unit/libsensor
+                         tests/unit/libsensor \
+                         tests/unit/libadxl345
 EXAMPLE_RECURSIVE      = NO
 
 # 未ドキュメントのものも出力する（学習用に全部見たい場合は YES）
