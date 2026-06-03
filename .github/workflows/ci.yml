@@ -204,6 +204,22 @@ jobs:
           sudo cmake --install build/libadxl345-cov --prefix /usr/local
           sudo ldconfig
 
+      - name: Build i2c-hal with coverage flags
+        run: |
+          cmake -S i2c-hal -B build/i2chal-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
+          cmake --build build/i2chal-cov -j$(nproc)
+          sudo cmake --install build/i2chal-cov --prefix /usr/local
+
+      - name: Build gpio with coverage flags
+        run: |
+          cmake -S gpio -B build/gpio-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
+          cmake --build build/gpio-cov -j$(nproc)
+          sudo cmake --install build/gpio-cov --prefix /usr/local
+
       - name: Run spi-hal tests (coverage)
         run: |
           # --coverage を付けずに静的ライブラリ libspihal.a (instrumented) と
@@ -240,6 +256,26 @@ jobs:
           cmake --build build/test-libadxl345-cov -j$(nproc)
           ./build/test-libadxl345-cov/test_adxl345 \
             --gtest_output=xml:test-results/libadxl345-unit.xml
+
+      - name: Run i2c-hal tests (coverage)
+        run: |
+          cmake -S tests/unit/i2c-hal -B build/test-i2chal-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/i2c-hal/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          cmake --build build/test-i2chal-cov -j$(nproc)
+          ./build/test-i2chal-cov/test_i2c_driver \
+            --gtest_output=xml:test-results/i2chal-unit.xml
+
+      - name: Run gpio tests (coverage)
+        run: |
+          cmake -S tests/unit/gpio -B build/test-gpio-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/gpio/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          cmake --build build/test-gpio-cov -j$(nproc)
+          ./build/test-gpio-cov/test_gpio_line \
+            --gtest_output=xml:test-results/gpio-unit.xml
 
       - name: Generate coverage report
         run: |
@@ -428,6 +464,21 @@ jobs:
           sudo cmake --install build/libadxl345-asan --prefix /usr/local
           sudo ldconfig
 
+      - name: Build i2c-hal + gpio with ASAN+UBSAN
+        run: |
+          cmake -S i2c-hal -B build/i2chal-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/i2chal-asan -j$(nproc)
+          sudo cmake --install build/i2chal-asan --prefix /usr/local
+          cmake -S gpio -B build/gpio-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/gpio-asan -j$(nproc)
+          sudo cmake --install build/gpio-asan --prefix /usr/local
+
       - name: SPI HAL unit tests (ASAN+UBSAN)
         run: |
           cmake -S tests/unit/spi-hal -B build/test-spihal-asan \
@@ -470,6 +521,30 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           ./build/test-libadxl345-asan/test_adxl345 \
             --gtest_output=xml:test-results/libadxl345-asan.xml
+
+      - name: I2C HAL unit tests (ASAN+UBSAN)
+        run: |
+          cmake -S tests/unit/i2c-hal -B build/test-i2chal-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I${{ github.workspace }}/i2c-hal/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/test-i2chal-asan -j$(nproc)
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-i2chal-asan/test_i2c_driver \
+            --gtest_output=xml:test-results/i2chal-asan.xml
+
+      - name: GPIO unit tests (ASAN+UBSAN)
+        run: |
+          cmake -S tests/unit/gpio -B build/test-gpio-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I${{ github.workspace }}/gpio/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/test-gpio-asan -j$(nproc)
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-gpio-asan/test_gpio_line \
+            --gtest_output=xml:test-results/gpio-asan.xml
 
       # ── TSAN ─────────────────────────────────────────────────
       - name: Build libsensor with TSAN

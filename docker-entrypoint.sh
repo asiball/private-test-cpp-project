@@ -15,7 +15,7 @@ cppcheck \
     --std=c++17 \
     --suppress=missingIncludeSystem \
     --error-exitcode=1 \
-    spi-hal/src/ libsensor/src/ cli/src/ \
+    spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ cli/src/ examples/ \
     && echo "  cppcheck: 問題なし" \
     || echo "  [警告] cppcheck: 問題あり（続行）"
 
