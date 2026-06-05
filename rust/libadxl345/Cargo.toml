@@ -1,0 +1,10 @@
+[package]
+name = "libadxl345"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+log.workspace = true
+spi-hal = { path = "../spi-hal" }

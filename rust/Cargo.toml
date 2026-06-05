@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "common",
+    "spi-hal",
+    "i2c-hal",
+    "gpio",
+    "libsensor",
+    "libadxl345",
+    "cli",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+authors = ["embedded-device-suite contributors"]
+
+[workspace.dependencies]
+thiserror = "1"
+log = "0.4"
+env_logger = "0.11"
+clap = { version = "4", features = ["derive"] }
