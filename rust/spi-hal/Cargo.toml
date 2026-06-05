@@ -9,3 +9,6 @@ thiserror.workspace = true
 log.workspace = true
 embedded-common = { path = "../common" }
 libc = "0.2"
+
+[lints]
+workspace = true

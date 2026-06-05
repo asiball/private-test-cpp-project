@@ -2,6 +2,10 @@
 //!
 //! C++ `adxl345_reg.hpp` に相当。
 //! C++ では `#define` や enum class だったものを Rust では `pub const` で定義。
+//!
+//! レジスタマップは将来の利用を見越して完全に定義してある。
+//! 現在未使用の定数への警告を抑制する。
+#![allow(dead_code)]
 
 // レジスタアドレス
 pub const DEVID: u8 = 0x00;

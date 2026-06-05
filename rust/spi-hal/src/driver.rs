@@ -2,6 +2,10 @@
 //!
 //! C++ の `SpiDriver` クラスに相当。
 //! RAII: `Drop` が `close()` を自動呼び出し。
+//!
+//! Linux カーネルの spidev ioctl を直接呼ぶため `unsafe` が必要。
+//! ioctl 呼び出しはすべてカーネルドキュメントに従った正当な操作のみ行う。
+#![allow(unsafe_code)]
 
 use std::fs::{File, OpenOptions};
 use std::os::unix::io::AsRawFd;
@@ -55,8 +59,13 @@ pub struct LinuxSpiDriver {
 }
 
 impl LinuxSpiDriver {
+    /// 指定パスの spidev デバイスに対するドライバを作成する。`open()` するまで fd は開かれない。
     pub fn new(path: impl Into<String>) -> Self {
-        Self { path: path.into(), file: None, config: None }
+        Self {
+            path: path.into(),
+            file: None,
+            config: None,
+        }
     }
 }
 
@@ -106,7 +115,10 @@ impl SpiDriver for LinuxSpiDriver {
 
     fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), SpiError> {
         if tx.len() != rx.len() {
-            return Err(SpiError::LengthMismatch { tx: tx.len(), rx: rx.len() });
+            return Err(SpiError::LengthMismatch {
+                tx: tx.len(),
+                rx: rx.len(),
+            });
         }
         let f = self.file.as_ref().ok_or(SpiError::NotOpen)?;
         let cfg = self.config.unwrap_or_default();
@@ -114,7 +126,10 @@ impl SpiDriver for LinuxSpiDriver {
         let tr = SpiIocTransfer {
             tx_buf: tx.as_ptr() as u64,
             rx_buf: rx.as_mut_ptr() as u64,
-            len: tx.len() as u32,
+            len: u32::try_from(tx.len()).map_err(|_| SpiError::LengthMismatch {
+                tx: tx.len(),
+                rx: rx.len(),
+            })?,
             speed_hz: cfg.speed_hz,
             delay_usecs: 0,
             bits_per_word: cfg.bits_per_word,
@@ -126,7 +141,11 @@ impl SpiDriver for LinuxSpiDriver {
         };
 
         let ret = unsafe {
-            libc::ioctl(f.as_raw_fd(), spi_ioc_message_1(), &tr as *const SpiIocTransfer)
+            libc::ioctl(
+                f.as_raw_fd(),
+                spi_ioc_message_1(),
+                &tr as *const SpiIocTransfer,
+            )
         };
         if ret < 0 {
             return Err(SpiError::Transfer(std::io::Error::last_os_error()));

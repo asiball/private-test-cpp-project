@@ -7,8 +7,8 @@
 //! PIMPL の代替: Rust の pub(crate)/private フィールドで実装詳細を隠蔽。
 //! DI: `Box<dyn SpiDriver>` / `Box<dyn I2cDriver>` を受け取るコンストラクタ。
 
-pub mod mcp3008;
 pub mod ads1115;
+pub mod mcp3008;
 
-pub use mcp3008::Mcp3008;
 pub use ads1115::{Ads1115, Gain};
+pub use mcp3008::Mcp3008;

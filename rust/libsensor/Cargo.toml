@@ -9,3 +9,6 @@ thiserror.workspace = true
 log.workspace = true
 spi-hal = { path = "../spi-hal" }
 i2c-hal = { path = "../i2c-hal" }
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+# Clippy 設定 (cargo clippy の動作を制御)
+#
+# 相当ツール (C++ 側): cppcheck + clang-tidy
+#
+# ここでは lint の有効/無効の "しきい値" のみ設定する。
+# lint グループの選択は Cargo.toml の [workspace.lints.clippy] で行う。
+
+# 関数の認知的複雑度の上限 (デフォルト 25)
+cognitive-complexity-threshold = 20
+
+# 型の複雑度上限 (デフォルト 250)
+type-complexity-threshold = 200
+
+# 関数引数の上限 (デフォルト 7)
+too-many-arguments-threshold = 6
+
+# 関数の行数上限 (デフォルト 100)
+too-many-lines-threshold = 80

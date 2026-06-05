@@ -5,8 +5,11 @@
 use spi_hal::{LinuxSpiDriver, SpiConfig, SpiDriver, SpiError};
 use thiserror::Error;
 
+/// チャンネル数。
 pub const CHANNEL_COUNT: u8 = 8;
+/// ADC の最大生値 (10 ビット)。
 pub const ADC_MAX: u16 = 1023;
+/// デフォルト基準電圧 [V]。
 pub const DEFAULT_VREF: f64 = 3.3;
 
 // MCP3008 SPI 転送フォーマット (データシート Figure 6-1)
@@ -17,14 +20,18 @@ pub const DEFAULT_VREF: f64 = 3.3;
 const START_BIT: u8 = 0x01;
 const SINGLE_ENDED: u8 = 0x08; // SGL=1: シングルエンドモード
 
+/// MCP3008 ADC ドライバのエラー型。
 #[derive(Debug, Error)]
 pub enum SensorError {
+    /// 下位 SPI 転送エラー。
     #[error("SPI エラー: {0}")]
     Spi(#[from] SpiError),
 
+    /// 指定チャンネルが 0–7 の範囲外。
     #[error("チャンネル番号が範囲外です: {0} (0–7)")]
     InvalidChannel(u8),
 
+    /// `open()` 前に読み出しを試みた。
     #[error("デバイスが開かれていません")]
     NotOpen,
 }
@@ -48,27 +55,37 @@ impl Mcp3008 {
 
     /// テスト / DI 用: `SpiDriver` 実装を直接受け取る。
     pub fn with_driver(driver: Box<dyn SpiDriver>, vref: f64) -> Self {
-        Self { driver, vref, open: false }
+        Self {
+            driver,
+            vref,
+            open: false,
+        }
     }
 
+    /// デバイスを開く。
     pub fn open(&mut self) -> Result<(), SensorError> {
-        let cfg = SpiConfig { speed_hz: 1_350_000, bits_per_word: 8, mode: 0 };
+        let cfg = SpiConfig {
+            speed_hz: 1_350_000,
+            bits_per_word: 8,
+            mode: 0,
+        };
         self.driver.open(&cfg)?;
         self.open = true;
         Ok(())
     }
 
+    /// デバイスを閉じる。
     pub fn close(&mut self) {
         self.driver.close();
         self.open = false;
     }
 
+    /// デバイスが開かれているか返す。
     pub fn is_open(&self) -> bool {
         self.open
     }
 
     /// 生の ADC 値を読み出す (0–1023)。
-    #[must_use]
     pub fn read_raw(&mut self, channel: u8) -> Result<u16, SensorError> {
         if !self.open {
             return Err(SensorError::NotOpen);
@@ -77,7 +94,7 @@ impl Mcp3008 {
             return Err(SensorError::InvalidChannel(channel));
         }
 
-        // tx[0]=START_BIT でスタートビットを最初のバイトに配置する (Bug #1 fix)
+        // tx[0]=START_BIT でスタートビットを最初のバイトに配置する
         // tx[1]: SGL=1, チャンネル番号を D2..D0 として上位ニブルに配置
         let tx = [START_BIT, (SINGLE_ENDED | channel) << 4, 0x00];
         let mut rx = [0u8; 3];
@@ -89,16 +106,17 @@ impl Mcp3008 {
     }
 
     /// 電圧値に変換して読み出す。
-    #[must_use]
     pub fn read_voltage(&mut self, channel: u8) -> Result<f64, SensorError> {
         let raw = self.read_raw(channel)?;
         Ok(raw as f64 / ADC_MAX as f64 * self.vref)
     }
 
+    /// 現在の基準電圧 [V] を返す。
     pub fn vref(&self) -> f64 {
         self.vref
     }
 
+    /// 基準電圧 [V] を変更する。
     pub fn set_vref(&mut self, vref: f64) {
         self.vref = vref;
     }

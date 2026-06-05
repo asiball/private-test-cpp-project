@@ -8,3 +8,6 @@ license.workspace = true
 thiserror.workspace = true
 log.workspace = true
 spi-hal = { path = "../spi-hal" }
+
+[lints]
+workspace = true

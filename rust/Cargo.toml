@@ -20,3 +20,29 @@ thiserror = "1"
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4", features = ["derive"] }
+
+# ---------------------------------------------------------------------------
+# ワークスペース共通 lint 設定
+# 相当ツール (C++ 側): cppcheck + clang-tidy
+# ---------------------------------------------------------------------------
+[workspace.lints.rust]
+unsafe_code = "warn"          # unsafe ブロックをすべて可視化
+unused_results = "warn"       # Result/Option の戻り値放置を警告
+missing_docs = "warn"         # pub アイテムにドキュメント必須
+non_ascii_idents = "deny"     # 非 ASCII 識別子は禁止 (コメントは日本語 OK)
+
+[workspace.lints.clippy]
+# 基本グループ (デフォルトの "deny warnings" 相当)
+all     = { level = "warn", priority = -2 }
+
+# 組み込みコードで問題ない慣習を許可
+module_name_repetitions = "allow"  # SpiError in spi-hal は慣習的
+missing_errors_doc      = "allow"  # thiserror が Display を自動生成
+missing_panics_doc      = "allow"  # パニック箇所の列挙は任意
+must_use_candidate      = "allow"  # 推奨量が多すぎるため手動で付ける
+
+# 組み込みで特に重要な追加 lint
+cast_possible_truncation = "warn"  # u32→u8 などの切り捨てを明示
+cast_sign_loss           = "warn"  # i32→u32 の符号消失を警告
+integer_division         = "warn"  # 整数除算の切り捨てを明示
+

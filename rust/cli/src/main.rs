@@ -39,7 +39,10 @@ fn main() {
         std::process::exit(1);
     }
 
-    println!("device-ctl (Rust) — デバイス: {} vref: {}V", args.device, args.vref);
+    println!(
+        "device-ctl (Rust) — デバイス: {} vref: {}V",
+        args.device, args.vref
+    );
 
     // ---- 背景モニタスレッド (C++ の monitor thread に相当) ----
     // Mutex<bool> が停止フラグを兼ねる。true = 停止要求。
@@ -60,9 +63,7 @@ fn main() {
             loop {
                 // 60 秒待機、または停止通知で即時抜け出す
                 let guard = lock.lock().unwrap();
-                let (guard, _) = cvar
-                    .wait_timeout(guard, Duration::from_secs(60))
-                    .unwrap();
+                let (guard, _) = cvar.wait_timeout(guard, Duration::from_secs(60)).unwrap();
 
                 if *guard {
                     // 停止フラグが立っている → ループを抜ける
@@ -82,7 +83,7 @@ fn main() {
     let stdin = io::stdin();
     loop {
         print!("\n[1] チャンネル指定読み出し  [2] 全チャンネルスキャン  [q] 終了 > ");
-        io::stdout().flush().ok();
+        let _ = io::stdout().flush();
 
         let mut line = String::new();
         if stdin.lock().read_line(&mut line).is_err() {
@@ -91,14 +92,17 @@ fn main() {
         match line.trim() {
             "1" => {
                 print!("チャンネル番号 (0–7): ");
-                io::stdout().flush().ok();
+                let _ = io::stdout().flush();
                 let mut ch_str = String::new();
                 if stdin.lock().read_line(&mut ch_str).is_err() {
                     continue;
                 }
                 let ch: u8 = match ch_str.trim().parse() {
                     Ok(v) => v,
-                    Err(_) => { eprintln!("無効な入力"); continue; }
+                    Err(_) => {
+                        eprintln!("無効な入力");
+                        continue;
+                    }
                 };
                 match sensor.read_voltage(ch) {
                     Ok(v) => println!("CH{}: {:.4} V", ch, v),
@@ -121,6 +125,6 @@ fn main() {
     // 背景スレッドを停止して終了を待つ (Bug #9 fix: join で出力を確実にフラッシュ)
     *pair.0.lock().unwrap() = true;
     pair.1.notify_all();
-    monitor_handle.join().ok();
+    let _ = monitor_handle.join();
     println!("終了しました");
 }

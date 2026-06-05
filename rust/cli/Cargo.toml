@@ -14,3 +14,6 @@ log.workspace = true
 env_logger.workspace = true
 libsensor = { path = "../libsensor" }
 embedded-common = { path = "../common" }
+
+[lints]
+workspace = true

@@ -15,6 +15,7 @@
 6. [このプロジェクトで実際に発見されたバグと Rust での対処](#6-実際に発見されたバグ)
 7. [移行戦略: 全書き換えか部分移行か](#7-移行戦略)
 8. [ローカルで試す最短手順](#8-ローカルで試す)
+9. [組み込み Rust 完全解説 — Web バックエンドだけではない](#9-組み込み-rust-完全解説webバックエンドだけではない)
 
 ---
 
@@ -322,6 +323,8 @@ RTOS や bare-metal 環境での利用が可能です。
 このリポジトリの `libsensor` / `libadxl345` は `std` を使っていますが、
 `std::thread::sleep` を除けば `no_std` 対応は容易です。
 
+詳細は [§9 組み込み Rust 完全解説](#9-組み込み-rust-完全解説webバックエンドだけではない) を参照してください。
+
 ### 3.5 ツールチェーンの統一
 
 ```sh
@@ -583,6 +586,244 @@ ls -lh target/armv7-unknown-linux-gnueabihf/release/device-ctl
 
 ---
 
+## 9. 組み込み Rust 完全解説 — Web バックエンドだけではない
+
+> **よくある誤解:** "Rust は Web サーバや CLI ツール向けで、組み込みには使えない"
+>
+> **実態:** Rust は設計当初から**メモリ安全・ゼロコストが必要な低レイヤ**を主ターゲットとしており、
+> Linux カーネル・ bare-metal マイコン・RTOS 上のすべてで動作します。
+
+### 9.1 Rust の動作環境マップ
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Rust が動く場所                                              │
+│                                                               │
+│  ① Bare-metal (OS なし)                                      │
+│     Cortex-M0〜M33 / RISC-V / AVR / Xtensa (ESP32)          │
+│     → no_std + 割り込みハンドラ + HAL クレート               │
+│                                                               │
+│  ② RTOS 上                                                   │
+│     FreeRTOS / Zephyr / RTEMS                                 │
+│     → embassy (async) または std::thread 相当の API          │
+│                                                               │
+│  ③ 組み込み Linux (このリポジトリの対象)                      │
+│     Raspberry Pi / i.MX8 / AM64x など                        │
+│     → std が使える。ioctl / spidev / i2c-dev を直接呼べる    │
+│                                                               │
+│  ④ Linux カーネル                                            │
+│     kernel 6.1 以降で Rust モジュールが正式サポート           │
+│                                                               │
+│  ⑤ サーバ / デスクトップ / Web (WASM)                        │
+│     tokio / axum / wasm-bindgen 等                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 9.2 `std` あり vs `no_std` の違い
+
+| 項目 | `std` あり (組み込み Linux) | `no_std` (bare-metal) |
+|------|----|----|
+| ヒープ (`Vec`/`Box`) | 使える | `alloc` クレートを追加すれば使える |
+| スレッド (`std::thread`) | 使える | 使えない (RTOS タスクで代替) |
+| ファイル/ソケット | 使える | 使えない |
+| panic ハンドラ | デフォルトで abort | 自前で `#[panic_handler]` が必要 |
+| バイナリサイズ | 数百 KB〜 | 数 KB〜 (フラッシュが少ない MCU でも動く) |
+
+**このリポジトリ** は組み込み Linux なので `std` フル利用。
+bare-metal へ移植する場合は `std::thread::sleep` を `embassy_time::Timer::after` に
+置き換えるだけで大半のコードが再利用できます。
+
+---
+
+### 9.3 bare-metal Cortex-M の具体例
+
+ARM Cortex-M (STM32, nRF52, RP2040 等) での最小構成:
+
+```toml
+# Cargo.toml (bare-metal クレート)
+[package]
+name = "my-sensor-fw"
+edition = "2021"
+
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = "0.7"      # スタートアップ + ベクタテーブル
+embedded-hal = "1.0"     # SPI/I2C の抽象トレイト
+panic-halt = "0.2"       # panic → 無限ループ
+
+[profile.release]
+opt-level = "z"          # サイズ最優先
+lto = true
+```
+
+```rust
+#![no_std]
+#![no_main]
+
+use cortex_m_rt::entry;
+use embedded_hal::spi::SpiBus;
+
+#[entry]
+fn main() -> ! {
+    // HAL から SPI ペリフェラルを取得
+    let peripherals = stm32f4xx_hal::pac::Peripherals::take().unwrap();
+    let spi = /* HAL 固有の初期化 */;
+
+    // libsensor の SpiDriver トレイトを embedded-hal の SpiBus に対応させれば
+    // read_raw() などをそのまま再利用できる
+    loop {
+        // センサー読み出し
+    }
+}
+```
+
+C での同等コード (STM32 HAL C):
+```c
+/* HAL_SPI_TransmitReceive() を直接呼ぶ。型安全なし、エラーチェックは手動 */
+HAL_SPI_TransmitReceive(&hspi1, tx, rx, len, HAL_MAX_DELAY);
+```
+
+**Rust の優位点:** `embedded-hal` トレイトで SPI の実装を差し替えられるため、
+テストは PC 上のモック、実機は STM32 HAL というコードが**同じ型**で書けます。
+
+---
+
+### 9.4 embassy — 組み込み向け async フレームワーク
+
+`embassy` は bare-metal 環境でも `async/await` を使えるフレームワークです。
+RTOS の代替として、割り込み駆動の並行処理をコードで表現できます。
+
+```rust
+// embassy での SPI センサー読み出し (bare-metal, no RTOS)
+#[embassy_executor::task]
+async fn sensor_task(mut spi: Spi<'static, SPI1, DMA1_CH3, DMA1_CH2>) {
+    loop {
+        let mut rx = [0u8; 3];
+        spi.transfer(&mut rx, &[0x01, 0x80, 0x00]).await.unwrap();
+        let raw = ((rx[1] as u16 & 0x03) << 8) | rx[2] as u16;
+
+        // 次の読み出しまで非同期待機 (CPU は他タスクを実行)
+        embassy_time::Timer::after_millis(100).await;
+    }
+}
+```
+
+```c
+/* FreeRTOS での同等コード — RTOS API を直接使う必要がある */
+void sensor_task(void *pvParameters) {
+    for (;;) {
+        HAL_SPI_TransmitReceive(&hspi1, tx, rx, 3, HAL_MAX_DELAY);
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+```
+
+**embassy の特徴:**
+- タスクのスタックは静的確保 — `no_std` でもゼロ動的アロケーション
+- `async/await` で並行処理を記述 — 割り込みの複雑な状態機械が不要
+- `embassy-time`, `embassy-usb`, `embassy-net` など豊富なドライバ
+
+---
+
+### 9.5 embedded-hal エコシステム
+
+`embedded-hal` は C の「HAL ライブラリ」をトレイトとして定義したクレートです。
+**同じドライバが異なるマイコンで動く**のが最大の利点。
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  embedded-hal エコシステム                                   │
+│                                                               │
+│  ┌──────────────┐   使う    ┌──────────────────────────┐    │
+│  │ MCP3008 driver│ ──────→ │  SpiDevice (trait)        │    │
+│  │ ADS1115 driver│          │  I2c (trait)              │    │
+│  └──────────────┘           └──────────────────────────┘    │
+│         ↑ 同じコード                ↑ 実装は複数             │
+│                          ┌──────────┴──────────┐            │
+│                     STM32 HAL           linux-embedded-hal   │
+│                     (bare-metal)        (Linux /dev/spidevX) │
+└─────────────────────────────────────────────────────────────┘
+```
+
+このリポジトリの `SpiDriver` トレイトは `embedded-hal::spi::SpiBus` に近い設計です。
+`embedded-hal 1.0` に準拠すればドライバクレートを crates.io で公開・共有できます。
+
+**主要なエコシステムクレート:**
+
+| 用途 | クレート | 説明 |
+|------|---------|------|
+| SPI/I2C/UART トレイト | `embedded-hal` | ドライバ実装の共通 API |
+| Linux 実装 | `linux-embedded-hal` | `/dev/spidevX`, `/dev/i2cY` |
+| STM32 実装 | `stm32f4xx-hal` | STM32F4 シリーズ |
+| nRF52 実装 | `nrf52840-hal` | Nordic Semiconductor |
+| RP2040 実装 | `rp2040-hal` | Raspberry Pi Pico |
+| async 対応 | `embedded-hal-async` | embassy 向け |
+| テスト用モック | `embedded-hal-mock` | PC 上でユニットテスト |
+
+---
+
+### 9.6 RISC-V サポート
+
+Rust は RISC-V を**ファーストクラス**でサポートしています。
+
+```sh
+# ESP32-C3 (RISC-V) 向けターゲットを追加
+rustup target add riscv32imc-unknown-none-elf
+
+# SiFive HiFive1 (RISC-V 32bit) 向け
+rustup target add riscv32imac-unknown-none-elf
+
+# Linux on RISC-V (64bit)
+rustup target add riscv64gc-unknown-linux-gnu
+```
+
+C の場合は GCC/Clang に RISC-V ターゲットを別途インストールする必要がありますが、
+Rust は `rustup target add` の 1 コマンドで完結します。
+
+---
+
+### 9.7 このリポジトリの位置付け (組み込み Linux)
+
+```
+組み込みの深さ                    Rust の対応
+─────────────────────────────────────────────────────────
+① サーバ / クラウド              ← tokio, axum (Web も)
+② デスクトップ / CLI             ← std, clap
+③ 組み込み Linux (本リポジトリ)  ← std + ioctl 直呼び  ✓ここ
+④ RTOS                           ← embassy + no_std
+⑤ bare-metal MCU                 ← cortex-m + no_std
+⑥ Linux カーネルモジュール       ← rust-for-linux (6.1+)
+─────────────────────────────────────────────────────────
+```
+
+このリポジトリは**組み込み Linux** であり、すでに「組み込み」領域にあります。
+Rust はここで C/C++ と同等以上のハードウェア制御能力を持ちつつ、
+コンパイル時のメモリ安全保証という追加の恩恵を提供します。
+
+---
+
+### 9.8 C との比較まとめ
+
+| 観点 | C | Rust |
+|------|---|------|
+| ゼロコスト抽象 | ○ | ○ |
+| 割り込みハンドラ | ○ | ○ (`#[interrupt]`) |
+| DMA / ハードウェアレジスタ | ○ (`volatile`) | ○ (`svd2rust` で型安全) |
+| メモリ安全 (コンパイル時) | △ (sanitizer が別途必要) | ○ |
+| スタックサイズ | 数百バイト〜 | 数百バイト〜 (同等) |
+| バイナリサイズ | 極小可能 | `opt-level = "z"` + LTO で同等 |
+| 割り込み安全な共有状態 | 手動 (`volatile`, `__disable_irq`) | `Mutex<CriticalSection>` で型安全 |
+| CMSIS / SVD | `*.h` ヘッダ | `svd2rust` で自動生成 |
+| デバッグ (GDB/probe-rs) | ○ | ○ (`probe-rs` が GDB 相当) |
+| コンパイル速度 | 速い | 遅い (増分ビルドで緩和) |
+
+**結論:** 組み込みでの Rust 採用障壁は「ランタイムの重さ」ではなく「学習コスト」と「エコシステムの成熟度」です。
+ハードウェア制御能力は C と同等で、メモリ安全の保証が上乗せされます。
+
+---
+
 ## 参考リンク
 
 - [The Embedded Rust Book](https://docs.rust-embedded.org/book/) — 組み込み Rust の公式ガイド
@@ -590,3 +831,7 @@ ls -lh target/armv7-unknown-linux-gnueabihf/release/device-ctl
 - [linux-embedded-hal](https://crates.io/crates/linux-embedded-hal) — embedded-hal の Linux 実装
 - [embassy](https://embassy.dev/) — 組み込み向け async フレームワーク
 - [cxx](https://cxx.rs/) — C++/Rust 相互運用
+- [probe-rs](https://probe.rs/) — Rust 向けデバッグプローブツール (J-Link / CMSIS-DAP 対応)
+- [svd2rust](https://docs.rs/svd2rust) — SVD ファイルから型安全なペリフェラル API を生成
+- [embedded-hal](https://docs.rs/embedded-hal) — ドライバ共通トレイト定義
+- [Awesome Embedded Rust](https://github.com/rust-embedded/awesome-embedded-rust) — 組み込み向けクレート一覧

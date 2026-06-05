@@ -1,11 +1,10 @@
 //! SPI ハードウェア抽象化レイヤー
 //!
 //! C++ 対応:
-//!   `ISpiDriver`  → `SpiDriver` トレイト
-//!   `SpiDriver`   → `LinuxSpiDriver` 構造体  (/dev/spidevX.Y)
-//!   PIMPL + DI    → トレイトオブジェクト / ジェネリクス (所有権で代替)
+//!   `ISpiDriver`    → `SpiDriver` トレイト
+//!   `SpiDriver`     → `LinuxSpiDriver` 構造体 (/dev/spidevX.Y)
 //!   `[[nodiscard]]` → `#[must_use]`
-//!   noexcept      → `Result<_, SpiError>` (失敗は値で伝達)
+//!   noexcept        → `Result<_, SpiError>` (失敗は値で伝達)
 
 mod driver;
 
@@ -19,17 +18,26 @@ use thiserror::Error;
 /// Rust では型付きエラーで意図を明示する。
 #[derive(Debug, Error)]
 pub enum SpiError {
+    /// デバイスファイルのオープンまたは ioctl 設定に失敗。
     #[error("デバイスを開けませんでした: {0}")]
     Open(#[source] std::io::Error),
 
+    /// SPI 全二重転送の ioctl に失敗。
     #[error("SPI 転送に失敗しました: {0}")]
     Transfer(#[source] std::io::Error),
 
+    /// `open()` を呼ばずに `transfer()` を呼んだ。
     #[error("デバイスが開かれていません")]
     NotOpen,
 
+    /// `tx` と `rx` のバッファ長が一致しない。
     #[error("バッファ長が不正です: tx={tx} rx={rx}")]
-    LengthMismatch { tx: usize, rx: usize },
+    LengthMismatch {
+        /// 送信バッファ長
+        tx: usize,
+        /// 受信バッファ長
+        rx: usize,
+    },
 }
 
 /// SPI バス設定。`ISpiDriver::Config` に相当。
@@ -45,7 +53,11 @@ pub struct SpiConfig {
 
 impl Default for SpiConfig {
     fn default() -> Self {
-        Self { speed_hz: 1_000_000, bits_per_word: 8, mode: 0 }
+        Self {
+            speed_hz: 1_000_000,
+            bits_per_word: 8,
+            mode: 0,
+        }
     }
 }
 
@@ -57,12 +69,12 @@ pub trait SpiDriver: Send {
     /// デバイスを設定付きで開く。
     fn open(&mut self, config: &SpiConfig) -> Result<(), SpiError>;
 
-    /// デバイスを閉じる。Drop で自動的に呼ばれる設計を推奨。
+    /// デバイスを閉じる。`Drop` で自動的に呼ばれる設計を推奨。
     fn close(&mut self);
 
     /// 全二重転送。`tx` と `rx` は同じ長さでなければならない。
-    #[must_use]
     fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), SpiError>;
 
+    /// デバイスが現在開かれているか返す。
     fn is_open(&self) -> bool;
 }

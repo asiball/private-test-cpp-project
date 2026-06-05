@@ -13,7 +13,10 @@ struct MockSpiDriver {
 
 impl MockSpiDriver {
     fn new() -> Self {
-        Self { responses: VecDeque::new(), open: false }
+        Self {
+            responses: VecDeque::new(),
+            open: false,
+        }
     }
 
     fn push(&mut self, resp: Vec<u8>) {
@@ -82,7 +85,10 @@ fn test_open_wrong_devid_leaves_closed() {
     mock.push(vec![0x00, 0x00]); // DEVID = 0x00
     let mut s = Adxl345::with_driver(Box::new(mock));
     let _ = s.open();
-    assert!(!s.is_open(), "初期化失敗後も is_open() が true になっている");
+    assert!(
+        !s.is_open(),
+        "初期化失敗後も is_open() が true になっている"
+    );
 }
 
 #[test]
@@ -100,7 +106,7 @@ fn test_read_raw_returns_xyz() {
     mock.push(vec![0x00, 0xE5]); // DEVID
     mock.push(vec![0x00, 0x00]); // DATA_FORMAT write
     mock.push(vec![0x00, 0x00]); // POWER_CTL write
-    mock.push(resp);             // read_raw バーストリード
+    mock.push(resp); // read_raw バーストリード
 
     let mut s = Adxl345::with_driver(Box::new(mock));
     s.open().unwrap();
@@ -127,7 +133,11 @@ fn test_read_g_scales_correctly() {
     s.open().unwrap();
     let g = s.read_g().unwrap();
     let expected = 100.0 * SCALE_G_PER_LSB;
-    assert!((g.x - expected).abs() < 1e-9, "x軸スケーリングが不正: {}", g.x);
+    assert!(
+        (g.x - expected).abs() < 1e-9,
+        "x軸スケーリングが不正: {}",
+        g.x
+    );
 }
 
 #[test]
