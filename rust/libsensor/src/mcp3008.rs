@@ -9,9 +9,13 @@ pub const CHANNEL_COUNT: u8 = 8;
 pub const ADC_MAX: u16 = 1023;
 pub const DEFAULT_VREF: f64 = 3.3;
 
-/// MCP3008 SPI 転送フォーマット内の定数。
+// MCP3008 SPI 転送フォーマット (データシート Figure 6-1)
+//   tx[0] = START_BIT (0x01)
+//   tx[1] = SGL/DIF=1 (単一端) + D2..D0 (チャンネル選択) を上位ニブルに配置
+//   tx[2] = 0x00 (ダミー、変換完了クロックを供給)
+//   rx[1] の bit1-0 が B9,B8、rx[2] が B7..B0
 const START_BIT: u8 = 0x01;
-const SINGLE_ENDED: u8 = 0x08;
+const SINGLE_ENDED: u8 = 0x08; // SGL=1: シングルエンドモード
 
 #[derive(Debug, Error)]
 pub enum SensorError {
@@ -73,15 +77,13 @@ impl Mcp3008 {
             return Err(SensorError::InvalidChannel(channel));
         }
 
-        // MCP3008 SPI プロトコル: 3バイト転送
-        //   byte0: 0x00 (スタートビット前のパディング)
-        //   byte1: START_BIT
-        //   byte2: SGL/DIF=1 + D2..D0 (チャンネル選択)
-        let tx = [0x00, START_BIT, (SINGLE_ENDED | channel) << 4];
+        // tx[0]=START_BIT でスタートビットを最初のバイトに配置する (Bug #1 fix)
+        // tx[1]: SGL=1, チャンネル番号を D2..D0 として上位ニブルに配置
+        let tx = [START_BIT, (SINGLE_ENDED | channel) << 4, 0x00];
         let mut rx = [0u8; 3];
         self.driver.transfer(&tx, &mut rx)?;
 
-        // 10 ビット結果を rx[1..2] から抽出
+        // 10 ビット結果: rx[1] の下位 2 ビット (B9,B8) + rx[2] の全ビット (B7..B0)
         let raw = ((rx[1] as u16 & 0x03) << 8) | rx[2] as u16;
         Ok(raw)
     }
@@ -93,10 +95,6 @@ impl Mcp3008 {
         Ok(raw as f64 / ADC_MAX as f64 * self.vref)
     }
 
-    /// 非同期読み出し。C++ の `read_raw_async()` に相当。
-    /// Rust ではクロージャを受け取りスレッドを spawn する。
-    /// `std::thread::spawn` は所有権を要求するため、ドライバの参照を clone 不可。
-    /// 実際の非同期用途には tokio や async-std を推奨。
     pub fn vref(&self) -> f64 {
         self.vref
     }

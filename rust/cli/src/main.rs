@@ -4,12 +4,14 @@
 //!
 //! C++ との対応:
 //!   std::thread + condition_variable の背景モニタ → std::thread + Condvar
-//!   atomic<bool> stop フラグ                      → Arc<AtomicBool>
-//!   std::mutex + std::unique_lock                  → Arc<Mutex<()>> + Condvar
+//!   std::mutex + std::unique_lock + stop flag     → Arc<(Mutex<bool>, Condvar)>
+//!
+//! Bug #8 fix: AtomicBool と Mutex<bool> の二重管理を廃止。
+//!   Mutex<bool> を唯一の停止フラグとし、ロック下で `true` にしてから notify_all。
+//! Bug #9 fix: JoinHandle を保存して join() で終了を確認。
 
 use std::io::{self, BufRead, Write};
 use std::sync::{Arc, Condvar, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use clap::Parser;
@@ -40,12 +42,10 @@ fn main() {
     println!("device-ctl (Rust) — デバイス: {} vref: {}V", args.device, args.vref);
 
     // ---- 背景モニタスレッド (C++ の monitor thread に相当) ----
-    // Arc<Mutex> + Arc<Condvar> で60秒ごとに CH0 を読む
-    let stop_flag = Arc::new(AtomicBool::new(false));
+    // Mutex<bool> が停止フラグを兼ねる。true = 停止要求。
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
 
-    {
-        let stop = Arc::clone(&stop_flag);
+    let monitor_handle = {
         let pair2 = Arc::clone(&pair);
         let device = args.device.clone();
         let vref = args.vref;
@@ -58,22 +58,25 @@ fn main() {
 
             let (lock, cvar) = &*pair2;
             loop {
-                // 60 秒待機 (停止通知で即時抜け出す)
+                // 60 秒待機、または停止通知で即時抜け出す
                 let guard = lock.lock().unwrap();
-                let (_guard, _timed_out) = cvar
+                let (guard, _) = cvar
                     .wait_timeout(guard, Duration::from_secs(60))
                     .unwrap();
 
-                if stop.load(Ordering::Relaxed) {
+                if *guard {
+                    // 停止フラグが立っている → ループを抜ける
                     break;
                 }
+                drop(guard);
+
                 match bg_sensor.read_voltage(0) {
                     Ok(v) => println!("[モニタ] CH0: {:.4} V", v),
                     Err(e) => eprintln!("[モニタ] 読み出しエラー: {e}"),
                 }
             }
-        });
-    }
+        })
+    };
 
     // ---- インタラクティブメニュー ----
     let stdin = io::stdin();
@@ -115,8 +118,9 @@ fn main() {
         }
     }
 
-    // 背景スレッドを停止
-    stop_flag.store(true, Ordering::Relaxed);
+    // 背景スレッドを停止して終了を待つ (Bug #9 fix: join で出力を確実にフラッシュ)
+    *pair.0.lock().unwrap() = true;
     pair.1.notify_all();
+    monitor_handle.join().ok();
     println!("終了しました");
 }

@@ -5,24 +5,29 @@
 
 use libsensor::Mcp3008;
 use spi_hal::{SpiConfig, SpiDriver, SpiError};
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
 /// テスト用モック SPI ドライバ。
 /// C++ `MockSpiDriver` (GTest Mock) に相当する Rust 実装。
+///
+/// `recorded_tx` は `Arc<Mutex<_>>` 経由でテスト側からも参照できる (Bug #10 fix)。
 struct MockSpiDriver {
-    /// transfer() が返すレスポンスバイト列のキュー
-    responses: std::collections::VecDeque<Vec<u8>>,
-    /// transfer() に渡された tx バイト列の記録
-    pub recorded_tx: Vec<Vec<u8>>,
-    pub is_open: bool,
+    responses: VecDeque<Vec<u8>>,
+    recorded_tx: Arc<Mutex<Vec<Vec<u8>>>>,
+    is_open: bool,
 }
 
 impl MockSpiDriver {
-    fn new() -> Self {
-        Self {
-            responses: std::collections::VecDeque::new(),
-            recorded_tx: Vec::new(),
+    /// モックと TX ログへの共有ハンドルを返す。
+    fn new() -> (Self, Arc<Mutex<Vec<Vec<u8>>>>) {
+        let recorded_tx = Arc::new(Mutex::new(Vec::new()));
+        let mock = Self {
+            responses: VecDeque::new(),
+            recorded_tx: Arc::clone(&recorded_tx),
             is_open: false,
-        }
+        };
+        (mock, recorded_tx)
     }
 
     fn push_response(&mut self, resp: Vec<u8>) {
@@ -41,7 +46,7 @@ impl SpiDriver for MockSpiDriver {
     }
 
     fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), SpiError> {
-        self.recorded_tx.push(tx.to_vec());
+        self.recorded_tx.lock().unwrap().push(tx.to_vec());
         if let Some(resp) = self.responses.pop_front() {
             let len = rx.len().min(resp.len());
             rx[..len].copy_from_slice(&resp[..len]);
@@ -56,8 +61,8 @@ impl SpiDriver for MockSpiDriver {
 
 #[test]
 fn test_open_close() {
-    let mock = Box::new(MockSpiDriver::new());
-    let mut sensor = Mcp3008::with_driver(mock, 3.3);
+    let (mock, _tx_log) = MockSpiDriver::new();
+    let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
 
     assert!(!sensor.is_open());
     sensor.open().expect("open に失敗");
@@ -66,36 +71,58 @@ fn test_open_close() {
     assert!(!sensor.is_open());
 }
 
+/// Bug #1 fix の検証: tx[0]=0x01 (START_BIT) であることを確認。
 #[test]
-fn test_read_raw_ch0() {
-    let mut mock = MockSpiDriver::new();
-    // MCP3008 応答: rx[1]のbit1-0 と rx[2] で 10bit 値を構成
-    // 例: 0x01FF = 511 (フルスケールの約半分)
+fn test_read_raw_tx_frame_ch0() {
+    let (mut mock, tx_log) = MockSpiDriver::new();
+    // rx[1] bit1-0 = 0x01, rx[2] = 0xFF → raw = (1<<8)|0xFF = 511
     mock.push_response(vec![0x00, 0x01, 0xFF]);
 
     let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
     sensor.open().unwrap();
     let raw = sensor.read_raw(0).expect("read_raw に失敗");
-    // rx[1] & 0x03 = 0x01, rx[2] = 0xFF → (1 << 8) | 255 = 511
+
     assert_eq!(raw, 511);
+
+    // TX フレームの検証:
+    //   tx[0] = 0x01 (START_BIT — Bug #1 で 0x00 だったものが修正済み)
+    //   tx[1] = (SINGLE_ENDED=0x08 | ch=0) << 4 = 0x80
+    //   tx[2] = 0x00 (ダミー)
+    let txs = tx_log.lock().unwrap();
+    // open() 時の transfer はないので txs[0] が read_raw の転送
+    assert_eq!(txs[0], vec![0x01, 0x80, 0x00], "CH0 tx フレームが不正");
+}
+
+#[test]
+fn test_read_raw_tx_frame_ch3() {
+    let (mut mock, tx_log) = MockSpiDriver::new();
+    mock.push_response(vec![0x00, 0x00, 0x00]);
+
+    let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
+    sensor.open().unwrap();
+    sensor.read_raw(3).unwrap();
+
+    // CH3: (0x08 | 0x03) << 4 = 0xB0
+    let txs = tx_log.lock().unwrap();
+    assert_eq!(txs[0], vec![0x01, 0xB0, 0x00], "CH3 tx フレームが不正");
 }
 
 #[test]
 fn test_read_voltage_converts_correctly() {
-    let mut mock = MockSpiDriver::new();
-    // ADC_MAX = 1023 → フルスケール = vref = 3.3V
+    let (mut mock, _) = MockSpiDriver::new();
+    // rx[1] bit1-0=0x03, rx[2]=0xFF → raw = 1023 = ADC_MAX → vref=3.3V
     mock.push_response(vec![0x00, 0x03, 0xFF]);
 
     let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
     sensor.open().unwrap();
     let v = sensor.read_voltage(0).expect("read_voltage に失敗");
-    // (1023 / 1023) * 3.3 = 3.3
+    // 1023 / 1023 * 3.3 = 3.3
     assert!((v - 3.3).abs() < 1e-6, "電圧変換が不正: {}", v);
 }
 
 #[test]
 fn test_invalid_channel_returns_error() {
-    let mock = MockSpiDriver::new();
+    let (mock, _) = MockSpiDriver::new();
     let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
     sensor.open().unwrap();
     let result = sensor.read_raw(8); // チャンネル8は範囲外
@@ -104,7 +131,7 @@ fn test_invalid_channel_returns_error() {
 
 #[test]
 fn test_read_without_open_returns_error() {
-    let mock = MockSpiDriver::new();
+    let (mock, _) = MockSpiDriver::new();
     let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
     let result = sensor.read_raw(0);
     assert!(result.is_err());
@@ -112,7 +139,7 @@ fn test_read_without_open_returns_error() {
 
 #[test]
 fn test_vref_setter() {
-    let mock = MockSpiDriver::new();
+    let (mock, _) = MockSpiDriver::new();
     let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
     assert!((sensor.vref() - 3.3).abs() < 1e-9);
     sensor.set_vref(5.0);

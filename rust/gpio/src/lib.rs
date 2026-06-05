@@ -33,7 +33,7 @@ pub enum Edge {
 }
 
 // Linux GPIO chardev v2 uABI 定数 (linux/gpio.h)
-const GPIO_GET_LINEINFO_IOCTL: u64 = 0xC100_B405;
+// GPIO_V2_GET_LINE_IOCTL: _IOWR(0xB4, 7, gpio_v2_line_request) where sizeof = 592
 const GPIO_V2_GET_LINE_IOCTL: u64 = 0xC250_B407;
 const GPIO_V2_LINE_FLAG_INPUT: u64 = 1 << 1;
 const GPIO_V2_LINE_FLAG_EDGE_RISING: u64 = 1 << 8;
@@ -65,7 +65,12 @@ impl GpioLine {
     }
 
     /// エッジ要求。C++ の `request_edge_events()` に相当。
+    ///
+    /// Bug #6 fix: 再呼び出し時の fd リーク防止のため、まず既存の fd を解放する。
     pub fn request_edge_events(&mut self, edge: Edge) -> Result<(), GpioError> {
+        // 既存の fd をすべて解放してから再取得 (二重呼び出し時の fd リーク防止)
+        self.close();
+
         use std::ffi::CString;
         let path = CString::new(self.chip_path.as_str()).unwrap();
 
@@ -87,15 +92,28 @@ impl GpioLine {
             Edge::Both => flags |= GPIO_V2_LINE_FLAG_EDGE_RISING | GPIO_V2_LINE_FLAG_EDGE_FALLING,
         }
 
-        // v2 ライン要求 (gpio_v2_line_request)
-        // フィールド: offsets[64], consumer[32], config, num_lines, event_buffer_size, padding[5], fd
+        // gpio_v2_line_config (linux/gpio.h)
+        //   flags:      u64        = 8 bytes
+        //   num_attrs:  u32        = 4 bytes
+        //   _padding:   [u32; 5]   = 20 bytes
+        //   attrs:      [u8; 240]  = 240 bytes  (Bug #2 fix: 24 bytes × 10 entries)
+        // Total = 272 bytes
         #[repr(C)]
         struct GpioV2LineConfig {
             flags: u64,
             num_attrs: u32,
             _padding: [u32; 5],
-            attrs: [u64; 10 * 2], // gpio_v2_line_config_attribute[10]
+            attrs: [u8; 240], // gpio_v2_line_config_attribute[10] の正しいサイズ
         }
+
+        // gpio_v2_line_request (linux/gpio.h) — 合計 592 bytes
+        //   offsets[64]:          256 bytes
+        //   consumer[32]:          32 bytes
+        //   config (272 bytes):   272 bytes
+        //   num_lines:              4 bytes
+        //   event_buffer_size:      4 bytes
+        //   _padding[5]:           20 bytes
+        //   fd:                     4 bytes
         #[repr(C)]
         struct GpioV2LineRequest {
             offsets: [u32; 64],
@@ -120,6 +138,7 @@ impl GpioLine {
         };
         if ret < 0 {
             self.last_errno = unsafe { *libc::__errno_location() };
+            // chip_fd は close() で解放される
             return Err(GpioError::Request(std::io::Error::last_os_error()));
         }
         self.line_fd = req.fd;

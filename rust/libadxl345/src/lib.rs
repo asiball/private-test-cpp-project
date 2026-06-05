@@ -60,22 +60,50 @@ impl Adxl345 {
     }
 
     /// デバイスを開いて ID 検証・初期設定を行う。
+    ///
+    /// Bug #5 fix: `self.open = true` は全初期化が完了した後にのみセットする。
+    /// SPI オープン後に DEVID 読み取りや設定書き込みが失敗した場合は
+    /// `self.open` を `false` のまま維持し、ドライバを閉じて返る。
     pub fn open(&mut self) -> Result<(), Adxl345Error> {
         let cfg = SpiConfig { speed_hz: 4_000_000, bits_per_word: 8, mode: 3 };
         self.driver.open(&cfg)?;
-        self.open = true;
+        // self.open = true はここでは設定しない
 
         // DEVID を確認 (0xE5 でなければエラー)
-        let id = self.read_reg(DEVID)?.ok_or(Adxl345Error::NotOpen)?;
+        // read_reg は self.open を参照するため、直接 transfer を呼ぶ
+        let id = {
+            let tx = [DEVID | 0x80, 0x00];
+            let mut rx = [0u8; 2];
+            self.driver.transfer(&tx, &mut rx).map_err(|e| {
+                self.driver.close();
+                Adxl345Error::Spi(e)
+            })?;
+            rx[1]
+        };
+
         if id != 0xE5 {
             self.driver.close();
-            self.open = false;
             return Err(Adxl345Error::WrongDeviceId(id));
         }
 
-        // ±16g フル解像度モード, 測定開始
-        self.write_reg(DATA_FORMAT, FULL_RES | RANGE_16G)?;
-        self.write_reg(POWER_CTL, MEASURE)?;
+        // 初期化: ±16g フル解像度モード設定
+        let write_init = |driver: &mut Box<dyn SpiDriver>, addr: u8, value: u8| {
+            let tx = [addr & 0x7F, value];
+            let mut rx = [0u8; 2];
+            driver.transfer(&tx, &mut rx).map_err(Adxl345Error::Spi)
+        };
+
+        if let Err(e) = write_init(&mut self.driver, DATA_FORMAT, FULL_RES | RANGE_16G) {
+            self.driver.close();
+            return Err(e);
+        }
+        if let Err(e) = write_init(&mut self.driver, POWER_CTL, MEASURE) {
+            self.driver.close();
+            return Err(e);
+        }
+
+        // 全初期化完了後に open フラグをセット
+        self.open = true;
         log::debug!("ADXL345 initialized");
         Ok(())
     }
@@ -99,7 +127,7 @@ impl Adxl345 {
         if !self.open {
             return Ok(None);
         }
-        // ADXL345 SPI 読み出し: アドレスバイトのbit7=1 (READ フラグ)
+        // ADXL345 SPI 読み出し: アドレスバイトの bit7=1 (READ フラグ)
         let tx = [addr | 0x80, 0x00];
         let mut rx = [0u8; 2];
         self.driver.transfer(&tx, &mut rx)?;

@@ -20,6 +20,10 @@ const MODE_SINGLE: u16 = 0x0100; // 単発モード
 const DR_128SPS: u16 = 0x0080; // データレート 128 SPS
 const COMP_QUE_DISABLE: u16 = 0x0003; // コンパレータ無効
 
+// 変換完了待ちポーリングの最大試行回数 (Bug #4 fix)
+// 128 SPS では 1 変換 ≈ 7.8 ms。1 ms ポーリングで 100 回 = 100 ms まで待つ。
+const MAX_POLL_RETRIES: u32 = 100;
+
 // ALERT/RDY ピンを変換完了通知に使う設定 (Hi/Lo しきい値反転)
 const LO_THRESH_CONV_RDY: u16 = 0x0000;
 const HI_THRESH_CONV_RDY: u16 = 0x8000;
@@ -34,6 +38,9 @@ pub enum Ads1115Error {
 
     #[error("デバイスが開かれていません")]
     NotOpen,
+
+    #[error("変換完了タイムアウト ({}ms 経過)", MAX_POLL_RETRIES)]
+    Timeout,
 }
 
 /// PGA (プログラマブルゲインアンプ) 設定。
@@ -129,17 +136,16 @@ impl Ads1115 {
 
         self.write_reg(REG_CONFIG, config)?;
 
-        // 変換完了待機: OS ビットがセットされるまでポーリング
-        loop {
+        // 変換完了待機: OS ビットがセットされるまでポーリング (Bug #4 fix: タイムアウト追加)
+        for _ in 0..MAX_POLL_RETRIES {
             let cfg = self.read_reg(REG_CONFIG)?;
             if cfg & 0x8000 != 0 {
-                break;
+                let raw = self.read_reg(REG_CONVERSION)? as i16;
+                return Ok(raw);
             }
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
-
-        let raw = self.read_reg(REG_CONVERSION)? as i16;
-        Ok(raw)
+        Err(Ads1115Error::Timeout)
     }
 
     /// 電圧値に変換して読み出す。

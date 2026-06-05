@@ -28,25 +28,45 @@ pub enum I2cError {
 pub trait I2cDriver: Send {
     fn open(&mut self, addr: u16) -> Result<(), I2cError>;
     fn close(&mut self);
-    fn write(&mut self, data: &[u8]) -> Result<usize, I2cError>;
+    /// 全バイトを書き込む。部分書き込みはエラーとして扱う (Bug #3 fix)。
+    fn write(&mut self, data: &[u8]) -> Result<(), I2cError>;
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, I2cError>;
-    /// I2C リピーテッドスタート (レジスタポインタ書き込み → 読み出し)。
+    /// I2C Repeated Start: 書き込み→読み出しをアトミックに実行 (I2C_RDWR ioctl)。
     fn write_read(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), I2cError>;
     fn is_open(&self) -> bool;
 }
 
 // linux/i2c-dev.h
 const I2C_SLAVE: u64 = 0x0703;
+const I2C_RDWR: u64 = 0x0707;
+const I2C_M_RD: u16 = 0x0001;
+
+/// linux/i2c.h `i2c_msg`
+#[repr(C)]
+struct I2cMsg {
+    addr: u16,
+    flags: u16,
+    len: u16,
+    buf: *mut u8,
+}
+
+/// linux/i2c-dev.h `i2c_rdwr_ioctl_data`
+#[repr(C)]
+struct I2cRdwrIoctlData {
+    msgs: *mut I2cMsg,
+    nmsgs: u32,
+}
 
 /// `/dev/i2c-N` を直接操作する Linux 実装。
 pub struct LinuxI2cDriver {
     bus_path: String,
     file: Option<File>,
+    addr: u16,
 }
 
 impl LinuxI2cDriver {
     pub fn new(bus_path: impl Into<String>) -> Self {
-        Self { bus_path: bus_path.into(), file: None }
+        Self { bus_path: bus_path.into(), file: None, addr: 0 }
     }
 }
 
@@ -71,6 +91,7 @@ impl I2cDriver for LinuxI2cDriver {
         }
 
         self.file = Some(f);
+        self.addr = addr;
         log::debug!("I2C opened: {} addr=0x{:02X}", self.bus_path, addr);
         Ok(())
     }
@@ -81,10 +102,11 @@ impl I2cDriver for LinuxI2cDriver {
         }
     }
 
-    fn write(&mut self, data: &[u8]) -> Result<usize, I2cError> {
+    /// 全バイトを確実に書き込む。`write()` は部分書き込みを返しうるため `write_all` を使用 (Bug #3 fix)。
+    fn write(&mut self, data: &[u8]) -> Result<(), I2cError> {
         use std::io::Write as _;
         let f = self.file.as_mut().ok_or(I2cError::NotOpen)?;
-        f.write(data).map_err(I2cError::Write)
+        f.write_all(data).map_err(I2cError::Write)
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, I2cError> {
@@ -93,14 +115,41 @@ impl I2cDriver for LinuxI2cDriver {
         f.read(buf).map_err(I2cError::Read)
     }
 
+    /// I2C Repeated Start を I2C_RDWR ioctl で実現 (Bug #7 fix)。
+    ///
+    /// STOP→START の 2 トランザクション分割ではなく、
+    /// ひとつの Combined Format (Sr) トランザクションとしてカーネルに発行する。
     fn write_read(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), I2cError> {
-        self.write(tx)?;
-        let n = self.read(rx)?;
-        if n != rx.len() {
-            return Err(I2cError::Read(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                format!("期待 {} バイト, 受信 {} バイト", rx.len(), n),
-            )));
+        let f = self.file.as_ref().ok_or(I2cError::NotOpen)?;
+
+        // tx は一時バッファにコピーして i2c_msg の buf ポインタを有効にする
+        let mut tx_buf = tx.to_vec();
+
+        let mut msgs = [
+            I2cMsg {
+                addr: self.addr,
+                flags: 0,           // WRITE
+                len: tx_buf.len() as u16,
+                buf: tx_buf.as_mut_ptr(),
+            },
+            I2cMsg {
+                addr: self.addr,
+                flags: I2C_M_RD,    // READ
+                len: rx.len() as u16,
+                buf: rx.as_mut_ptr(),
+            },
+        ];
+
+        let mut data = I2cRdwrIoctlData {
+            msgs: msgs.as_mut_ptr(),
+            nmsgs: 2,
+        };
+
+        let ret = unsafe {
+            libc::ioctl(f.as_raw_fd(), I2C_RDWR as libc::c_ulong, &mut data)
+        };
+        if ret < 0 {
+            return Err(I2cError::Read(std::io::Error::last_os_error()));
         }
         Ok(())
     }
