@@ -58,12 +58,41 @@ process(buf);      // コンパイルエラー: buf はもう使えない
 
 ## 2. 設計パターンの対応
 
+> **C のみのエンジニアへ:** このセクションは C++ コードと Rust コードを並べて比較しています。
+> C++ を知らなくても読めるように各所に補足を入れています。
+> 以下は本セクションで登場する C++ 用語のクイックリファレンスです。
+>
+> | C++ 用語 | 意味 | C での近似 |
+> |---|---|---|
+> | 純粋仮想クラス | 実装を持たない「型の約束書き」 | 関数ポインタを並べた構造体 |
+> | vtable | 仮想関数の実装先アドレスを格納するテーブル | 関数ポインタの配列 |
+> | PIMPL | ヘッダに実装詳細を出さないイディオム | 不完全型ポインタ (`struct Foo;`) |
+> | ABI | バイナリレベルの互換性 (`.so` の差し替え可能性) | — |
+> | RAII | リソース取得=初期化、解放=デストラクタで自動化 | `goto err` クリーンアップ |
+> | `std::optional<T>` | 値が「ある/ない」を表す型 | 番兵値 (`-1`, `NULL`) |
+> | `[[nodiscard]]` | 戻り値を無視してはいけない属性 | (C23 の `[[nodiscard]]` と同等) |
+> | `noexcept` | 「この関数は例外を投げない」宣言 | C は例外がないので不要 |
+
+---
+
 ### 2.1 インターフェース (純粋仮想クラス → トレイト)
 
-C++ では「抽象インターフェース」を純粋仮想クラスで表現します。
+C では「インターフェース」を**関数ポインタを持つ構造体**で模倣します。
+C++ の純粋仮想クラスは、これを言語機能として提供したものです。
+
+```c
+// C: 関数ポインタのテーブルで「インターフェース」を模倣
+typedef struct {
+    int  (*open)    (void *ctx, uint32_t speed_hz);
+    int  (*transfer)(void *ctx, const uint8_t *tx, uint8_t *rx, size_t len);
+    int  (*is_open) (void *ctx);
+    void *ctx;   // ← "self" に相当するコンテキストポインタ
+} SpiDriver;
+```
 
 ```cpp
 // C++: ISpiDriver (spi-hal/include/ispi_driver.hpp)
+// 「純粋仮想クラス」= 実装を持たない、型の約束書き
 class ISpiDriver {
 public:
     virtual ~ISpiDriver() = default;
@@ -79,23 +108,41 @@ Rust では **トレイト (trait)** が同じ役割を果たします。
 ```rust
 // Rust: SpiDriver (rust/spi-hal/src/lib.rs)
 pub trait SpiDriver: Send {
+    // &mut self = C の「第一引数 void *ctx (書き込み可)」に相当
     fn open(&mut self, config: &SpiConfig) -> Result<(), SpiError>;
-    #[must_use]
     fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), SpiError>;
+    // &self = C の「第一引数 const void *ctx (読み取り専用)」に相当
     fn is_open(&self) -> bool;
 }
 ```
 
 **違い:**
-- C++ の vtable → Rust の `dyn Trait` (動的ディスパッチ) または ジェネリクス (静的ディスパッチ)
-- C++ の `[[nodiscard]]` → Rust の `#[must_use]`
-- C++ の `noexcept` + bool 戻り値 → Rust の `Result<T, E>` (エラーは型で表現)
+- C の関数ポインタテーブル / C++ の vtable (仮想関数アドレステーブル) → Rust の `dyn Trait` (動的ディスパッチ) またはジェネリクス (静的ディスパッチ)
+- C++ の `[[nodiscard]]` → Rust の `#[must_use]` (戻り値を無視するとコンパイル警告)
+- C の `errno` + 戻り値 `-1` / C++ の `noexcept` + bool 戻り値 → Rust の `Result<T, E>` (成功/失敗を型で表現)
+- `&mut self` : 自分自身への可変参照 (C の `void *ctx` で状態を書き換えることに相当)
+- `&self` : 自分自身への不変参照 (C の `const void *ctx` に相当)
 
 ---
 
 ### 2.2 PIMPL パターン → 不要になる
 
-C++ では ABI 安定化とコンパイル時間削減のために PIMPL を使います。
+**PIMPL (Pointer to IMPLementation)** とは、ヘッダに実装の詳細を出さないための C++ のイディオムです。
+C でも「不完全型ポインタ」で同じことをします。
+
+```c
+// C: 不完全型ポインタで実装詳細をヘッダに出さない (C の PIMPL 相当)
+// sensor.h — 公開ヘッダ。struct の中身は知らせない
+typedef struct SensorImpl Sensor;
+Sensor *sensor_new(const char *spi_path, double vref);
+int     sensor_read_raw(Sensor *s, uint8_t channel, uint16_t *out);
+void    sensor_free(Sensor *s);
+
+// sensor.c — 実装ファイルにのみ struct の中身を定義
+struct SensorImpl { int fd; double vref; /* OS 依存フィールドなど */ };
+```
+
+C++ の PIMPL はこれを `unique_ptr<Impl>` (ヒープ上の自動解放ポインタ) でやります。
 
 ```cpp
 // C++: sensor.hpp (公開ヘッダ — 実装詳細を隠蔽)
@@ -105,7 +152,7 @@ public:
     [[nodiscard]] std::optional<uint16_t> read_raw(uint8_t channel) noexcept;
 private:
     struct Impl;
-    std::unique_ptr<Impl> impl_;  // ← PIMPL
+    std::unique_ptr<Impl> impl_;  // ← PIMPL: ヒープ上の実装へのポインタ
 };
 ```
 
@@ -122,9 +169,13 @@ struct Sensor::Impl {
 Rust では **モジュール境界が可視性を制御する** ため、PIMPL は不要です。
 
 ```rust
-// Rust: mcp3008.rs — private フィールドはモジュール外から見えない
+// Rust: mcp3008.rs — pub でないフィールドはモジュール外から見えない
 pub struct Mcp3008 {
-    driver: Box<dyn SpiDriver>,  // pub でなければ外部クレートから見えない
+    // Box<dyn SpiDriver>:
+    //   Box<T>       = ヒープ確保 + 自動解放 (C の malloc+free を自動化)
+    //   dyn SpiDriver = SpiDriver トレイトを実装した「何か」を実行時に解決
+    //   C の「void *ctx + 関数ポインタテーブルへのポインタ」に相当
+    driver: Box<dyn SpiDriver>,
     vref: f64,
     open: bool,
 }
@@ -132,37 +183,47 @@ pub struct Mcp3008 {
 
 **効果:**
 - ヘッダファイルが不要 → コンパイル単位の概念自体が変わる
-- `unique_ptr` の `new/delete` も不要
+- `unique_ptr` の `new/delete` も不要 (C では `sensor_new`/`sensor_free` に相当)
 - `owns_driver` フラグも不要 (所有権をコンパイラが追跡)
 
 ---
 
 ### 2.3 依存性注入 (DI) → Box<dyn Trait>
 
-テスト時にモックを注入するパターン:
+**依存性注入 (Dependency Injection)** とは、テストと本番で「実装の中身」を差し替えるパターンです。
+C では関数ポインタを引数で渡すことで実現します。
+
+```c
+// C: 関数ポインタ構造体を外から渡すことで「モック」を注入
+int sensor_init(SpiDriver *driver, double vref);  // driver は外から差し込む
+
+// テストでは偽の SpiDriver を渡す:
+SpiDriver mock = { .transfer = mock_transfer_fn, .ctx = &mock_state };
+sensor_init(&mock, 3.3);
+```
 
 ```cpp
-// C++: モックを注入するコンストラクタ
-Sensor(ISpiDriver* driver, double vref); // テスト用
-Sensor(const std::string& path, double vref); // 本番用
+// C++: GTest/GMock (C++ 向けテストフレームワーク) でモックを注入
+Sensor(ISpiDriver* driver, double vref); // テスト用コンストラクタ
+Sensor(const std::string& path, double vref); // 本番用コンストラクタ
 
-// テストでは:
-MockSpiDriver mock;
-EXPECT_CALL(mock, transfer(...)).WillOnce(Return(3));
+MockSpiDriver mock;                              // モック(偽ドライバ)を生成
+EXPECT_CALL(mock, transfer(...)).WillOnce(Return(3)); // 返す値を事前設定
 Sensor s(&mock, 3.3);
 ```
 
 ```rust
-// Rust: Box<dyn SpiDriver> でモックを注入
+// Rust: Box<dyn SpiDriver> でモックを注入 (C の関数ポインタ構造体渡しに相当)
 pub fn with_driver(driver: Box<dyn SpiDriver>, vref: f64) -> Self { ... }
 
-// テストでは:
+// テストでは手書きの MockSpiDriver を渡す:
 let (mock, tx_log) = MockSpiDriver::new();
-mock.push_response(vec![0x00, 0x01, 0xFF]);
+mock.push_response(vec![0x00, 0x01, 0xFF]);  // 返すバイト列をあらかじめセット
 let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
 ```
 
 **GTest/GMock との違い:**
+- GTest/GMock は C++ 向けのテスト・モックフレームワーク。Rust には `cargo test` が標準で付属。
 - Rust にはマクロベースのモックフレームワーク (`mockall` クレート) もあるが、
   手書きモックも簡単なので小規模プロジェクトでは不要
 
@@ -170,20 +231,39 @@ let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
 
 ### 2.4 RAII → Drop トレイト
 
-C++ のデストラクタと Rust の `Drop` はほぼ同じです。
+**RAII (Resource Acquisition Is Initialization):** C++ のイディオムで、
+「リソースの取得=オブジェクト初期化、リソースの解放=デストラクタで自動化」すること。
+C での `goto err` クリーンアップパターンと同じ目的です。
+
+```c
+// C: goto err でリソースを確実に解放する (RAII の手動版)
+int do_work(void) {
+    int fd = open("/dev/spidev0.0", O_RDWR);
+    if (fd < 0) return -1;
+
+    uint8_t *buf = malloc(128);
+    if (!buf) { close(fd); return -1; }  // 忘れると fd がリーク
+
+    // ... 処理 ...
+    free(buf);
+    close(fd);
+    return 0;
+}
+```
 
 ```cpp
-// C++: デストラクタで fd を閉じる
-SpiDriver::~SpiDriver() {
+// C++: デストラクタでスコープを抜けると自動で close() が呼ばれる
+SpiDriver::~SpiDriver() {  // デストラクタ = スコープ終了時に自動呼び出し
     if (fd_ >= 0) close(fd_);
 }
 ```
 
 ```rust
 // Rust: Drop トレイトで同じことを実現
+// スコープを抜けると自動で drop() が呼ばれる (C++ のデストラクタと同等)
 impl Drop for LinuxSpiDriver {
     fn drop(&mut self) {
-        self.close();  // fd を閉じる
+        self.close();  // fd を閉じる — goto err が不要になる
     }
 }
 ```
@@ -196,7 +276,18 @@ impl Drop for LinuxSpiDriver {
 
 ### 2.5 エラー処理 → Result<T, E>
 
-C++ の `noexcept` + 戻り値エラーパターンが Rust では型安全になります。
+C では `errno` + 戻り値 `-1` でエラーを伝えます。これが Rust では型安全になります。
+
+```c
+// C: errno + 戻り値 -1 でエラーを伝える
+int fd = open("/dev/spidev0.0", O_RDWR);
+if (fd < 0) {
+    perror("open failed");  // errno を参照して表示 — 呼び忘れると原因不明のまま
+    return -1;
+}
+// 問題: errno は次の関数呼び出しで上書きされる
+//       戻り値を無視してもコンパイラは何も言わない
+```
 
 ```cpp
 // C++: 成否を bool で返し、詳細は last_errno() で取る
@@ -205,12 +296,14 @@ int last_errno() const noexcept;  // 呼び忘れると情報が消える
 ```
 
 ```rust
-// Rust: エラー内容を型として返す — 無視するとコンパイル警告
+// Rust: 成功値とエラーを 1 つの型 Result<T, E> にまとめて返す
+// Result<(), SpiError> は「成功なら空値 ()、失敗なら SpiError」という型
 pub fn open(&mut self, config: &SpiConfig) -> Result<(), SpiError>;
 
 // 呼び出し側:
-sensor.open(&cfg)?;          // エラーなら即座に呼び出し元に伝播
-// または
+sensor.open(&cfg)?;  // ? 演算子 = エラーなら即座に呼び出し元へ return Err(...)
+                     // C で書けば: if (ret < 0) return ret; の連続に相当
+// または明示的に分岐:
 match sensor.open(&cfg) {
     Ok(()) => { /* 成功 */ }
     Err(SpiError::Open(e)) => eprintln!("開けません: {e}"),
@@ -219,56 +312,94 @@ match sensor.open(&cfg) {
 ```
 
 **型付きエラーの恩恵:**
-- `last_errno()` の呼び忘れがない
-- エラーの種類をパターンマッチで網羅的に処理
-- `thiserror` クレートで自動的に `Display` 実装
+- `errno` の上書き問題がない (エラー情報は戻り値の中に入っている)
+- `Result` を無視するとコンパイル警告 (`#[must_use]`)
+- エラーの種類をパターンマッチで網羅的に処理 (ケース漏れが警告になる)
+- `thiserror` クレートで自動的にエラー文字列 (`Display`) を実装
 
 ---
 
 ### 2.6 std::optional → Option<T>
 
+C では「値がない」を番兵値 (`-1`, `NULL`, `0xFFFF`) で表しますが、
+見落としても検出できません。
+
+```c
+// C: 番兵値 -1 で「値なし」を表現
+int16_t read_sensor(uint8_t ch);  // 失敗時は -1 を返す
+
+int16_t v = read_sensor(0);
+// -1 チェックを忘れても動いてしまう (バグの温床)
+use_value((uint16_t)v);
+```
+
 ```cpp
-// C++
+// C++: std::optional<T> = 「値がある / ない」を型で表現
+// T には実際の値の型を入れる。uint16_t なら 0〜65535 を正常値として扱える
 [[nodiscard]] std::optional<uint16_t> read_raw(uint8_t channel) noexcept;
 
 auto val = sensor.read_raw(0);
-if (val) { use(*val); }
+if (val) { use(*val); }  // val を確認せず *val を使おうとするとコンパイル警告
 ```
 
 ```rust
-// Rust
+// Rust: Option<T> = C++ の std::optional<T> とほぼ同等
+// Some(value) = 値がある、None = 値がない
 pub fn read_raw(&mut self, channel: u8) -> Result<u16, SensorError>;
 
-// Option はデバイス未接続時など「値がない」が正常な場合に使う
+// Option はエラーではなく「値がない」が正常な場合に使う
+// 例: デバイスが未接続のときレジスタ値は存在しない
 pub fn read_reg(&mut self, addr: u8) -> Result<Option<u8>, Adxl345Error>;
 ```
 
-**Rust の `Option<T>` = C++ の `std::optional<T>` とほぼ同じ。**
-`None` を無視してコンパイルすることはできない。
+**Rust の `Option<T>` は C++ の `std::optional<T>` とほぼ同じ。**
+`None` の中身を取り出す前に必ず存在チェックが必要で、忘れるとコンパイルエラー。
+番兵値の見落としがコンパイル時に防がれる。
 
 ---
 
 ### 2.7 スレッド安全 → コンパイル時保証
 
+C では `pthread_mutex_t` + `volatile` 変数でスレッド間共有を管理しますが、
+ロック忘れをコンパイラは検出できません。
+
+```c
+// C: pthread で共有フラグを管理 — ロック忘れは実行時まで発覚しない
+static volatile bool     stop_flag = false;
+static pthread_mutex_t   mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t    cv  = PTHREAD_COND_INITIALIZER;
+
+// ← mutex と flag が別々に存在。「セットで使う」はプログラマの約束事
+pthread_mutex_lock(&mtx);
+stop_flag = true;          // ロックを忘れるとデータ競合 — valgrind/TSAN で事後検出
+pthread_cond_signal(&cv);
+pthread_mutex_unlock(&mtx);
+```
+
 ```cpp
-// C++: std::mutex を使い忘れるとデータ競合 — 実行時まで検出できない
+// C++: 3 つの変数をセットで管理するのは人間のルール
 std::atomic<bool> stop_flag_;
 std::mutex mtx_;
 std::condition_variable cv_;
-// ↑ 3 つをセットで管理するのは人間のルール
 ```
 
 ```rust
 // Rust: Mutex に包まれていないデータは別スレッドに送れない (コンパイルエラー)
-// Arc<(Mutex<bool>, Condvar)> — 停止フラグと通知が一体化
+// Arc<T>    = 複数スレッドで共有できる参照カウントポインタ (pthread の共有変数に相当)
+//             C++ の shared_ptr のスレッド安全版
+// Mutex<T>  = データ T をロックで保護する型 (pthread_mutex_t 相当)
+//             ロックなしでデータにアクセスするコードはコンパイルエラー
+// Condvar   = 条件変数 (pthread_cond_t 相当)
 let pair = Arc::new((Mutex::new(false), Condvar::new()));
+// ↑ 停止フラグ(bool)と条件変数が 1 つの Arc に入っているため、
+//   「セットで使う」がコンパイラによって強制される
 ```
 
 **`Send` / `Sync` トレイト:**
-- `Send`: 別スレッドに所有権を移せる型
-- `Sync`: 複数スレッドから参照できる型
+- `Send`: 別スレッドに所有権を移せる型 (スレッド間で値を渡してよい)
+- `Sync`: 複数スレッドから同時に参照できる型 (共有読み取りが安全)
 - これを実装していない型を別スレッドに渡そうとするとコンパイルエラー
-- ThreadSanitizer 不要で同等の保証が得られる
+- TSAN (ThreadSanitizer) なしで同等の保証が得られる
 
 ---
 
@@ -305,16 +436,30 @@ let _ = sensor.read_raw(0);
 
 ### 3.3 ゼロコスト抽象
 
-C++ のテンプレートと同様に、Rust のジェネリクスはモノモーフィズム (単相化) で展開されます。
-`Box<dyn Trait>` は動的ディスパッチ (vtable)、`impl Trait` は静的ディスパッチです。
+Rust のジェネリクスは**モノモーフィズム (単相化)** で展開されます。
+これは「型ごとに別のコードを生成してインライン化」する仕組みで、
+C のマクロや `void *` + 関数ポインタと比べて実行時オーバーヘッドがありません。
+
+```c
+// C: void * + 関数ポインタで汎用化 → 実行時に間接呼び出し (コスト有)
+void read_with_driver(SpiDriver *d) {
+    d->transfer(d->ctx, tx, rx, len);  // ← 関数ポインタ経由
+}
+```
 
 ```rust
-// 動的ディスパッチ (C++ の仮想関数相当): 実行時コスト有
+// 動的ディスパッチ (C の関数ポインタ経由呼び出し / C++ の仮想関数と同等)
+// dyn Trait = 実行時にどの実装を呼ぶか決める → 関数ポインタテーブル経由の呼び出し
 fn read_with_driver(d: &mut Box<dyn SpiDriver>) { ... }
 
-// 静的ディスパッチ (C++ のテンプレート相当): ゼロコスト
+// 静的ディスパッチ (C のマクロ / C++ のテンプレートと同等): ゼロコスト
+// <D: SpiDriver> = コンパイル時に型が確定し、直接呼び出しにインライン化される
 fn read_with_driver<D: SpiDriver>(d: &mut D) { ... }
 ```
+
+どちらを選ぶかはトレードオフです:
+- `dyn Trait` → バイナリサイズ小、実行時コスト微増 (関数ポインタ経由)
+- ジェネリクス → 実行時ゼロコスト、バイナリサイズ増 (型ごとにコードが生成される)
 
 ### 3.4 組み込み (no_std) サポート
 
@@ -398,30 +543,45 @@ Linux カーネルモジュールの Rust 対応 (`rust-for-linux`) は 6.1 以�
 
 **推奨:** カーネルモジュールは C のまま残し、ユーザースペースのドライバ層から Rust 化する。
 
-### 4.4 C++ 独自機能の代替が必要
+### 4.4 C/C++ 独自機能の代替が必要
 
-| C++17/20 機能 | Rust での代替 |
-|---|---|
-| `std::optional<T>` | `Option<T>` — ほぼ同等 |
-| `std::variant<T...>` | `enum` (タグ付きユニオン) |
-| `std::string_view` | `&str` |
-| `std::span<T>` | `&[T]` |
-| `std::thread` | `std::thread` (ほぼ同等) |
-| テンプレート | ジェネリクス + トレイト |
-| `constexpr` | `const` / `const fn` |
-| 構造化束縛 | パターンマッチ `let (a, b) = ...` |
+| C/C++ | Rust での代替 | 補足 |
+|---|---|---|
+| 番兵値 (`-1`, `NULL`) | `Option<T>` | `None` の見落としがコンパイルエラー |
+| `errno` + 戻り値 `-1` | `Result<T, E>` | エラーの種類が型として残る |
+| `goto err` クリーンアップ | `Drop` トレイト | スコープ抜けで自動実行 |
+| `void *` + 関数ポインタ | `Box<dyn Trait>` | 型安全な動的ディスパッチ |
+| `#define` 定数 | `const` / `enum` | 型付き、スコープあり |
+| `std::optional<T>` | `Option<T>` — ほぼ同等 | — |
+| `std::variant<T...>` | `enum` (タグ付きユニオン) | — |
+| `std::string_view` | `&str` | — |
+| `std::span<T>` | `&[T]` | — |
+| テンプレート | ジェネリクス + トレイト | — |
+| `constexpr` | `const` / `const fn` | — |
 
 ### 4.5 C ライブラリとの相互運用 (FFI)
 
-既存の C ライブラリを Rust から呼ぶには **FFI (Foreign Function Interface)** が必要で、
-`unsafe` ブロックが増えます。
+**FFI (Foreign Function Interface):** 異なる言語間でコードを呼び合う仕組み。
+既存の C ライブラリを Rust から呼ぶには `unsafe` ブロックが必要です。
 
 ```rust
 // libc の open/ioctl を呼ぶには unsafe が必要
+// unsafe = 「Rust のメモリ安全保証をここでは一時的に外す」という宣言
+//          中の正しさはプログラマが責任を持つ (C と同じ状況)
 let fd = unsafe { libc::open(path, libc::O_RDONLY) };
 ```
 
-`bindgen` ツールで C ヘッダから自動生成できますが、
+C プログラマにとっては逆方向の利点もあります。
+Rust で書いたライブラリを C から呼ぶことも可能なので、
+段階的な移行 (C 側は変えずに内部だけ Rust 化) が可能です。
+
+```rust
+// Rust の関数を C から呼べるようにエクスポート
+#[unsafe(no_mangle)]
+pub extern "C" fn sensor_read_raw(handle: *mut Mcp3008, ch: u8) -> i32 { ... }
+```
+
+`bindgen` ツールで C ヘッダから Rust バインディングを自動生成できますが、
 ポインタ管理は人間が正しさを保証する必要があります。
 
 ### 4.6 エコシステムの成熟度
