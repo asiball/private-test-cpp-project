@@ -55,7 +55,8 @@ fn main() {
 
         std::thread::spawn(move || {
             let mut bg_sensor = Mcp3008::new(&device, vref);
-            if bg_sensor.open().is_err() {
+            if let Err(e) = bg_sensor.open() {
+                eprintln!("[モニタ] 警告: センサーを開けませんでした: {e}");
                 return;
             }
 

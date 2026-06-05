@@ -20,6 +20,7 @@ struct MockSpiDriver {
 
 impl MockSpiDriver {
     /// モックと TX ログへの共有ハンドルを返す。
+    #[allow(clippy::type_complexity)]
     fn new() -> (Self, Arc<Mutex<Vec<Vec<u8>>>>) {
         let recorded_tx = Arc::new(Mutex::new(Vec::new()));
         let mock = Self {
@@ -100,7 +101,7 @@ fn test_read_raw_tx_frame_ch3() {
 
     let mut sensor = Mcp3008::with_driver(Box::new(mock), 3.3);
     sensor.open().unwrap();
-    sensor.read_raw(3).unwrap();
+    let _ = sensor.read_raw(3).unwrap();
 
     // CH3: (0x08 | 0x03) << 4 = 0xB0
     let txs = tx_log.lock().unwrap();

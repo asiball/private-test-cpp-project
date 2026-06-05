@@ -8,6 +8,7 @@
 //! ADS1115 ALERT/RDY ピンのエッジ検知に使用する。
 #![allow(unsafe_code)]
 
+use std::ffi::CString;
 use std::os::unix::io::RawFd;
 use thiserror::Error;
 
@@ -25,6 +26,10 @@ pub enum GpioError {
     /// epoll_wait でエラーが発生した。
     #[error("epoll 待機エラー: {0}")]
     Wait(#[source] std::io::Error),
+
+    /// GPIO イベントの読み出しに失敗。
+    #[error("イベント読み出しエラー: {0}")]
+    Read(#[source] std::io::Error),
 
     /// `request_edge_events()` を呼ばずにイベント待機を試みた。
     #[error("デバイスが要求されていません")]
@@ -49,6 +54,9 @@ const GPIO_V2_LINE_FLAG_INPUT: u64 = 1 << 1;
 const GPIO_V2_LINE_FLAG_EDGE_RISING: u64 = 1 << 8;
 const GPIO_V2_LINE_FLAG_EDGE_FALLING: u64 = 1 << 9;
 
+// gpio_v2_line_event のサイズ (linux/gpio.h): timestamp_ns(8) + id(4) + offset(4) = 16 bytes
+const GPIO_V2_LINE_EVENT_SIZE: usize = 16;
+
 /// GPIO 単一ラインのエッジ検知。
 ///
 /// C++ `GpioLine` に相当。
@@ -59,7 +67,6 @@ pub struct GpioLine {
     chip_fd: RawFd,
     line_fd: RawFd,
     epoll_fd: RawFd,
-    last_errno: i32,
 }
 
 impl GpioLine {
@@ -71,7 +78,6 @@ impl GpioLine {
             chip_fd: -1,
             line_fd: -1,
             epoll_fd: -1,
-            last_errno: 0,
         }
     }
 
@@ -81,12 +87,13 @@ impl GpioLine {
     pub fn request_edge_events(&mut self, edge: Edge) -> Result<(), GpioError> {
         self.close();
 
-        use std::ffi::CString;
-        let path = CString::new(self.chip_path.as_str()).unwrap();
+        // パスにヌルバイトが含まれていたらパニックせず Err を返す
+        let path = CString::new(self.chip_path.as_str()).map_err(|e| {
+            GpioError::Open(std::io::Error::new(std::io::ErrorKind::InvalidInput, e))
+        })?;
 
         let chip_fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC) };
         if chip_fd < 0 {
-            self.last_errno = unsafe { *libc::__errno_location() };
             return Err(GpioError::Open(std::io::Error::last_os_error()));
         }
         self.chip_fd = chip_fd;
@@ -135,7 +142,6 @@ impl GpioLine {
             )
         };
         if ret < 0 {
-            self.last_errno = unsafe { *libc::__errno_location() };
             return Err(GpioError::Request(std::io::Error::last_os_error()));
         }
         self.line_fd = req.fd;
@@ -167,6 +173,9 @@ impl GpioLine {
     /// エッジイベント待機。C++ の `wait_event()` に相当。
     ///
     /// 戻り値: `Ok(true)` = イベント発生, `Ok(false)` = タイムアウト
+    ///
+    /// イベントが発生した場合は `gpio_v2_line_event` をドレインする。
+    /// ドレインしないと次回以降の epoll_wait が即時返却し続ける (level-triggered)。
     pub fn wait_event(&mut self, timeout_ms: i32) -> Result<bool, GpioError> {
         if self.epoll_fd < 0 {
             return Err(GpioError::NotRequested);
@@ -174,10 +183,27 @@ impl GpioLine {
         let mut events = [libc::epoll_event { events: 0, u64: 0 }; 1];
         let ret = unsafe { libc::epoll_wait(self.epoll_fd, events.as_mut_ptr(), 1, timeout_ms) };
         if ret < 0 {
-            self.last_errno = unsafe { *libc::__errno_location() };
             return Err(GpioError::Wait(std::io::Error::last_os_error()));
         }
-        Ok(ret > 0)
+        if ret == 0 {
+            return Ok(false); // タイムアウト
+        }
+
+        // イベントデータを読み出してカーネルバッファをドレインする。
+        // 読まないと epoll が EPOLLIN を解除せず、次回以降の呼び出しが即時返却し続ける。
+        let mut buf = [0u8; GPIO_V2_LINE_EVENT_SIZE];
+        let n = unsafe {
+            libc::read(
+                self.line_fd,
+                buf.as_mut_ptr().cast(),
+                GPIO_V2_LINE_EVENT_SIZE,
+            )
+        };
+        if n < 0 {
+            return Err(GpioError::Read(std::io::Error::last_os_error()));
+        }
+
+        Ok(true)
     }
 
     /// エッジイベントを受け取るファイルディスクリプタを返す。
@@ -188,11 +214,6 @@ impl GpioLine {
     /// ラインが要求済みかどうかを返す。
     pub fn is_requested(&self) -> bool {
         self.line_fd >= 0
-    }
-
-    /// 最後に発生した errno 値を返す。
-    pub fn last_errno(&self) -> i32 {
-        self.last_errno
     }
 
     /// 取得したすべての fd を閉じる。

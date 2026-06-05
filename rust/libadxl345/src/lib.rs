@@ -134,15 +134,15 @@ impl Adxl345 {
         self.open
     }
 
-    /// レジスタを 1 バイト読み出す。未開時は `Ok(None)` を返す。
-    pub fn read_reg(&mut self, addr: u8) -> Result<Option<u8>, Adxl345Error> {
+    /// レジスタを 1 バイト読み出す。
+    pub fn read_reg(&mut self, addr: u8) -> Result<u8, Adxl345Error> {
         if !self.open {
-            return Ok(None);
+            return Err(Adxl345Error::NotOpen);
         }
         let tx = [addr | 0x80, 0x00];
         let mut rx = [0u8; 2];
         self.driver.transfer(&tx, &mut rx)?;
-        Ok(Some(rx[1]))
+        Ok(rx[1])
     }
 
     /// レジスタに 1 バイト書き込む。
@@ -158,7 +158,7 @@ impl Adxl345 {
 
     /// read-modify-write: 指定ビットマスクの範囲だけ更新する。
     pub fn update_bits(&mut self, addr: u8, mask: u8, value: u8) -> Result<(), Adxl345Error> {
-        let current = self.read_reg(addr)?.ok_or(Adxl345Error::NotOpen)?;
+        let current = self.read_reg(addr)?;
         let updated = (current & !mask) | (value & mask);
         self.write_reg(addr, updated)
     }

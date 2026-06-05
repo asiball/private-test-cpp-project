@@ -27,9 +27,12 @@ const SPI_IOC_WR_MODE: u64 = iow!(SPI_IOC_MAGIC, 1, u8);
 const SPI_IOC_WR_BITS_PER_WORD: u64 = iow!(SPI_IOC_MAGIC, 3, u8);
 const SPI_IOC_WR_MAX_SPEED_HZ: u64 = iow!(SPI_IOC_MAGIC, 4, u32);
 
-fn spi_ioc_message_1() -> u64 {
-    let size = std::mem::size_of::<SpiIocTransfer>() as u64;
-    (1u64 << 30) | (size << 16) | ((SPI_IOC_MAGIC as u64) << 8)
+// SPI_IOC_MESSAGE(1): _IOW('k', 0, spi_ioc_transfer) — nr=0 は SPI_IOC_MESSAGE 専用
+// std::mem::size_of は const fn なのでコンパイル時定数として評価される
+const fn spi_ioc_message_1() -> u64 {
+    (1u64 << 30)
+        | ((std::mem::size_of::<SpiIocTransfer>() as u64) << 16)
+        | ((SPI_IOC_MAGIC as u64) << 8)
 }
 
 /// linux/spi/spidev.h の `spi_ioc_transfer` に対応。

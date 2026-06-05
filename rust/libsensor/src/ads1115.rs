@@ -13,6 +13,8 @@ pub const CHANNEL_COUNT: u8 = 4;
 // ADS1115 レジスタアドレス
 const REG_CONVERSION: u8 = 0x00;
 const REG_CONFIG: u8 = 0x01;
+const REG_LO_THRESH: u8 = 0x02;
+const REG_HI_THRESH: u8 = 0x03;
 
 // Config レジスタビットフィールド
 const OS_SINGLE: u16 = 0x8000;
@@ -174,8 +176,11 @@ impl Ads1115 {
 
     /// ALERT/RDY ピンを変換完了通知として設定する。C++ の `enable_conversion_ready_pin()` に相当。
     pub fn enable_conversion_ready_pin(&mut self) -> Result<(), Ads1115Error> {
-        self.write_reg(0x02, LO_THRESH_CONV_RDY)?;
-        self.write_reg(0x03, HI_THRESH_CONV_RDY)?;
+        if !self.open {
+            return Err(Ads1115Error::NotOpen);
+        }
+        self.write_reg(REG_LO_THRESH, LO_THRESH_CONV_RDY)?;
+        self.write_reg(REG_HI_THRESH, HI_THRESH_CONV_RDY)?;
         Ok(())
     }
 

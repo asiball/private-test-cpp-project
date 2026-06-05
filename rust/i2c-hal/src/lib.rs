@@ -43,8 +43,8 @@ pub trait I2cDriver: Send {
     fn close(&mut self);
     /// 全バイトを書き込む。部分書き込みはエラーとして扱う。
     fn write(&mut self, data: &[u8]) -> Result<(), I2cError>;
-    /// バイト列を読み出す。
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, I2cError>;
+    /// バイト列をすべて読み出す。部分読み出しはエラーとして扱う。
+    fn read(&mut self, buf: &mut [u8]) -> Result<(), I2cError>;
     /// I2C Repeated Start: 書き込み→読み出しをアトミックに実行 (I2C_RDWR ioctl)。
     fn write_read(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), I2cError>;
     /// デバイスが現在開かれているか返す。
@@ -127,10 +127,10 @@ impl I2cDriver for LinuxI2cDriver {
         f.write_all(data).map_err(I2cError::Write)
     }
 
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, I2cError> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<(), I2cError> {
         use std::io::Read as _;
         let f = self.file.as_mut().ok_or(I2cError::NotOpen)?;
-        f.read(buf).map_err(I2cError::Read)
+        f.read_exact(buf).map_err(I2cError::Read)
     }
 
     fn write_read(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), I2cError> {
