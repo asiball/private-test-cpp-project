@@ -13,8 +13,8 @@
 
 | 層 | 中身 | 主な読者 | 置き場所 |
 |---|---|---|---|
-| **A：外部仕様（浅い・読み物）** | 何ができて、どう呼ぶか、保証は何か。API仕様 / IF仕様 / CLI操作仕様 | 利用者・連携先・発注者 | [`04_api-spec/`](04_api-spec/) ・ [`05_interface-spec/`](05_interface-spec/) |
-| **B：詳細設計（深い）** | 内部シーケンス・エラー処理・スレッド安全性・DI 構造 | 保守・実装者 | [`03_detailed-design/`](03_detailed-design/) |
+| **A：外部仕様（浅い・読み物）** | 何ができて、どう呼ぶか、保証は何か。API仕様 / IF仕様 / CLI操作仕様 | 利用者・連携先・発注者 | [`04_api-spec/`](04_api-spec/spi-driver-api.md) ・ [`05_interface-spec/`](05_interface-spec/spi-hardware-if.md) |
+| **B：詳細設計（深い）** | 内部シーケンス・エラー処理・スレッド安全性・DI 構造 | 保守・実装者 | [`03_detailed-design/`](03_detailed-design/spihal-design.md) |
 | **C：APIリファレンス（網羅・自動生成）** | 全クラス・全シグネチャの機械生成リファレンス | 開発者（リファレンス引き） | Doxygen → `docs/doxygen/html/index.html` |
 
 **設計方針**：A層は「契約・使い方・代表例」に絞り、**全関数の羅列はしない**（それはC層=Doxygenの仕事）。これによりA層が薄く読みやすくなり、深掘りしたい人だけがB層／C層へ進める。
@@ -62,7 +62,7 @@ flowchart LR
 | 要件定義書 | [01_requirements/requirements-spec.md](01_requirements/requirements-spec.md) |
 | 基本設計（システム構成） | [02_basic-design/system-architecture.md](02_basic-design/system-architecture.md) |
 | テスト計画 | [06_test/test-plan.md](06_test/test-plan.md) |
-| リリースノート | [07_delivery/release-notes/](07_delivery/release-notes/) |
+| リリースノート | [07_delivery/release-notes/v1.1.0.md](07_delivery/release-notes/v1.1.0.md) |
 
 ---
 

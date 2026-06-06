@@ -1,0 +1,9 @@
+# サイト最上位のナビ順（awesome-pages）。
+# 新しいトップレベルディレクトリは "..." の位置に自動で挿入される。
+nav:
+  - index.md
+  - guides
+  - deliverables
+  - wiki
+  - ...
+  - API リファレンス (Doxygen): api/index.html

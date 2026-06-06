@@ -9,6 +9,10 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 > **開発ライフサイクル全体**が一つのリポジトリで追えます。
 > まずは [学習ガイド](docs/guides/learning-guide.md) をお読みください。
 
+**📖 オンライン版ドキュメント**: <https://asiball.github.io/private-test-cpp-project/> —
+学習ガイド・成果物・API リファレンスを、検索とサイドナビ付きで読めます（`docs/` から MkDocs で自動生成し
+GitHub Pages に公開。仕組みは [ドキュメントサイト構築ガイド](docs/guides/tooling/docs-site-guide.md)）。
+
 ---
 
 ## 開発ライフサイクル
@@ -302,6 +306,7 @@ CH0  raw=512  voltage=1.650 V
   [サニタイザー](docs/guides/tooling/sanitizers-guide.md) ・
   [Linux カーネルモジュール](docs/guides/tooling/kernel-module-guide.md) ・
   [Docker](docs/guides/tooling/docker-guide.md) ・
+  [ドキュメントサイト構築（MkDocs/Pages）](docs/guides/tooling/docs-site-guide.md) ・
   [コミット規約 / git-cliff](docs/guides/tooling/commit-conventions-guide.md)
 - [SBOM ガイド](docs/guides/sbom-guide.md)
 

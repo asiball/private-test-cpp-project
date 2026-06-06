@@ -88,6 +88,23 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 
 ---
 
+## ドキュメントサイト（MkDocs / GitHub Pages）
+
+`docs/` 配下の Markdown は `mkdocs.yml` で **MkDocs Material のサイト**としても公開している
+（`main` への push で `.github/workflows/pages.yml` が GitHub Pages へデプロイ。**private リポだが Free では公開**）。
+
+- **ナビは自動**（`awesome-pages`）。`docs/` にページを足せばサイトにも自動で載る。順序・章タイトルを
+  整えたいときだけ各ディレクトリの `.pages` を編集する（巨大なナビ定義は手で持たない）。
+- **`docs/` の外（ソースコード）へのリンクは手で直さない**。`tools/mkdocs_hooks.py` がビルド時に
+  GitHub の URL へ自動変換する（相対リンクは GitHub のファイル表示でもそのまま有効）。
+- **日本語見出しのページ内リンク**は `mkdocs.yml` の `toc.slugify`（pymdownx、Unicode 保持）で GitHub に寄せている。
+  既定の slugify は非 ASCII を落とすので戻さないこと。
+- **API リファレンス**は CI が Doxygen を `docs/api/` に生成してサイトへ同梱する（`Doxyfile` の `INPUT` 依存）。
+- ローカル確認: `pip install -r tools/mkdocs-requirements.txt && mkdocs serve`。詳細は
+  [docs/guides/tooling/docs-site-guide.md](docs/guides/tooling/docs-site-guide.md)。
+
+---
+
 ## 新しいコンポーネントを追加するときのチェックリスト
 
 1. ディレクトリを作り `CMakeLists.txt` を置く（独立してビルド/インストールできる単位にする）。

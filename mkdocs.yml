@@ -1,0 +1,96 @@
+# ──────────────────────────────────────────────────────────────
+# MkDocs Material — embedded-device-suite ドキュメントサイト
+#   ローカルプレビュー: pip install -r tools/mkdocs-requirements.txt && mkdocs serve
+#   公開: .github/workflows/pages.yml が main への push 時に GitHub Pages へデプロイ
+#   構成・仕組みの詳細: docs/guides/tooling/docs-site-guide.md
+# ──────────────────────────────────────────────────────────────
+site_name: embedded-device-suite ドキュメント
+site_description: Linux 組み込みデバイス向けモノレポ — 学習ガイドと開発成果物（要件→設計→テスト→納品）
+site_url: https://asiball.github.io/private-test-cpp-project/
+repo_url: https://github.com/asiball/private-test-cpp-project
+repo_name: asiball/private-test-cpp-project
+edit_uri: edit/main/docs/
+docs_dir: docs
+copyright: embedded-device-suite — 学習用サンプルプロジェクト
+
+theme:
+  name: material
+  language: ja
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: ダークモードに切り替え
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: ライトモードに切り替え
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      lang: ja
+  - awesome-pages
+
+# 生成物・テンプレート・図のソースはサイトに含めない
+exclude_docs: |
+  _templates/
+  doxygen/
+  *.drawio
+
+# docs/ の外（ソースコード）へのリンクを GitHub URL に自動変換する
+hooks:
+  - tools/mkdocs_hooks.py
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  # 既定の slugify は非 ASCII を落とすため、日本語見出しの「ページ内リンク（#...）」が
+  # GitHub と食い違う。Unicode 保持の slugify に変えて GitHub の挙動に近づける。
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  # ```mermaid``` ブロックを Material がそのまま描画できるようにする
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/asiball/private-test-cpp-project

@@ -1,0 +1,80 @@
+# ドキュメントサイト（MkDocs Material + Doxygen）を GitHub Pages へデプロイする。
+# main への push 時に自動実行。手動実行も可（workflow_dispatch）。
+#   - 学習ガイド/成果物（docs/*.md）       → MkDocs でサイト化
+#   - API リファレンス（各 include/ ヘッダ）→ Doxygen を docs/api に生成しサイトへ同梱
+name: Deploy docs site (Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'tools/mkdocs_hooks.py'
+      - 'tools/mkdocs-requirements.txt'
+      - 'Doxyfile'
+      - '.github/workflows/pages.yml'
+      - '**/include/**'
+      - 'cli/src/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時実行は 1 つに制限（デプロイの取りこぼし防止のため進行中はキャンセルしない）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install MkDocs Material
+        run: pip install -r tools/mkdocs-requirements.txt
+
+      - name: Install Doxygen and Graphviz
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends doxygen graphviz
+
+      - name: Generate API reference (Doxygen) into docs/api
+        run: |
+          mkdir -p docs/api
+          # 既存 Doxyfile は変えず、出力先だけ docs/api に上書きして生成する。
+          # （通常の docs ジョブは従来どおり docs/doxygen/html に出力する）
+          ( cat Doxyfile; \
+            echo 'OUTPUT_DIRECTORY=docs/api'; \
+            echo 'HTML_OUTPUT=.'; \
+            echo 'WARN_LOGFILE=' ) | doxygen -
+
+      - name: Build site (MkDocs)
+        run: python -m mkdocs build --clean
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

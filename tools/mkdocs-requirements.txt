@@ -1,0 +1,6 @@
+# ドキュメントサイト（MkDocs Material）のビルド依存。
+# 再現性のためバージョンを固定する（CI と同じものをローカルでも使う）。
+#   pip install -r tools/mkdocs-requirements.txt
+#   mkdocs serve      # ローカルプレビュー
+mkdocs-material==9.7.6
+mkdocs-awesome-pages-plugin==2.10.1
