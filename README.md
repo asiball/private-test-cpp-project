@@ -9,9 +9,10 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 > **開発ライフサイクル全体**が一つのリポジトリで追えます。
 > まずは [学習ガイド](docs/guides/learning-guide.md) をお読みください。
 
-**📖 オンライン版ドキュメント**: <https://asiball.github.io/private-test-cpp-project/> —
-学習ガイド・成果物・API リファレンスを、検索とサイドナビ付きで読めます（`docs/` から MkDocs で自動生成し
+**📖 オンライン版・学習ガイド**: <https://asiball.github.io/private-test-cpp-project/> —
+`docs/guides/` の学習ガイドと API リファレンスを、検索とサイドナビ付きで読めます（MkDocs で自動生成し
 GitHub Pages に公開。仕組みは [ドキュメントサイト構築ガイド](docs/guides/tooling/docs-site-guide.md)）。
+案件成果物（要件→納品）はリポジトリ内 [`docs/deliverables/`](docs/deliverables/README.md) を参照。
 
 ---
 

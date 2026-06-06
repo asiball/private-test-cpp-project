@@ -3,27 +3,31 @@
 | 項目 | 内容 |
 |---|---|
 | 取り上げる対象 | `mkdocs.yml`、`tools/mkdocs-requirements.txt`、`tools/mkdocs_hooks.py`、`.github/workflows/pages.yml` |
-| 目的 | `docs/` 配下の Markdown を、Markdown に不慣れでも読みやすい静的サイトにして公開する |
+| 目的 | `docs/guides/` の学習ガイドを、Markdown に不慣れでも読みやすい静的サイトにして公開する |
+| 対象範囲 | **学習ガイド（`docs/guides/`）のみ**。案件成果物（`docs/deliverables/`）・`wiki`・`adr` は対象外（GitHub / PDF のまま） |
 | 公開先 | GitHub Pages（`main` への push で自動デプロイ） |
 
-`docs/` の Markdown は GitHub 上でも読めるが、ファイルツリーを辿る必要があり、検索やナビゲーションも弱い。
+`docs/guides/` の Markdown は GitHub 上でも読めるが、ファイルツリーを辿る必要があり、検索やナビゲーションも弱い。
 そこで **MkDocs Material** でサイト化し、サイドナビ・全文検索・ダークモード・mermaid 描画を備えた
-ドキュメントサイトとして公開する。Doxygen の API リファレンスも同じサイトに同梱する。
+学習ガイドサイトとして公開する。Doxygen の API リファレンスも同じサイトに同梱する。
+
+> **なぜガイドだけ？** `docs/deliverables/` は「発注者へ納品する案件成果物」のサンプルで、学習用の読み物とは
+> 役割が異なり、PDF/Word 配布の経路（`tools/build-docs.sh`）も別にある。サイトは学習ガイドに特化させている。
 
 ## 全体の流れ
 
 ```mermaid
 flowchart LR
-    A["docs/*.md（学習ガイド・成果物）"] --> M[mkdocs build]
-    B["各 include/ ヘッダ"] --> D[doxygen] --> AP["docs/api/（HTML）"]
+    A["docs/guides/*.md（学習ガイド）"] --> M[mkdocs build]
+    B["各 include/ ヘッダ"] --> D[doxygen] --> AP["docs/guides/api/（HTML）"]
     AP --> M
     M --> S["site/（静的サイト）"]
     S --> P["GitHub Pages"]
 ```
 
-- 学習ガイド・成果物（`docs/*.md`）→ MkDocs がサイト本体を生成。
-- API リファレンス（各 `include/` ヘッダ）→ Doxygen が `docs/api/` に HTML を生成し、サイトに同梱。
-- 生成物（`site/`・`docs/api/`）は `.gitignore` 済み。コミットせず CI で都度生成する。
+- 学習ガイド（`docs/guides/*.md`）→ MkDocs がサイト本体を生成。
+- API リファレンス（各 `include/` ヘッダ）→ Doxygen が `docs/guides/api/` に HTML を生成し、サイトに同梱。
+- 生成物（`site/`・`docs/guides/api/`）は `.gitignore` 済み。コミットせず CI で都度生成する。
 
 ## ローカルでプレビューする
 
@@ -39,7 +43,7 @@ mkdocs build
 ```
 
 !!! note "ローカルでは API リファレンスが空になる"
-    Doxygen をローカルに入れていない場合、`docs/api/` が無いためナビの
+    Doxygen をローカルに入れていない場合、`docs/guides/api/` が無いためナビの
     「API リファレンス (Doxygen)」だけリンク切れになる（警告が出る）。サイト本体の確認には支障ない。
     API も含めて確認したい場合は `doxygen Doxyfile` 等で生成してから `mkdocs build` する。
 
@@ -52,21 +56,20 @@ mkdocs build
 並び順とセクション名だけ、各ディレクトリの `.pages` ファイルで調整する。
 
 ```yaml
-# 例: docs/deliverables/03_detailed-design/.pages
-title: 03 詳細設計
+# 例: docs/guides/tooling/.pages
+title: ツール別ガイド
 ```
 
 ```yaml
-# 例: 並び順を指定（残りは "..." で自動補完）
+# 例: docs/guides/.pages（サイトのルートナビ。並び順を指定し、残りは "..." で自動補完）
 nav:
+  - index.md
   - learning-guide.md
   - ...
 ```
 
-- 新しい Markdown を `docs/` 配下に置くだけでサイトに追加される。
-- 章タイトルや順序を整えたいときだけ、そのディレクトリに `.pages` を置く。
-- テンプレート（`docs/deliverables/_templates/`）や図のソース（`*.drawio`）は
-  `mkdocs.yml` の `exclude_docs` でサイトから除外している。
+- 新しい Markdown を `docs/guides/` 配下に置くだけでサイトに追加される。
+- 章タイトルや順序を整えたいときだけ、`docs/guides/.pages`（ルート）やサブディレクトリに `.pages` を置く。
 
 ## mermaid 図
 
@@ -78,19 +81,21 @@ nav:
 
 ## ソースコードへのリンク自動変換
 
-学習ガイドは `../../spi-hal/include/ispi_driver.hpp` のように **`docs/` の外のソースコード**へリンクしている。
-これは GitHub のファイルビューでは解決できるが、サイトには `docs/` 配下しか含まれないためリンク切れになる。
+学習ガイドは `../../spi-hal/include/ispi_driver.hpp`（ソースコード）や `../deliverables/...`（案件成果物）の
+ように **`docs/guides/` の外**へリンクしている。これは GitHub のファイルビューでは解決できるが、サイトには
+`docs/guides/` 配下しか含まれないためリンク切れになる。
 
 そこで build フック [`tools/mkdocs_hooks.py`](https://github.com/asiball/private-test-cpp-project/blob/main/tools/mkdocs_hooks.py) が、
-**`docs/` の外へ出る相対リンクだけ**を GitHub の URL（`blob/main/...`）へ自動変換する。
+**`docs/guides/` の外へ出る相対リンクだけ**を GitHub の URL（`blob/main/...`）へ自動変換する。
 Markdown 本体は書き換えないので、GitHub 上ではリンクは相対のまま、サイト上では絶対 URL に解決される。
+（対象範囲を変えるときはフック先頭の `_SITE_ROOT` を合わせる）
 
 ## デプロイ（GitHub Pages）
 
 `.github/workflows/pages.yml` が `main` への push（および手動実行）で動く。
 
 1. MkDocs の依存を入れて `mkdocs build`。
-2. Doxygen を `docs/api/` に生成してサイトへ同梱。
+2. Doxygen を `docs/guides/api/` に生成してサイトへ同梱。
 3. `actions/configure-pages`（`enablement: true`）で Pages を有効化。
 4. `actions/upload-pages-artifact` → `actions/deploy-pages` で公開。
 
@@ -103,6 +108,8 @@ Markdown 本体は書き換えないので、GitHub 上ではリンクは相対�
 
 ## 新しいページ・コンポーネントを足したら
 
-- 学習ガイドや成果物を追加 → `docs/` 配下に置くだけで自動的にサイトに載る。順序を整えたいなら `.pages`。
+- 学習ガイドを追加 → `docs/guides/` 配下に置くだけで自動的にサイトに載る。順序を整えたいなら `.pages`。
+- 案件成果物（`docs/deliverables/`）はサイト対象外。ガイドから張ったリンクは `tools/mkdocs_hooks.py` が
+  GitHub の URL へ変換する（成果物自体は GitHub / PDF で配布）。
 - 新コンポーネントを追加 → API リファレンスに含めるため `Doxyfile` の `INPUT` にヘッダディレクトリを足す
   （CLAUDE.md の「新コンポーネント追加チェックリスト」を参照）。

@@ -1,15 +1,15 @@
-"""MkDocs build hook: docs/ の外（ソースツリー）を指す相対リンクを GitHub URL へ書き換える。
+"""MkDocs build hook: サイト（docs/guides/）の外を指す相対リンクを GitHub URL へ書き換える。
 
-このリポジトリの一部の Markdown（特に学習ガイド）は、解説対象のソースコードへ
-``../../spi-hal/include/ispi_driver.hpp`` のような相対リンクを張っている。
-GitHub のファイルビューではこれで解決できるが、MkDocs が生成する静的サイトには
-``docs/`` 配下しか含まれないためリンク切れになる。
+このサイトは学習ガイド（``docs/guides/``）のみを対象にしている。一方、ガイドは
+解説対象のソースコード（``../../spi-hal/include/ispi_driver.hpp``）や、案件成果物
+（``../deliverables/...``）へ相対リンクを張っている。GitHub のファイルビューでは
+これで解決できるが、生成サイトには ``docs/guides/`` 配下しか含まれないためリンク切れになる。
 
-そこで build 時に「docs/ の外へ出る相対リンク」だけを検出し、GitHub の
+そこで build 時に「``docs/guides/`` の外へ出る相対リンク」だけを検出し、GitHub の
 blob/tree URL（main ブランチ）へ自動で書き換える。Markdown 本体は手で直さない
 （= リンクは GitHub 上では相対のまま、サイト上では絶対 URL に解決される）。
 
-CLAUDE.md の方針（「手動メンテは罠 → 機械で弾く」）に倣い、ソースへの導線は
+CLAUDE.md の方針（「手動メンテは罠 → 機械で弾く」）に倣い、サイト外への導線は
 ファイル追加時に各 Markdown を書き換えずに済むよう、ここで一括変換する。
 """
 from __future__ import annotations
@@ -17,6 +17,9 @@ from __future__ import annotations
 import os
 import posixpath
 import re
+
+# サイトのルート（リポジトリ root からの相対）。この外へ出るリンクを GitHub へ向ける。
+_SITE_ROOT = "docs/guides"
 
 # このリポジトリの GitHub URL（公開ブランチは main 固定）
 _REPO = "https://github.com/asiball/private-test-cpp-project"
@@ -38,10 +41,10 @@ def _rewrite_target(target: str, page_dir: str) -> str | None:
     path_part, sep, anchor = target.partition("#")
     if not path_part:
         return None
-    # ページ位置（docs/ 起点）からの相対を正規化
-    resolved = posixpath.normpath(posixpath.join("docs", page_dir, path_part))
-    # docs/ の内側に収まるならサイト内リンク → 触らない
-    if resolved == "docs" or resolved.startswith("docs/"):
+    # ページ位置（リポジトリ root 起点）からの相対を正規化
+    resolved = posixpath.normpath(posixpath.join(_SITE_ROOT, page_dir, path_part))
+    # サイトルート（docs/guides/）の内側に収まるならサイト内リンク → 触らない
+    if resolved == _SITE_ROOT or resolved.startswith(_SITE_ROOT + "/"):
         return None
     # リポジトリ root より上に出る異常リンクは触らない（保険）
     if resolved.startswith(".."):

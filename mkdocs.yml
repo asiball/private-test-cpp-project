@@ -4,13 +4,13 @@
 #   公開: .github/workflows/pages.yml が main への push 時に GitHub Pages へデプロイ
 #   構成・仕組みの詳細: docs/guides/tooling/docs-site-guide.md
 # ──────────────────────────────────────────────────────────────
-site_name: embedded-device-suite ドキュメント
-site_description: Linux 組み込みデバイス向けモノレポ — 学習ガイドと開発成果物（要件→設計→テスト→納品）
+site_name: embedded-device-suite 学習ガイド
+site_description: Linux 組み込みデバイス向けモノレポ — C 開発者のための C++ 学習ガイド集
 site_url: https://asiball.github.io/private-test-cpp-project/
 repo_url: https://github.com/asiball/private-test-cpp-project
 repo_name: asiball/private-test-cpp-project
-edit_uri: edit/main/docs/
-docs_dir: docs
+edit_uri: edit/main/docs/guides/
+docs_dir: docs/guides
 copyright: embedded-device-suite — 学習用サンプルプロジェクト
 
 theme:
@@ -50,13 +50,7 @@ plugins:
       lang: ja
   - awesome-pages
 
-# 生成物・テンプレート・図のソースはサイトに含めない
-exclude_docs: |
-  _templates/
-  doxygen/
-  *.drawio
-
-# docs/ の外（ソースコード）へのリンクを GitHub URL に自動変換する
+# docs/guides/ の外（成果物・ソースコード等）へのリンクを GitHub URL に自動変換する
 hooks:
   - tools/mkdocs_hooks.py
 

@@ -37,7 +37,7 @@ docs/doxygen/doxygen-warnings.log
 
 # ── MkDocs サイト出力 / Pages 用 Doxygen 同梱先 ──────────────
 site/
-docs/api/
+docs/guides/api/
 
 # ── 生成ドキュメント（pandoc PDF）────────────────────────────
 output/

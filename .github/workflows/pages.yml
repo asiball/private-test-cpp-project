@@ -45,13 +45,13 @@ jobs:
       - name: Install Doxygen and Graphviz
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends doxygen graphviz
 
-      - name: Generate API reference (Doxygen) into docs/api
+      - name: Generate API reference (Doxygen) into docs/guides/api
         run: |
-          mkdir -p docs/api
-          # 既存 Doxyfile は変えず、出力先だけ docs/api に上書きして生成する。
+          mkdir -p docs/guides/api
+          # 既存 Doxyfile は変えず、出力先だけサイト内(docs/guides/api)に上書きして生成する。
           # （通常の docs ジョブは従来どおり docs/doxygen/html に出力する）
           ( cat Doxyfile; \
-            echo 'OUTPUT_DIRECTORY=docs/api'; \
+            echo 'OUTPUT_DIRECTORY=docs/guides/api'; \
             echo 'HTML_OUTPUT=.'; \
             echo 'WARN_LOGFILE=' ) | doxygen -
 
