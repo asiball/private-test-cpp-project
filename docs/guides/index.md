@@ -49,6 +49,7 @@ Linux 組み込みデバイス向けモノレポ（ドライバ・共有ライ�
 ## C 開発者向けの導線
 
 - [C → C++ ステップアップガイド](c-to-cpp-stepping-stones.md) — 不透明ポインタ → PIMPL、ops 表 → インターフェース、RAII
+- [SPI と MCP3008](spi-and-mcp3008.md) — SPI バスと 10bit ADC（プロジェクトの土台となる題材）
 - [I2C と ADS1115](i2c-and-ads1115.md) — バス抽象の引き直しと I2C プロトコル
 - [GPIO 割り込みと epoll](gpio-interrupts-epoll.md) — ポーリング vs イベント駆動
 - [Rust 移行ガイド](rust-migration-guide.md) ・ [SBOM ガイド](sbom-guide.md)

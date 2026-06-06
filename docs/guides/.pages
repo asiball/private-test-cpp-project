@@ -4,6 +4,7 @@ nav:
   - index.md
   - learning-guide.md
   - c-to-cpp-stepping-stones.md
+  - spi-and-mcp3008.md
   - i2c-and-ads1115.md
   - gpio-interrupts-epoll.md
   - rust-migration-guide.md

@@ -82,6 +82,7 @@ CI設定（`.github/`）まで一貫して追えます。
 
 - [C→C++ ステップアップガイド](c-to-cpp-stepping-stones.md)
   — 不透明ポインタ→PIMPL、ops 表→インターフェース、`goto err`→RAII、`#define`→`enum class`、`-1`→`std::optional`
+- [SPI と MCP3008](spi-and-mcp3008.md) — SPI バスと MCP3008（10bit ADC）の基礎。本プロジェクトの土台
 - [I2C と ADS1115](i2c-and-ads1115.md) — SPI との違いとバス抽象の引き直し
 - [GPIO 割り込みと epoll](gpio-interrupts-epoll.md) — ポーリング vs イベント駆動
 
