@@ -1,0 +1,99 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rust/**'
+      - '.github/workflows/rust-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'rust/**'
+      - '.github/workflows/rust-ci.yml'
+
+jobs:
+  rust-check:
+    name: Format / Clippy / Test
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry and build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install system dependencies (libc for ioctl)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libc6-dev
+
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --all --check
+
+      - name: Run Clippy (deny warnings)
+        working-directory: rust
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        working-directory: rust
+        run: cargo test --all
+
+      - name: Build release binary
+        working-directory: rust
+        run: cargo build --release -p device-ctl
+
+  rust-cross:
+    name: Cross-compile ARM (armv7)
+    runs-on: ubuntu-24.04
+    # Only run on push to main to save CI minutes
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain + ARM target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-gnueabihf
+
+      - name: Cache Cargo registry and build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-arm-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-arm-
+
+      - name: Install ARM cross-compiler
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
+
+      - name: Cross-compile for armv7
+        working-directory: rust
+        env:
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+        run: cargo build --target armv7-unknown-linux-gnueabihf --release
+
+      - name: Show binary size
+        run: |
+          ls -lh rust/target/armv7-unknown-linux-gnueabihf/release/device-ctl

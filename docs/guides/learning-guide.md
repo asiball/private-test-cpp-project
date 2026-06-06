@@ -135,9 +135,20 @@ GitHub Actions（`.github/workflows/ci.yml`）により、以下の工程が自�
 
 ---
 
+## Rust 移行を検討する場合
+
+本プロジェクトには C++17 全コンポーネントを Rust で書き直した探索実装が
+`rust/` ディレクトリに含まれています。
+
+- **実装**: [`rust/`](../../rust/README.md) — ビルド・テスト手順
+- **移行ガイド**: [`docs/guides/rust-migration-guide.md`](rust-migration-guide.md) — C++ パターンとの対応表、メリット・デメリット、移行コストの詳細
+
+---
+
 ## 参考リンク
 
 - [Google Test ドキュメント](https://google.github.io/googletest/)
 - [Google Mock ドキュメント](https://google.github.io/googletest/gmock_for_dummies.html)
 - [Doxygen マニュアル](https://www.doxygen.nl/manual/)
 - [Linux spidev ドキュメント](https://www.kernel.org/doc/html/latest/spi/spidev.html)
+- [The Embedded Rust Book](https://docs.rust-embedded.org/book/)

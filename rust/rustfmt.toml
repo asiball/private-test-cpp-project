@@ -1,0 +1,24 @@
+# rustfmt 設定 (cargo fmt の動作を制御)
+#
+# 相当ツール (C++ 側): clang-format
+#
+# 主な選択基準:
+#   - max_width=100: 組み込みコードは C++ と同様に 100 列が読みやすい
+#   - imports_granularity=Crate: クレート単位でインポートをまとめる
+#   - group_imports=StdExternalCrate: std / 外部 / 自前の順でグループ化
+
+edition = "2021"
+max_width = 100
+
+# インポートの整理
+imports_granularity = "Crate"       # 同じクレートの use をまとめる
+group_imports = "StdExternalCrate"  # std → 外部クレート → 内部クレート の順
+
+# スタイル
+use_small_heuristics = "Default"
+newline_style = "Unix"
+trailing_comma = "Vertical"  # 縦並びリストの末尾カンマを付ける
+
+# ドキュメントコメント
+wrap_comments = false   # コメントの自動折り返しは無効 (日本語が崩れるため)
+normalize_comments = false
