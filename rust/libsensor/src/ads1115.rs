@@ -73,7 +73,16 @@ pub enum Gain {
 }
 
 impl Gain {
-    /// フルスケール電圧 [V] を返す。
+    /// フルスケール電圧 \[V\] を返す。
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use libsensor::Gain;
+    ///
+    /// assert!((Gain::Fsr2V048.full_scale_volts() - 2.048).abs() < f64::EPSILON);
+    /// assert!((Gain::Fsr6V144.full_scale_volts() - 6.144).abs() < f64::EPSILON);
+    /// ```
     #[must_use]
     pub fn full_scale_volts(self) -> f64 {
         match self {
@@ -87,7 +96,32 @@ impl Gain {
     }
 }
 
-/// ADS1115 ADC 高水準ドライバ。
+/// ADS1115 (4ch / 16bit I2C ADC) 高水準ドライバ。
+///
+/// 生産コードは [`new`](Self::new)（内部で `LinuxI2cDriver` を生成）、
+/// テストは [`with_driver`](Self::with_driver) でモックを注入する（依存注入）。
+///
+/// - 入力レンジ: PGA（[`Gain`]）に依存。デフォルト ±2.048V
+/// - 分解能: 16 bit（符号付き）
+/// - 4 チャンネル（A0〜A3、シングルエンド）
+///
+/// 読み出しはシングルショット変換で、変換完了を I2C ポーリングで待つ。
+/// 割り込み駆動にしたい場合は [`enable_conversion_ready_pin`](Self::enable_conversion_ready_pin)
+/// と GPIO エッジ検知（`embedded-gpio` クレート）を組み合わせる。
+///
+/// # Examples
+///
+/// ```no_run
+/// use libsensor::{Ads1115, Gain};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut adc = Ads1115::new("/dev/i2c-1", libsensor::ads1115::DEFAULT_ADDR);
+///     adc.open()?;
+///     adc.set_gain(Gain::Fsr4V096); // 入力レンジ ±4.096V
+///     println!("A0 = {:.4} V", adc.read_voltage(0)?);
+///     Ok(())
+/// } // adc は Drop で自動クローズされる
+/// ```
 pub struct Ads1115 {
     driver: Box<dyn I2cDriver>,
     addr: u16,
@@ -113,7 +147,11 @@ impl Ads1115 {
         }
     }
 
-    /// デバイスを開く。
+    /// I2C バスを開き、スレーブアドレスを設定する。
+    ///
+    /// # Errors
+    ///
+    /// [`Ads1115Error::I2c`] — バスを開けない、またはアドレス設定に失敗
     pub fn open(&mut self) -> Result<(), Ads1115Error> {
         self.driver.open(self.addr)?;
         self.open = true;
@@ -143,13 +181,24 @@ impl Ads1115 {
         self.gain
     }
 
-    /// 現在のゲイン設定のフルスケール電圧 [V] を返す。
+    /// 現在のゲイン設定のフルスケール電圧 \[V\] を返す。
     #[must_use]
     pub fn full_scale_volts(&self) -> f64 {
         self.gain.full_scale_volts()
     }
 
-    /// 生の ADC 値を読み出す (符号付き 16 ビット)。
+    /// 指定チャンネルをシングルショット変換し、生値（符号付き 16bit）を読む。
+    ///
+    /// Config レジスタへの書き込みで変換を開始し、OS ビットが 1 に戻るまで
+    /// 1ms 間隔で最大 100 回ポーリングしてから Conversion レジスタを読む
+    /// （128SPS の変換時間 ≈ 7.8ms に対して十分な余裕を持たせている）。
+    ///
+    /// # Errors
+    ///
+    /// - [`Ads1115Error::NotOpen`] — `open()` 前に呼んだ
+    /// - [`Ads1115Error::InvalidChannel`] — `channel` が 0〜3 の範囲外
+    /// - [`Ads1115Error::Timeout`] — ポーリング上限内に変換が完了しなかった
+    /// - [`Ads1115Error::I2c`] — I2C 転送に失敗
     pub fn read_raw(&mut self, channel: u8) -> Result<i16, Ads1115Error> {
         if !self.open {
             return Err(Ads1115Error::NotOpen);
@@ -181,14 +230,32 @@ impl Ads1115 {
         Err(Ads1115Error::Timeout)
     }
 
-    /// 電圧値に変換して読み出す。
+    /// 指定チャンネルの電圧 \[V\] を読む。
+    ///
+    /// `raw / 32768 * full_scale_volts()` で換算する。換算結果は
+    /// [`set_gain`](Self::set_gain) の影響を受ける。
+    ///
+    /// # Errors
+    ///
+    /// [`read_raw`](Self::read_raw) と同じ。
     pub fn read_voltage(&mut self, channel: u8) -> Result<f64, Ads1115Error> {
         let raw = self.read_raw(channel)?;
         let vfs = self.gain.full_scale_volts();
         Ok(raw as f64 / 32768.0 * vfs)
     }
 
-    /// ALERT/RDY ピンを変換完了通知として設定する。C++ の `enable_conversion_ready_pin()` に相当。
+    /// ALERT/RDY ピンを「変換完了通知 (RDY)」として有効化する。
+    ///
+    /// Hi_thresh の MSB=1 / Lo_thresh の MSB=0 を書き込み、以降の変換完了時に
+    /// ALERT/RDY ピンがアサートされるよう構成する。有効化後の
+    /// [`read_raw`](Self::read_raw) は COMP_QUE を「1 変換ごとにアサート」へ
+    /// 切り替えて変換を開始する。GPIO エッジ検知と組み合わせると
+    /// ポーリングの代わりに割り込みで変換完了を待てる。
+    ///
+    /// # Errors
+    ///
+    /// - [`Ads1115Error::NotOpen`] — `open()` 前に呼んだ
+    /// - [`Ads1115Error::I2c`] — 閾値レジスタの書き込みに失敗
     pub fn enable_conversion_ready_pin(&mut self) -> Result<(), Ads1115Error> {
         if !self.open {
             return Err(Ads1115Error::NotOpen);

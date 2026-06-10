@@ -4,10 +4,10 @@
 //!
 //! C++ との対応:
 //!   std::thread + condition_variable の背景モニタ → std::thread + Condvar
-//!   std::mutex + std::unique_lock + stop flag     → Arc<(Mutex<bool>, Condvar)>
+//!   std::mutex + std::unique_lock + stop flag     → `Arc<(Mutex<bool>, Condvar)>`
 //!
-//! Bug #8 fix: AtomicBool と Mutex<bool> の二重管理を廃止。
-//!   Mutex<bool> を唯一の停止フラグとし、ロック下で `true` にしてから notify_all。
+//! Bug #8 fix: AtomicBool と `Mutex<bool>` の二重管理を廃止。
+//!   `Mutex<bool>` を唯一の停止フラグとし、ロック下で `true` にしてから notify_all。
 //! Bug #9 fix: JoinHandle を保存して join() で終了を確認。
 
 use std::io::{self, BufRead, Write};
@@ -24,7 +24,7 @@ struct Args {
     #[arg(short, long, default_value = "/dev/spidev0.0")]
     device: String,
 
-    /// 基準電圧 [V]
+    /// 基準電圧 \[V\]
     #[arg(long, default_value_t = 3.3)]
     vref: f64,
 }

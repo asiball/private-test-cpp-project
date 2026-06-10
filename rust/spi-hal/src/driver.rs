@@ -57,8 +57,25 @@ struct SpiIocTransfer {
 
 /// `/dev/spidevX.Y` を直接操作する Linux 実装。
 ///
-/// C++ `SpiDriver` クラスに相当。
-/// `Drop` 実装により `close()` が自動呼び出しされる (RAII)。
+/// C++ `SpiDriver` クラスに相当。`Drop` 実装により `close()` が
+/// 自動呼び出しされる (RAII)。スレッドセーフではないため、
+/// 複数スレッドから使う場合は呼び出し側で排他制御すること。
+///
+/// # Examples
+///
+/// ```no_run
+/// use spi_hal::{LinuxSpiDriver, SpiConfig, SpiDriver};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut drv = LinuxSpiDriver::new("/dev/spidev0.0");
+///     drv.open(&SpiConfig { speed_hz: 1_000_000, bits_per_word: 8, mode: 0 })?;
+///
+///     let tx = [0x01, 0x80, 0x00];
+///     let mut rx = [0u8; 3];
+///     drv.transfer(&tx, &mut rx)?;
+///     Ok(())
+/// } // drv は Drop で自動クローズされる
+/// ```
 pub struct LinuxSpiDriver {
     path: String,
     file: Option<File>,
