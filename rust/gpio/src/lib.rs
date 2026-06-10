@@ -94,8 +94,27 @@ struct GpioV2LineEvent {
 
 /// GPIO 単一ラインのエッジ検知。
 ///
-/// C++ `GpioLine` に相当。
-/// Drop で fd を自動クローズ (RAII)。
+/// Linux GPIO chardev v2 uABI（カーネル 5.10+）でラインを要求し、
+/// epoll でエッジイベントを待つ。`Drop` で fd を自動クローズする (RAII)。
+/// C++ の `GpioLine` に相当。
+///
+/// # Examples
+///
+/// ```no_run
+/// use embedded_gpio::{Edge, GpioLine};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // gpiochip0 のライン 26 で立ち下がりエッジを待つ
+///     let mut line = GpioLine::new("/dev/gpiochip0", 26);
+///     line.request_edge_events(Edge::Falling)?;
+///
+///     match line.wait_event(1000)? {
+///         true => println!("エッジ検出"),
+///         false => println!("1 秒以内にエッジなし (タイムアウト)"),
+///     }
+///     Ok(())
+/// } // line は Drop で自動クローズされる
+/// ```
 pub struct GpioLine {
     chip_path: String,
     offset: u32,
@@ -116,9 +135,17 @@ impl GpioLine {
         }
     }
 
-    /// エッジ要求。C++ の `request_edge_events()` に相当。
+    /// 指定エッジの検知をカーネルに要求する。
     ///
-    /// 再呼び出し時の fd リーク防止のため、まず既存の fd を解放してから再取得する。
+    /// 成功するとライン専用の fd が割り当てられ、以降 [`wait_event`](Self::wait_event)
+    /// でエッジを待てる。再呼び出し時は既存の fd を解放してから再取得するため、
+    /// エッジ種別の変更にも使える。失敗時はすべての fd を解放した状態に戻る。
+    ///
+    /// # Errors
+    ///
+    /// - [`GpioError::Open`] — GPIO チップデバイスを開けない（パス誤り・権限不足）
+    /// - [`GpioError::Request`] — ライン要求 ioctl または epoll 登録に失敗
+    ///   （オフセット範囲外・ラインが使用中など）
     pub fn request_edge_events(&mut self, edge: Edge) -> Result<(), GpioError> {
         self.close();
 
@@ -190,21 +217,38 @@ impl GpioLine {
         Ok(())
     }
 
-    /// エッジイベント待機。C++ の `wait_event()` に相当。
+    /// エッジイベントを最大 `timeout_ms` ミリ秒待つ。
     ///
-    /// 戻り値: `Ok(true)` = イベント発生, `Ok(false)` = タイムアウト
+    /// `Ok(true)` はイベント発生、`Ok(false)` はタイムアウト。
+    /// タイムアウトはエラーではなく正常系として返す（ポーリングループで
+    /// 使いやすくするため）。`timeout_ms` に `-1` を渡すと無期限に待つ。
     ///
-    /// イベントが発生した場合は `gpio_v2_line_event` をドレインする。
-    /// ドレインしないと次回以降の epoll_wait が即時返却し続ける (level-triggered)。
+    /// イベント発生時は `gpio_v2_line_event` を 1 件読み出してカーネルの
+    /// キューからドレインする。ドレインしないと epoll (level-triggered) が
+    /// 即時返却し続けるため、この読み出しは省略できない。
+    ///
+    /// # Errors
+    ///
+    /// - [`GpioError::NotRequested`] — [`request_edge_events`](Self::request_edge_events) 前に呼んだ
+    /// - [`GpioError::Wait`] — epoll 待機がシグナル以外の理由で失敗した
+    /// - [`GpioError::Read`] — イベントの読み出しに失敗、または短い read だった
     pub fn wait_event(&mut self, timeout_ms: i32) -> Result<bool, GpioError> {
         if self.epoll_fd < 0 {
             return Err(GpioError::NotRequested);
         }
         let mut events = [libc::epoll_event { events: 0, u64: 0 }; 1];
-        let ret = unsafe { libc::epoll_wait(self.epoll_fd, events.as_mut_ptr(), 1, timeout_ms) };
-        if ret < 0 {
-            return Err(GpioError::Wait(std::io::Error::last_os_error()));
-        }
+        // EINTR (シグナル割り込み) はエラーではないためリトライする。
+        // タイマーは残り時間を引き継がず先頭からやり直しになる点に注意。
+        let ret = loop {
+            let r = unsafe { libc::epoll_wait(self.epoll_fd, events.as_mut_ptr(), 1, timeout_ms) };
+            if r >= 0 {
+                break r;
+            }
+            let err = std::io::Error::last_os_error();
+            if err.raw_os_error() != Some(libc::EINTR) {
+                return Err(GpioError::Wait(err));
+            }
+        };
         if ret == 0 {
             return Ok(false); // タイムアウト
         }
