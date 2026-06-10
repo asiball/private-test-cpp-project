@@ -20,6 +20,7 @@ thiserror = "1"
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4", features = ["derive"] }
+libc = "0.2"
 
 # ---------------------------------------------------------------------------
 # ワークスペース共通 lint 設定
@@ -37,7 +38,7 @@ all     = { level = "warn", priority = -2 }
 
 # 組み込みコードで問題ない慣習を許可
 module_name_repetitions = "allow"  # SpiError in spi-hal は慣習的
-missing_errors_doc      = "allow"  # thiserror が Display を自動生成
+missing_errors_doc      = "warn"   # Result を返す公開 API は # Errors 必須
 missing_panics_doc      = "allow"  # パニック箇所の列挙は任意
 must_use_candidate      = "allow"  # 推奨量が多すぎるため手動で付ける
 

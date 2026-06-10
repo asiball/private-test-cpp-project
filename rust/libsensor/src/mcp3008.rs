@@ -9,7 +9,7 @@ use thiserror::Error;
 pub const CHANNEL_COUNT: u8 = 8;
 /// ADC の最大生値 (10 ビット)。
 pub const ADC_MAX: u16 = 1023;
-/// デフォルト基準電圧 [V]。
+/// デフォルト基準電圧 \[V\]。
 pub const DEFAULT_VREF: f64 = 3.3;
 
 // MCP3008 SPI 転送フォーマット (データシート Figure 6-1)
@@ -36,11 +36,28 @@ pub enum SensorError {
     NotOpen,
 }
 
-/// MCP3008 ADC 高水準ドライバ。
+/// MCP3008 (8ch / 10bit SPI ADC) 高水準ドライバ。
 ///
-/// 生産コード用コンストラクタは `new()` (内部で `LinuxSpiDriver` を生成)。
-/// テスト用は `with_driver()` でモックを注入。
+/// 生産コードは [`new`](Self::new)（内部で `LinuxSpiDriver` を生成）、
+/// テストは [`with_driver`](Self::with_driver) でモックを注入する（依存注入）。
 /// C++ の PIMPL に相当するフィールド隠蔽は Rust のプライベートフィールドで実現。
+///
+/// - 入力レンジ: 0V 〜 vref
+/// - 分解能: 10 bit（0〜1023）
+/// - 8 チャンネル（CH0〜CH7、シングルエンド）
+///
+/// # Examples
+///
+/// ```no_run
+/// use libsensor::Mcp3008;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut adc = Mcp3008::new("/dev/spidev0.0", 3.3);
+///     adc.open()?;
+///     println!("CH0 = {:.3} V", adc.read_voltage(0)?);
+///     Ok(())
+/// } // adc は Drop で自動クローズされる
+/// ```
 pub struct Mcp3008 {
     driver: Box<dyn SpiDriver>,
     vref: f64,
@@ -62,7 +79,13 @@ impl Mcp3008 {
         }
     }
 
-    /// デバイスを開く。
+    /// デバイスを開き、MCP3008 向けの SPI パラメータを設定する。
+    ///
+    /// 設定値は 1.35 MHz（Vdd=3.3V 時のデータシート上限）/ 8bit / SPI MODE 0。
+    ///
+    /// # Errors
+    ///
+    /// [`SensorError::Spi`] — デバイスを開けない、または ioctl 設定に失敗
     pub fn open(&mut self) -> Result<(), SensorError> {
         let cfg = SpiConfig {
             speed_hz: 1_350_000,
@@ -81,11 +104,21 @@ impl Mcp3008 {
     }
 
     /// デバイスが開かれているか返す。
+    #[must_use]
     pub fn is_open(&self) -> bool {
         self.open
     }
 
-    /// 生の ADC 値を読み出す (0–1023)。
+    /// 指定チャンネルの生 ADC 値（0〜1023）をシングルエンドモードで読む。
+    ///
+    /// 1 回の全二重転送（3 バイト）で開始ビット・チャンネル指定を送り、
+    /// 応答の下位 10bit を合成して返す。
+    ///
+    /// # Errors
+    ///
+    /// - [`SensorError::NotOpen`] — `open()` 前に呼んだ
+    /// - [`SensorError::InvalidChannel`] — `channel` が 0〜7 の範囲外
+    /// - [`SensorError::Spi`] — SPI 転送に失敗
     pub fn read_raw(&mut self, channel: u8) -> Result<u16, SensorError> {
         if !self.open {
             return Err(SensorError::NotOpen);
@@ -105,18 +138,25 @@ impl Mcp3008 {
         Ok(raw)
     }
 
-    /// 電圧値に変換して読み出す。
+    /// 指定チャンネルの電圧 \[V\] を読む。
+    ///
+    /// `raw * vref / 1023` で換算する。換算結果は [`set_vref`](Self::set_vref) の影響を受ける。
+    ///
+    /// # Errors
+    ///
+    /// [`read_raw`](Self::read_raw) と同じ。
     pub fn read_voltage(&mut self, channel: u8) -> Result<f64, SensorError> {
         let raw = self.read_raw(channel)?;
         Ok(raw as f64 / ADC_MAX as f64 * self.vref)
     }
 
-    /// 現在の基準電圧 [V] を返す。
+    /// 現在の基準電圧 \[V\] を返す。
+    #[must_use]
     pub fn vref(&self) -> f64 {
         self.vref
     }
 
-    /// 基準電圧 [V] を変更する。
+    /// 基準電圧 \[V\] を変更する。
     pub fn set_vref(&mut self, vref: f64) {
         self.vref = vref;
     }

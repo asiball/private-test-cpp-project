@@ -8,7 +8,7 @@ license.workspace = true
 thiserror.workspace = true
 log.workspace = true
 embedded-common = { path = "../common" }
-libc = "0.2"
+libc.workspace = true
 
 [lints]
 workspace = true

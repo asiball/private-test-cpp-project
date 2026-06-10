@@ -30,30 +30,71 @@ pub enum I2cError {
     #[error("デバイスが開かれていません")]
     NotOpen,
 
+    /// open 済みのまま再度 `open()` を呼んだ (C++ 版 I2cDriver::open と同じく拒否する)。
+    #[error("デバイスは既に開かれています")]
+    AlreadyOpen,
+
     /// バッファ長が I2C メッセージの上限 (65535 バイト) を超えた。
     #[error("バッファ長が上限を超えました: {0} バイト")]
     BufferTooLarge(usize),
 }
 
-/// I2C ドライバの抽象インターフェース。`II2cDriver` に相当。
+/// I2C ドライバの抽象インターフェース。
+///
+/// C++ の `II2cDriver` 純粋仮想クラスに相当する。実機実装は [`LinuxI2cDriver`]、
+/// テストではこのトレイトのモック実装を注入する（依存注入）。
 pub trait I2cDriver: Send {
     /// 指定スレーブアドレスでデバイスを開く。
+    ///
+    /// # Errors
+    ///
+    /// - [`I2cError::AlreadyOpen`] — open 済みのまま再度呼んだ
+    /// - [`I2cError::Open`] — デバイスファイルの open またはアドレス設定に失敗
     fn open(&mut self, addr: u16) -> Result<(), I2cError>;
-    /// デバイスを閉じる。`Drop` で自動的に呼ばれる設計を推奨。
+
+    /// デバイスを閉じる。未オープン時は何もしない（冪等）。
+    ///
+    /// `Drop` からも呼ばれるため、明示的に呼ばなくてもリークしない (RAII)。
     fn close(&mut self);
+
     /// 全バイトを書き込む。部分書き込みはエラーとして扱う。
+    ///
+    /// # Errors
+    ///
+    /// - [`I2cError::NotOpen`] — `open()` 前に呼んだ
+    /// - [`I2cError::Write`] — バスへの書き込みに失敗（NACK 等）
     fn write(&mut self, data: &[u8]) -> Result<(), I2cError>;
-    /// バイト列をすべて読み出す。部分読み出しはエラーとして扱う。
+
+    /// `buf` を満たすまで読み出す。部分読み出しはエラーとして扱う。
+    ///
+    /// # Errors
+    ///
+    /// - [`I2cError::NotOpen`] — `open()` 前に呼んだ
+    /// - [`I2cError::Read`] — バスからの読み出しに失敗
     fn read(&mut self, buf: &mut [u8]) -> Result<(), I2cError>;
-    /// I2C Repeated Start: 書き込み→読み出しをアトミックに実行 (I2C_RDWR ioctl)。
+
+    /// 書き込み→読み出しを Repeated Start で 1 トランザクションとして実行する。
+    ///
+    /// レジスタアドレスを書いてから値を読む典型パターンで、間に他マスタの
+    /// 転送が割り込まないことを保証する (`I2C_RDWR` ioctl)。
+    ///
+    /// # Errors
+    ///
+    /// - [`I2cError::NotOpen`] — `open()` 前に呼んだ
+    /// - [`I2cError::BufferTooLarge`] — `tx` / `rx` が I2C メッセージ上限 (65535 バイト) を超えた
+    /// - [`I2cError::Read`] — トランザクションが失敗した
     fn write_read(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), I2cError>;
+
     /// デバイスが現在開かれているか返す。
+    #[must_use]
     fn is_open(&self) -> bool;
 }
 
 // linux/i2c-dev.h
-const I2C_SLAVE: u64 = 0x0703;
-const I2C_RDWR: u64 = 0x0707;
+// libc::ioctl の request 引数は c_ulong (armv7 では u32) のため u32 で持ち、
+// 呼び出し時に c_ulong へ拡幅する。
+const I2C_SLAVE: u32 = 0x0703;
+const I2C_RDWR: u32 = 0x0707;
 const I2C_M_RD: u16 = 0x0001;
 
 /// linux/i2c.h `i2c_msg`
@@ -73,6 +114,27 @@ struct I2cRdwrIoctlData {
 }
 
 /// `/dev/i2c-N` を直接操作する Linux 実装。
+///
+/// `Drop` 実装により `close()` が自動呼び出しされる (RAII)。
+/// スレッドセーフではないため、複数スレッドから使う場合は呼び出し側で
+/// 排他制御すること。
+///
+/// # Examples
+///
+/// ```no_run
+/// use i2c_hal::{I2cDriver, LinuxI2cDriver};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut drv = LinuxI2cDriver::new("/dev/i2c-1");
+///     drv.open(0x48)?; // ADS1115 (ADDR=GND)
+///
+///     // レジスタ 0x01 (Config) を Repeated Start で読む
+///     let mut buf = [0u8; 2];
+///     drv.write_read(&[0x01], &mut buf)?;
+///     println!("config = 0x{:02X}{:02X}", buf[0], buf[1]);
+///     Ok(())
+/// } // drv は Drop で自動クローズされる
+/// ```
 pub struct LinuxI2cDriver {
     bus_path: String,
     file: Option<File>,
@@ -98,13 +160,22 @@ impl Drop for LinuxI2cDriver {
 
 impl I2cDriver for LinuxI2cDriver {
     fn open(&mut self, addr: u16) -> Result<(), I2cError> {
+        if self.file.is_some() {
+            return Err(I2cError::AlreadyOpen);
+        }
         let f = OpenOptions::new()
             .read(true)
             .write(true)
             .open(&self.bus_path)
             .map_err(I2cError::Open)?;
 
-        let ret = unsafe { libc::ioctl(f.as_raw_fd(), I2C_SLAVE, addr as libc::c_ulong) };
+        let ret = unsafe {
+            libc::ioctl(
+                f.as_raw_fd(),
+                I2C_SLAVE as libc::c_ulong,
+                libc::c_ulong::from(addr),
+            )
+        };
         if ret < 0 {
             return Err(I2cError::Open(std::io::Error::last_os_error()));
         }

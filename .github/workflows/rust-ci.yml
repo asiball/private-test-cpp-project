@@ -49,9 +49,17 @@ jobs:
         working-directory: rust
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+      # rustdoc のリンク切れ・不正 HTML を機械検知する (C++ 側の Doxygen ジョブに相当)。
+      # doc test (no_run 例のコンパイル検証を含む) は次の cargo test が実行する。
+      - name: Check rustdoc
+        working-directory: rust
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --no-deps
+
       - name: Run tests
         working-directory: rust
-        run: cargo test --all
+        run: cargo test --workspace
 
       - name: Build release binary
         working-directory: rust

@@ -12,27 +12,31 @@ use std::os::unix::io::AsRawFd;
 
 use crate::{SpiConfig, SpiDriver, SpiError};
 
+// ioctl の size フィールド (14bit) 用に構造体サイズを u32 へ変換する。
+// ここで扱う型はすべて数十バイトなので切り捨ては起こり得ない。
+#[allow(clippy::cast_possible_truncation)]
+const fn ioc_size_of<T>() -> u32 {
+    std::mem::size_of::<T>() as u32
+}
+
 // _IOW(type, nr, size) の Rust 版マクロ (linux/ioctl.h)
+// ioctl 番号は 32bit に収まる。libc::ioctl の request 引数は c_ulong で
+// armv7(u32) と x86_64(u64) で幅が異なるため、u32 で計算し呼び出し時に拡幅する。
 macro_rules! iow {
     ($ty:expr, $nr:expr, $size:ty) => {
-        ((1u64 << 30)
-            | (($ty as u64) << 8)
-            | ($nr as u64)
-            | ((std::mem::size_of::<$size>() as u64) << 16))
+        ((1u32 << 30) | (($ty as u32) << 8) | ($nr as u32) | (ioc_size_of::<$size>() << 16))
     };
 }
 
 const SPI_IOC_MAGIC: u8 = b'k';
-const SPI_IOC_WR_MODE: u64 = iow!(SPI_IOC_MAGIC, 1, u8);
-const SPI_IOC_WR_BITS_PER_WORD: u64 = iow!(SPI_IOC_MAGIC, 3, u8);
-const SPI_IOC_WR_MAX_SPEED_HZ: u64 = iow!(SPI_IOC_MAGIC, 4, u32);
+const SPI_IOC_WR_MODE: u32 = iow!(SPI_IOC_MAGIC, 1, u8);
+const SPI_IOC_WR_BITS_PER_WORD: u32 = iow!(SPI_IOC_MAGIC, 3, u8);
+const SPI_IOC_WR_MAX_SPEED_HZ: u32 = iow!(SPI_IOC_MAGIC, 4, u32);
 
 // SPI_IOC_MESSAGE(1): _IOW('k', 0, spi_ioc_transfer) — nr=0 は SPI_IOC_MESSAGE 専用
 // std::mem::size_of は const fn なのでコンパイル時定数として評価される
-const fn spi_ioc_message_1() -> u64 {
-    (1u64 << 30)
-        | ((std::mem::size_of::<SpiIocTransfer>() as u64) << 16)
-        | ((SPI_IOC_MAGIC as u64) << 8)
+const fn spi_ioc_message_1() -> u32 {
+    (1u32 << 30) | (ioc_size_of::<SpiIocTransfer>() << 16) | ((SPI_IOC_MAGIC as u32) << 8)
 }
 
 /// linux/spi/spidev.h の `spi_ioc_transfer` に対応。
@@ -53,8 +57,25 @@ struct SpiIocTransfer {
 
 /// `/dev/spidevX.Y` を直接操作する Linux 実装。
 ///
-/// C++ `SpiDriver` クラスに相当。
-/// `Drop` 実装により `close()` が自動呼び出しされる (RAII)。
+/// C++ `SpiDriver` クラスに相当。`Drop` 実装により `close()` が
+/// 自動呼び出しされる (RAII)。スレッドセーフではないため、
+/// 複数スレッドから使う場合は呼び出し側で排他制御すること。
+///
+/// # Examples
+///
+/// ```no_run
+/// use spi_hal::{LinuxSpiDriver, SpiConfig, SpiDriver};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut drv = LinuxSpiDriver::new("/dev/spidev0.0");
+///     drv.open(&SpiConfig { speed_hz: 1_000_000, bits_per_word: 8, mode: 0 })?;
+///
+///     let tx = [0x01, 0x80, 0x00];
+///     let mut rx = [0u8; 3];
+///     drv.transfer(&tx, &mut rx)?;
+///     Ok(())
+/// } // drv は Drop で自動クローズされる
+/// ```
 pub struct LinuxSpiDriver {
     path: String,
     file: Option<File>,
@@ -80,6 +101,9 @@ impl Drop for LinuxSpiDriver {
 
 impl SpiDriver for LinuxSpiDriver {
     fn open(&mut self, config: &SpiConfig) -> Result<(), SpiError> {
+        if self.file.is_some() {
+            return Err(SpiError::AlreadyOpen);
+        }
         let f = OpenOptions::new()
             .read(true)
             .write(true)
@@ -91,15 +115,25 @@ impl SpiDriver for LinuxSpiDriver {
         // ioctl で SPI パラメータを設定 (linux/spi/spidev.h)
         unsafe {
             let mode = config.mode;
-            if libc::ioctl(fd, SPI_IOC_WR_MODE, &mode as *const u8) < 0 {
+            if libc::ioctl(fd, SPI_IOC_WR_MODE as libc::c_ulong, &mode as *const u8) < 0 {
                 return Err(SpiError::Open(std::io::Error::last_os_error()));
             }
             let bpw = config.bits_per_word;
-            if libc::ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bpw as *const u8) < 0 {
+            if libc::ioctl(
+                fd,
+                SPI_IOC_WR_BITS_PER_WORD as libc::c_ulong,
+                &bpw as *const u8,
+            ) < 0
+            {
                 return Err(SpiError::Open(std::io::Error::last_os_error()));
             }
             let speed = config.speed_hz;
-            if libc::ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed as *const u32) < 0 {
+            if libc::ioctl(
+                fd,
+                SPI_IOC_WR_MAX_SPEED_HZ as libc::c_ulong,
+                &speed as *const u32,
+            ) < 0
+            {
                 return Err(SpiError::Open(std::io::Error::last_os_error()));
             }
         }
@@ -143,17 +177,26 @@ impl SpiDriver for LinuxSpiDriver {
             _pad: 0,
         };
 
-        let ret = unsafe {
-            libc::ioctl(
-                f.as_raw_fd(),
-                spi_ioc_message_1(),
-                &tr as *const SpiIocTransfer,
-            )
-        };
-        if ret < 0 {
-            return Err(SpiError::Transfer(std::io::Error::last_os_error()));
+        // EAGAIN は一時的なリソース不足。C++ 版 (SpiDriver::transfer) と同じく最大 3 回試行する
+        let mut last_err = std::io::Error::from_raw_os_error(libc::EAGAIN);
+        for retry in 0..3 {
+            let ret = unsafe {
+                libc::ioctl(
+                    f.as_raw_fd(),
+                    spi_ioc_message_1() as libc::c_ulong,
+                    &tr as *const SpiIocTransfer,
+                )
+            };
+            if ret >= 0 {
+                return Ok(());
+            }
+            last_err = std::io::Error::last_os_error();
+            if last_err.raw_os_error() != Some(libc::EAGAIN) {
+                break;
+            }
+            log::warn!("SPI transfer EAGAIN retry {}/3", retry + 1);
         }
-        Ok(())
+        Err(SpiError::Transfer(last_err))
     }
 
     fn is_open(&self) -> bool {

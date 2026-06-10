@@ -4,10 +4,10 @@
 //!
 //! C++ との対応:
 //!   std::thread + condition_variable の背景モニタ → std::thread + Condvar
-//!   std::mutex + std::unique_lock + stop flag     → Arc<(Mutex<bool>, Condvar)>
+//!   std::mutex + std::unique_lock + stop flag     → `Arc<(Mutex<bool>, Condvar)>`
 //!
-//! Bug #8 fix: AtomicBool と Mutex<bool> の二重管理を廃止。
-//!   Mutex<bool> を唯一の停止フラグとし、ロック下で `true` にしてから notify_all。
+//! Bug #8 fix: AtomicBool と `Mutex<bool>` の二重管理を廃止。
+//!   `Mutex<bool>` を唯一の停止フラグとし、ロック下で `true` にしてから notify_all。
 //! Bug #9 fix: JoinHandle を保存して join() で終了を確認。
 
 use std::io::{self, BufRead, Write};
@@ -24,7 +24,7 @@ struct Args {
     #[arg(short, long, default_value = "/dev/spidev0.0")]
     device: String,
 
-    /// 基準電圧 [V]
+    /// 基準電圧 \[V\]
     #[arg(long, default_value_t = 3.3)]
     vref: f64,
 }
@@ -62,9 +62,13 @@ fn main() {
 
             let (lock, cvar) = &*pair2;
             loop {
-                // 60 秒待機、または停止通知で即時抜け出す
+                // 60 秒待機、または停止通知で即時抜け出す。
+                // wait_timeout_while は待機前にも述語を評価するため、
+                // 非待機中に notify されても通知を取りこぼさない (lost wakeup 防止)。
                 let guard = lock.lock().unwrap();
-                let (guard, _) = cvar.wait_timeout(guard, Duration::from_secs(60)).unwrap();
+                let (guard, _) = cvar
+                    .wait_timeout_while(guard, Duration::from_secs(60), |stop| !*stop)
+                    .unwrap();
 
                 if *guard {
                     // 停止フラグが立っている → ループを抜ける

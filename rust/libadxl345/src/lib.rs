@@ -13,7 +13,7 @@ use reg::*;
 use spi_hal::{LinuxSpiDriver, SpiConfig, SpiDriver, SpiError};
 use thiserror::Error;
 
-/// 1 LSB あたりのスケール係数 [g/LSB]。フル解像度モード時 3.9 mg/LSB。
+/// 1 LSB あたりのスケール係数 \[g/LSB\]。フル解像度モード時 3.9 mg/LSB。
 pub const SCALE_G_PER_LSB: f64 = 0.0039;
 
 /// ADXL345 ドライバのエラー型。
@@ -46,15 +46,35 @@ pub struct AccelRaw {
 /// g 単位に変換した 3 軸加速度。
 #[derive(Debug, Clone, Copy)]
 pub struct AccelG {
-    /// X 軸 [g]。
+    /// X 軸 \[g\]。
     pub x: f64,
-    /// Y 軸 [g]。
+    /// Y 軸 \[g\]。
     pub y: f64,
-    /// Z 軸 [g]。
+    /// Z 軸 \[g\]。
     pub z: f64,
 }
 
-/// ADXL345 高水準ドライバ。
+/// ADXL345 (3軸加速度センサー / SPI) 高水準ドライバ。
+///
+/// 生産コードは [`new`](Self::new)（内部で `LinuxSpiDriver` を生成）、
+/// テストは [`with_driver`](Self::with_driver) でモックを注入する（依存注入）。
+///
+/// [`open`](Self::open) で DEVID (0xE5) を検証してから
+/// ±16g / フル分解能（3.9 mg/LSB）モードで測定を開始する。
+///
+/// # Examples
+///
+/// ```no_run
+/// use libadxl345::Adxl345;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut accel = Adxl345::new("/dev/spidev0.1");
+///     accel.open()?; // DEVID 検証 + 測定開始
+///     let g = accel.read_g()?;
+///     println!("x={:+.2}g y={:+.2}g z={:+.2}g", g.x, g.y, g.z);
+///     Ok(())
+/// } // accel は Drop でスタンバイ移行 + 自動クローズされる
+/// ```
 pub struct Adxl345 {
     driver: Box<dyn SpiDriver>,
     open: bool,
@@ -76,7 +96,15 @@ impl Adxl345 {
 
     /// デバイスを開いて ID 検証・初期設定を行う。
     ///
-    /// `self.open = true` は全初期化が完了した後にのみセットする。
+    /// SPI を 4 MHz / MODE 3 で開き、DEVID (0xE5) で疎通・誤配線を検出した後、
+    /// ±16g / フル分解能モードに設定して測定を開始する。
+    /// 途中で失敗した場合はデバイスを閉じた状態に戻す
+    /// （`self.open = true` は全初期化が完了した後にのみセットする）。
+    ///
+    /// # Errors
+    ///
+    /// - [`Adxl345Error::Spi`] — SPI の open または転送に失敗
+    /// - [`Adxl345Error::WrongDeviceId`] — DEVID が 0xE5 でない（配線・チップ選択誤り）
     pub fn open(&mut self) -> Result<(), Adxl345Error> {
         let cfg = SpiConfig {
             speed_hz: 4_000_000,
@@ -130,11 +158,17 @@ impl Adxl345 {
     }
 
     /// デバイスが開かれているか返す。
+    #[must_use]
     pub fn is_open(&self) -> bool {
         self.open
     }
 
     /// レジスタを 1 バイト読み出す。
+    ///
+    /// # Errors
+    ///
+    /// - [`Adxl345Error::NotOpen`] — `open()` 前に呼んだ
+    /// - [`Adxl345Error::Spi`] — SPI 転送に失敗
     pub fn read_reg(&mut self, addr: u8) -> Result<u8, Adxl345Error> {
         if !self.open {
             return Err(Adxl345Error::NotOpen);
@@ -146,6 +180,10 @@ impl Adxl345 {
     }
 
     /// レジスタに 1 バイト書き込む。
+    ///
+    /// # Errors
+    ///
+    /// [`read_reg`](Self::read_reg) と同じ。
     pub fn write_reg(&mut self, addr: u8, value: u8) -> Result<(), Adxl345Error> {
         if !self.open {
             return Err(Adxl345Error::NotOpen);
@@ -157,13 +195,25 @@ impl Adxl345 {
     }
 
     /// read-modify-write: 指定ビットマスクの範囲だけ更新する。
+    ///
+    /// # Errors
+    ///
+    /// [`read_reg`](Self::read_reg) と同じ。
     pub fn update_bits(&mut self, addr: u8, mask: u8, value: u8) -> Result<(), Adxl345Error> {
         let current = self.read_reg(addr)?;
         let updated = (current & !mask) | (value & mask);
         self.write_reg(addr, updated)
     }
 
-    /// 生の加速度値を読み出す (6バイトバーストリード)。
+    /// 3 軸の生加速度値を読み出す。
+    ///
+    /// DATAX0 から 6 バイトをバーストリードし、各軸をリトルエンディアンの
+    /// 符号付き 16bit として合成する（X/Y/Z を 1 トランザクションで読むことで
+    /// 軸間のサンプリングずれを防ぐ）。
+    ///
+    /// # Errors
+    ///
+    /// [`read_reg`](Self::read_reg) と同じ。
     pub fn read_raw(&mut self) -> Result<AccelRaw, Adxl345Error> {
         if !self.open {
             return Err(Adxl345Error::NotOpen);
@@ -178,7 +228,13 @@ impl Adxl345 {
         Ok(AccelRaw { x, y, z })
     }
 
-    /// g 単位に変換した加速度値を返す。
+    /// g 単位に変換した 3 軸加速度を返す。
+    ///
+    /// `raw * 3.9 mg/LSB`（フル分解能モード固定）で換算する。
+    ///
+    /// # Errors
+    ///
+    /// [`read_raw`](Self::read_raw) と同じ。
     pub fn read_g(&mut self) -> Result<AccelG, Adxl345Error> {
         let raw = self.read_raw()?;
         Ok(AccelG {

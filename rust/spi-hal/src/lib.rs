@@ -30,6 +30,10 @@ pub enum SpiError {
     #[error("デバイスが開かれていません")]
     NotOpen,
 
+    /// open 済みのまま再度 `open()` を呼んだ (C++ 版 SpiDriver::open と同じく拒否する)。
+    #[error("デバイスは既に開かれています")]
+    AlreadyOpen,
+
     /// `tx` と `rx` のバッファ長が一致しない。
     #[error("バッファ長が不正です: tx={tx} rx={rx}")]
     LengthMismatch {
@@ -43,7 +47,7 @@ pub enum SpiError {
 /// SPI バス設定。`ISpiDriver::Config` に相当。
 #[derive(Debug, Clone, Copy)]
 pub struct SpiConfig {
-    /// クロック周波数 [Hz]
+    /// クロック周波数 \[Hz\]
     pub speed_hz: u32,
     /// ワード幅 (通常 8)
     pub bits_per_word: u8,
@@ -63,18 +67,34 @@ impl Default for SpiConfig {
 
 /// SPI ドライバの抽象インターフェース。
 ///
-/// C++ の `ISpiDriver` 純粋仮想クラスに相当。
-/// テストではこのトレイトのモック実装を注入できる。
+/// C++ の `ISpiDriver` 純粋仮想クラスに相当する。実機実装は [`LinuxSpiDriver`]、
+/// テストではこのトレイトのモック実装を注入する（依存注入）。
+/// `Send` を要求するのは、上位層 (CLI のモニタスレッド等) がドライバを
+/// 別スレッドへ移動できるようにするため。
 pub trait SpiDriver: Send {
     /// デバイスを設定付きで開く。
+    ///
+    /// # Errors
+    ///
+    /// - [`SpiError::AlreadyOpen`] — open 済みのまま再度呼んだ
+    /// - [`SpiError::Open`] — デバイスファイルの open または ioctl 設定に失敗
     fn open(&mut self, config: &SpiConfig) -> Result<(), SpiError>;
 
-    /// デバイスを閉じる。`Drop` で自動的に呼ばれる設計を推奨。
+    /// デバイスを閉じる。未オープン時は何もしない（冪等）。
+    ///
+    /// `Drop` からも呼ばれるため、明示的に呼ばなくてもリークしない (RAII)。
     fn close(&mut self);
 
-    /// 全二重転送。`tx` と `rx` は同じ長さでなければならない。
+    /// 全二重転送を行う。`tx` の送信と同時に同じ長さの `rx` を受信する。
+    ///
+    /// # Errors
+    ///
+    /// - [`SpiError::NotOpen`] — `open()` 前に呼んだ
+    /// - [`SpiError::LengthMismatch`] — `tx` と `rx` の長さが異なる
+    /// - [`SpiError::Transfer`] — ioctl が失敗した（EAGAIN はリトライ後）
     fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), SpiError>;
 
     /// デバイスが現在開かれているか返す。
+    #[must_use]
     fn is_open(&self) -> bool;
 }
