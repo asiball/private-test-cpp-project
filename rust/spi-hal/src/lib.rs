@@ -30,6 +30,10 @@ pub enum SpiError {
     #[error("デバイスが開かれていません")]
     NotOpen,
 
+    /// open 済みのまま再度 `open()` を呼んだ (C++ 版 SpiDriver::open と同じく拒否する)。
+    #[error("デバイスは既に開かれています")]
+    AlreadyOpen,
+
     /// `tx` と `rx` のバッファ長が一致しない。
     #[error("バッファ長が不正です: tx={tx} rx={rx}")]
     LengthMismatch {
@@ -76,5 +80,6 @@ pub trait SpiDriver: Send {
     fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), SpiError>;
 
     /// デバイスが現在開かれているか返す。
+    #[must_use]
     fn is_open(&self) -> bool;
 }

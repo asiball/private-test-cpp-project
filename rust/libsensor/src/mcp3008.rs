@@ -81,6 +81,7 @@ impl Mcp3008 {
     }
 
     /// デバイスが開かれているか返す。
+    #[must_use]
     pub fn is_open(&self) -> bool {
         self.open
     }
@@ -112,6 +113,7 @@ impl Mcp3008 {
     }
 
     /// 現在の基準電圧 [V] を返す。
+    #[must_use]
     pub fn vref(&self) -> f64 {
         self.vref
     }

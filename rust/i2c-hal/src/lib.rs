@@ -30,6 +30,10 @@ pub enum I2cError {
     #[error("デバイスが開かれていません")]
     NotOpen,
 
+    /// open 済みのまま再度 `open()` を呼んだ (C++ 版 I2cDriver::open と同じく拒否する)。
+    #[error("デバイスは既に開かれています")]
+    AlreadyOpen,
+
     /// バッファ長が I2C メッセージの上限 (65535 バイト) を超えた。
     #[error("バッファ長が上限を超えました: {0} バイト")]
     BufferTooLarge(usize),
@@ -48,12 +52,15 @@ pub trait I2cDriver: Send {
     /// I2C Repeated Start: 書き込み→読み出しをアトミックに実行 (I2C_RDWR ioctl)。
     fn write_read(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), I2cError>;
     /// デバイスが現在開かれているか返す。
+    #[must_use]
     fn is_open(&self) -> bool;
 }
 
 // linux/i2c-dev.h
-const I2C_SLAVE: u64 = 0x0703;
-const I2C_RDWR: u64 = 0x0707;
+// libc::ioctl の request 引数は c_ulong (armv7 では u32) のため u32 で持ち、
+// 呼び出し時に c_ulong へ拡幅する。
+const I2C_SLAVE: u32 = 0x0703;
+const I2C_RDWR: u32 = 0x0707;
 const I2C_M_RD: u16 = 0x0001;
 
 /// linux/i2c.h `i2c_msg`
@@ -98,13 +105,22 @@ impl Drop for LinuxI2cDriver {
 
 impl I2cDriver for LinuxI2cDriver {
     fn open(&mut self, addr: u16) -> Result<(), I2cError> {
+        if self.file.is_some() {
+            return Err(I2cError::AlreadyOpen);
+        }
         let f = OpenOptions::new()
             .read(true)
             .write(true)
             .open(&self.bus_path)
             .map_err(I2cError::Open)?;
 
-        let ret = unsafe { libc::ioctl(f.as_raw_fd(), I2C_SLAVE, addr as libc::c_ulong) };
+        let ret = unsafe {
+            libc::ioctl(
+                f.as_raw_fd(),
+                I2C_SLAVE as libc::c_ulong,
+                libc::c_ulong::from(addr),
+            )
+        };
         if ret < 0 {
             return Err(I2cError::Open(std::io::Error::last_os_error()));
         }

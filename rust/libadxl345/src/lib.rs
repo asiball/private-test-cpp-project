@@ -130,6 +130,7 @@ impl Adxl345 {
     }
 
     /// デバイスが開かれているか返す。
+    #[must_use]
     pub fn is_open(&self) -> bool {
         self.open
     }

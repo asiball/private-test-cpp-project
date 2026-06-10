@@ -22,6 +22,8 @@ const MUX_CH0_GND: u16 = 0x4000;
 const MODE_SINGLE: u16 = 0x0100;
 const DR_128SPS: u16 = 0x0080;
 const COMP_QUE_DISABLE: u16 = 0x0003;
+// 1 変換ごとに ALERT/RDY をアサートする (RDY ピンモード用)。C++ 版 CFG_COMP_QUE_ONE に相当。
+const COMP_QUE_ONE: u16 = 0x0000;
 
 // 変換完了待ちポーリングの最大試行回数
 // 128 SPS では 1 変換 ≈ 7.8 ms。1 ms ポーリングで 100 回 = 100 ms まで待つ。
@@ -72,6 +74,7 @@ pub enum Gain {
 
 impl Gain {
     /// フルスケール電圧 [V] を返す。
+    #[must_use]
     pub fn full_scale_volts(self) -> f64 {
         match self {
             Gain::Fsr6V144 => 6.144,
@@ -90,6 +93,7 @@ pub struct Ads1115 {
     addr: u16,
     gain: Gain,
     open: bool,
+    rdy_pin_enabled: bool,
 }
 
 impl Ads1115 {
@@ -105,6 +109,7 @@ impl Ads1115 {
             addr,
             gain: Gain::default(),
             open: false,
+            rdy_pin_enabled: false,
         }
     }
 
@@ -122,6 +127,7 @@ impl Ads1115 {
     }
 
     /// デバイスが開かれているか返す。
+    #[must_use]
     pub fn is_open(&self) -> bool {
         self.open
     }
@@ -132,11 +138,13 @@ impl Ads1115 {
     }
 
     /// 現在の PGA ゲインを返す。
+    #[must_use]
     pub fn gain(&self) -> Gain {
         self.gain
     }
 
     /// 現在のゲイン設定のフルスケール電圧 [V] を返す。
+    #[must_use]
     pub fn full_scale_volts(&self) -> f64 {
         self.gain.full_scale_volts()
     }
@@ -151,8 +159,14 @@ impl Ads1115 {
         }
 
         let mux = MUX_CH0_GND | ((channel as u16) << 12);
-        let config: u16 =
-            OS_SINGLE | mux | self.gain as u16 | MODE_SINGLE | DR_128SPS | COMP_QUE_DISABLE;
+        // RDY ピン有効時は COMP_QUE=00 (1 変換ごとにアサート) を維持する。
+        // COMP_QUE_DISABLE を書くと ALERT/RDY 出力が無効化されてしまう (C++ 版と同じ挙動)。
+        let comp_que = if self.rdy_pin_enabled {
+            COMP_QUE_ONE
+        } else {
+            COMP_QUE_DISABLE
+        };
+        let config: u16 = OS_SINGLE | mux | self.gain as u16 | MODE_SINGLE | DR_128SPS | comp_que;
 
         self.write_reg(REG_CONFIG, config)?;
 
@@ -181,6 +195,7 @@ impl Ads1115 {
         }
         self.write_reg(REG_LO_THRESH, LO_THRESH_CONV_RDY)?;
         self.write_reg(REG_HI_THRESH, HI_THRESH_CONV_RDY)?;
+        self.rdy_pin_enabled = true;
         Ok(())
     }
 

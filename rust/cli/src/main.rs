@@ -62,9 +62,13 @@ fn main() {
 
             let (lock, cvar) = &*pair2;
             loop {
-                // 60 秒待機、または停止通知で即時抜け出す
+                // 60 秒待機、または停止通知で即時抜け出す。
+                // wait_timeout_while は待機前にも述語を評価するため、
+                // 非待機中に notify されても通知を取りこぼさない (lost wakeup 防止)。
                 let guard = lock.lock().unwrap();
-                let (guard, _) = cvar.wait_timeout(guard, Duration::from_secs(60)).unwrap();
+                let (guard, _) = cvar
+                    .wait_timeout_while(guard, Duration::from_secs(60), |stop| !*stop)
+                    .unwrap();
 
                 if *guard {
                     // 停止フラグが立っている → ループを抜ける
