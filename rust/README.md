@@ -14,8 +14,11 @@ rust/
 ├── Cargo.toml          # Cargo ワークスペース定義
 ├── common/             # ロガー初期化 (C++: common/include/logger.hpp)
 ├── spi-hal/            # SPI ドライバ抽象 + Linux spidev 実装
+│   └── tests/          # ユニットテスト (実機ケースは自動スキップ)
 ├── i2c-hal/            # I2C ドライバ抽象 + Linux i2c-dev 実装
+│   └── tests/          # ユニットテスト (実機ケースは自動スキップ)
 ├── gpio/               # GPIO エッジ検知 (Linux GPIO chardev v2)
+│   └── tests/          # ユニットテスト + src/lib.rs 内の uABI 回帰テスト
 ├── libsensor/          # MCP3008 SPI ADC + ADS1115 I2C ADC
 │   └── tests/          # ユニットテスト (モック注入)
 ├── libadxl345/         # ADXL345 3軸加速度センサー
@@ -63,6 +66,28 @@ cargo clippy -- -D warnings
 | I2C Repeated Start (2 トランザクション) | `I2C_RDWR` ioctl (1 アトミックトランザクション) | `i2c-hal/src/lib.rs` |
 
 ---
+
+## テスト (C++ 側との対応)
+
+C++ 側のユニットテスト (`tests/unit/*`) と同じ観点を `cargo test` でカバーする。
+実機が必要なケースは、デバイスファイルが存在しなければスキップする
+(C++ の `GTEST_SKIP()` と同じ方針)。
+
+| Rust テスト | 対応する C++ テスト | 備考 |
+|---|---|---|
+| `spi-hal/tests/spi_driver_test.rs` | `tests/unit/spi-hal/test_spi_driver.cpp` (UT-DRV-001〜007) | コピー禁止は型システムが保証するため実行時テスト不要 |
+| `i2c-hal/tests/i2c_driver_test.rs` | `tests/unit/i2c-hal/test_i2c_driver.cpp` (UT-I2C-001〜007) | 〃 |
+| `gpio/tests/gpio_line_test.rs` | `tests/unit/gpio/test_gpio_line.cpp` (UT-GPIO-001〜005) | 〃 |
+| `gpio/src/lib.rs` 内 `uabi_tests` | (C++ はカーネルヘッダの定数を直接使うため不要) | 手書きの uABI 定数/レイアウトの回帰テスト |
+| `libsensor/tests/mcp3008_test.rs` | `tests/unit/libsensor/test_sensor.cpp` (UT-LIB-001〜009) | モック注入 |
+| `libadxl345/tests/adxl345_test.rs` | `tests/unit/libadxl345/test_adxl345.cpp` (UT-ADXL-001〜011) | モック注入 |
+
+### 探索版としての意図的な簡略化
+
+- **ADS1115**: ドライバ (`libsensor/src/ads1115.rs`) は移植済みだが、専用テスト
+  (C++ の UT-ADS-001〜007 相当) と CLI からの利用は未対応。
+- **`read_raw_async`**: C++ の非同期読み出し API は未移植 (CLI も同期読み出しのみ)。
+- **SBOM**: `tools/sbom-metadata.json` の対象外 (リリース成果物ではないため)。
 
 ## 学習ガイド
 
