@@ -201,3 +201,33 @@ ADS1115 のレジスタ仕様は
 | 期待 | Config bits14:12 が `0b100 \| ch`（単電源ベース + チャネル） |
 | 種別 | プロトコル確認 |
 | 実装 | `test_ads1115.cpp:Ads1115ReadRaw.MuxBitsForAllChannels` |
+
+### UT-ADS-010 `start_conversion()` は Config 書き込みのみ
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock の write 引数をキャプチャ、write_read は呼ばれない想定 |
+| 入力 | `start_conversion(0)` |
+| 期待 | TX=`{0x01,0xC5,0x83}` を書くのみ。結果読み出しは発生しない |
+| 種別 | 割り込み駆動 API |
+| 実装 | `test_ads1115.cpp:Ads1115StartConversion.WritesConfigOnly` |
+
+### UT-ADS-011 無効チャネルの `start_conversion()`
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock の write は呼ばれない想定 |
+| 入力 | `start_conversion(CHANNEL_COUNT)` |
+| 期待 | `false`、バスアクセスは発生しない |
+| 種別 | 異常系 |
+| 実装 | `test_ads1115.cpp:Ads1115StartConversion.InvalidChannelReturnsFalse` |
+
+### UT-ADS-012 `read_result()` は Conversion レジスタのみ読む
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock の write（変換開始）は呼ばれない想定 |
+| 入力 | `read_result()` |
+| 期待 | Conversion レジスタ（ポインタ 0x00）を読み、変換開始はしない |
+| 種別 | 割り込み駆動 API |
+| 実装 | `test_ads1115.cpp:Ads1115ReadResult.ReturnsConversionRegisterOnly` |

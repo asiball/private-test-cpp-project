@@ -104,6 +104,30 @@ public:
     [[nodiscard]] std::optional<double> read_voltage(uint8_t channel) noexcept;
 
     /**
+     * @brief シングルショット変換を開始する（Config 書き込みのみ。結果は読まない）
+     *
+     * `read_raw()` は「変換開始」と「結果読み出し」を兼ねるため、ALERT/RDY 割り込みと
+     * 組み合わせると「割り込み前に read_raw が変換を始めてしまう」順序問題が起きる。
+     * 割り込み駆動では本関数で変換だけ開始し、ALERT/RDY のエッジを待ってから
+     * read_result() で結果を読む、という分離した使い方をする。
+     *
+     * @param channel チャネル番号（0〜3）
+     * @return true: 成功（false: 無効チャネル / 未オープン / 転送失敗）
+     */
+    [[nodiscard]] bool start_conversion(uint8_t channel) noexcept;
+
+    /**
+     * @brief 直前の変換結果（Conversion レジスタ）を読む（変換開始はしない）
+     *
+     * start_conversion() で開始し、変換完了（ポーリングまたは ALERT/RDY 割り込み）を
+     * 確認した後に呼ぶ。OS ビットのポーリングは行わないため、割り込みで起こされた
+     * 直後の読み出しに適する。
+     *
+     * @return 生値（符号付き 16bit）。転送失敗時は std::nullopt
+     */
+    [[nodiscard]] std::optional<int16_t> read_result() noexcept;
+
+    /**
      * @brief ALERT/RDY ピンを「変換完了通知（RDY）」として有効化する
      *
      * Hi_thresh の MSB=1 / Lo_thresh の MSB=0 を書き込み、以降の変換完了時に

@@ -16,9 +16,21 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <optional>
 #include <string>
 
 namespace {
+
+// 数値引数を安全にパースする（非数値で std::terminate しないよう例外を捕捉）。
+int parse_int(const std::string& s, const char* name)
+{
+    try {
+        return std::stoi(s);
+    } catch (...) {
+        std::cerr << name << ": invalid number '" << s << "'\n";
+        std::exit(2);
+    }
+}
 
 void usage(const char* prog)
 {
@@ -51,10 +63,10 @@ int main(int argc, char** argv)
             return argv[++i];
         };
         if (a == "-d" || a == "--device")      device  = next("--device");
-        else if (a == "-c" || a == "--channel") channel = static_cast<uint8_t>(std::stoi(next("--channel")));
-        else if (a == "-n" || a == "--count")   count   = std::stoi(next("--count"));
+        else if (a == "-c" || a == "--channel") channel = static_cast<uint8_t>(parse_int(next("--channel"), "--channel"));
+        else if (a == "-n" || a == "--count")   count   = parse_int(next("--count"), "--count");
         else if (a == "--gpiochip")             gpiochip = next("--gpiochip");
-        else if (a == "--line")                 line    = std::stoi(next("--line"));
+        else if (a == "--line")                 line    = parse_int(next("--line"), "--line");
         else if (a == "-h" || a == "--help")  { usage(argv[0]); return 0; }
         else { std::cerr << "unknown option: " << a << "\n"; usage(argv[0]); return 2; }
     }
@@ -84,19 +96,29 @@ int main(int argc, char** argv)
     }
 
     for (int i = 0; i < count; ++i) {
+        std::optional<int16_t> raw;
         if (interrupt_mode) {
-            // 変換完了の割り込みで起こされるまで眠る（最大 1 秒）
+            // 割り込み駆動: 1) 変換を開始 → 2) ALERT/RDY のエッジで起こされる →
+            // 3) 結果だけ読む。read_voltage() は内部で変換開始 + OS ポーリングを
+            // 兼ねるため、ここでは start_conversion() / read_result() に分離する
+            // （これをしないと「割り込み前に変換が始まらず永遠にタイムアウト」する）。
+            if (!adc.start_conversion(channel)) {
+                std::cerr << "start_conversion failed\n";
+                break;
+            }
             int ev = alert.wait_event(1000);
             if (ev < 0) { std::cerr << "wait_event error\n"; break; }
             if (ev == 0) { std::cerr << "timeout waiting for ALERT\n"; continue; }
+            raw = adc.read_result();
         } else {
-            // ポーリング: 変換時間ぶん待つ（128SPS なら ~8ms）
+            // ポーリング: 変換時間ぶん待ってから読む（read_raw が開始 + 完了待ち）
             usleep(10 * 1000);
+            raw = adc.read_raw(channel);
         }
 
-        auto v = adc.read_voltage(channel);
-        if (v) {
-            std::cout << "ch" << static_cast<int>(channel) << " = " << *v << " V\n";
+        if (raw) {
+            double v = static_cast<double>(*raw) * adc.full_scale_volts() / 32768.0;
+            std::cout << "ch" << static_cast<int>(channel) << " = " << v << " V\n";
         } else {
             std::cerr << "read failed\n";
         }

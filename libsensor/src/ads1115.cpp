@@ -120,10 +120,10 @@ double Ads1115::full_scale_volts() const noexcept
     return full_scale(impl_->gain);
 }
 
-std::optional<int16_t> Ads1115::read_raw(uint8_t channel) noexcept
+bool Ads1115::start_conversion(uint8_t channel) noexcept
 {
     if (channel >= CHANNEL_COUNT) {
-        return std::nullopt;
+        return false;
     }
 
     // シングルショット変換を開始する Config を組み立てる
@@ -136,12 +136,26 @@ std::optional<int16_t> Ads1115::read_raw(uint8_t channel) noexcept
         CFG_DR_128SPS |
         comp_que;
 
-    if (!impl_->write_reg16(REG_CONFIG, config)) {
+    return impl_->write_reg16(REG_CONFIG, config);
+}
+
+std::optional<int16_t> Ads1115::read_result() noexcept
+{
+    uint16_t raw = 0;
+    if (!impl_->read_reg16(REG_CONVERSION, raw)) {
+        return std::nullopt;
+    }
+    return static_cast<int16_t>(raw);
+}
+
+std::optional<int16_t> Ads1115::read_raw(uint8_t channel) noexcept
+{
+    if (!start_conversion(channel)) {
         return std::nullopt;
     }
 
     // 変換完了まで待つ: Config の OS ビット（bit15）が 1 に戻れば完了。
-    //（割り込み駆動にしたい場合は enable_conversion_ready_pin() + GPIO を使う）
+    //（割り込み駆動にしたい場合は start_conversion() + ALERT/RDY 割り込み + read_result()）
     bool completed = false;
     for (int i = 0; i < MAX_CONVERSION_POLLS; ++i) {
         uint16_t cfg = 0;
@@ -159,11 +173,7 @@ std::optional<int16_t> Ads1115::read_raw(uint8_t channel) noexcept
         return std::nullopt;
     }
 
-    uint16_t raw = 0;
-    if (!impl_->read_reg16(REG_CONVERSION, raw)) {
-        return std::nullopt;
-    }
-    return static_cast<int16_t>(raw);
+    return read_result();
 }
 
 std::optional<double> Ads1115::read_voltage(uint8_t channel) noexcept

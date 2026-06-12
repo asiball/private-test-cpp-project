@@ -147,6 +147,54 @@ TEST(Ads1115ReadRaw, MuxBitsForAllChannels) {
     }
 }
 
+// UT-ADS-010: start_conversion() は Config 書き込みのみ行い結果は読まない
+TEST(Ads1115StartConversion, WritesConfigOnly) {
+    MockI2cDriver mock;
+    uint8_t captured[3] = {0, 0, 0};
+    EXPECT_CALL(mock, write(_, _))
+        .WillOnce([&](const uint8_t* data, size_t len) -> int {
+            if (len >= 3) std::memcpy(captured, data, 3);
+            return static_cast<int>(len);
+        });
+    // 結果読み出し（write_read）は呼ばれてはならない
+    EXPECT_CALL(mock, write_read(_, _, _, _)).Times(0);
+
+    Ads1115 adc(&mock);
+    EXPECT_TRUE(adc.start_conversion(0));
+    EXPECT_EQ(captured[0], 0x01);   // Config レジスタポインタ
+    EXPECT_EQ(captured[1], 0xC5);   // OS|MUX_A0|±2.048V|single（UT-ADS-006 と同じ）
+    EXPECT_EQ(captured[2], 0x83);
+}
+
+// UT-ADS-011: 無効チャネルの start_conversion() は false でバスアクセスなし
+TEST(Ads1115StartConversion, InvalidChannelReturnsFalse) {
+    MockI2cDriver mock;
+    EXPECT_CALL(mock, write(_, _)).Times(0);
+
+    Ads1115 adc(&mock);
+    EXPECT_FALSE(adc.start_conversion(Ads1115::CHANNEL_COUNT));
+}
+
+// UT-ADS-012: read_result() は変換開始せず Conversion レジスタの値だけを返す
+TEST(Ads1115ReadResult, ReturnsConversionRegisterOnly) {
+    MockI2cDriver mock;
+    // write（変換開始）は呼ばれてはならない
+    EXPECT_CALL(mock, write(_, _)).Times(0);
+    EXPECT_CALL(mock, write_read(_, _, _, _))
+        .WillOnce([](const uint8_t* tx, size_t, uint8_t* rx, size_t rx_len) -> int {
+            EXPECT_EQ(tx[0], 0x00);   // Conversion レジスタポインタ
+            if (rx_len < 2) return -1;
+            rx[0] = 0x12;
+            rx[1] = 0x34;
+            return static_cast<int>(rx_len);
+        });
+
+    Ads1115 adc(&mock);
+    auto raw = adc.read_result();
+    ASSERT_TRUE(raw.has_value());
+    EXPECT_EQ(*raw, static_cast<int16_t>(0x1234));
+}
+
 // UT-ADS-007: コピー禁止確認
 TEST(Ads1115Copyable, IsNotCopyConstructible) {
     EXPECT_FALSE(std::is_copy_constructible<Ads1115>::value);
