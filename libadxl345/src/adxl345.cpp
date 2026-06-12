@@ -9,17 +9,16 @@ namespace embedded {
 namespace reg = adxl345::reg;
 
 struct Adxl345::Impl {
-    ISpiDriver* driver;
-    bool        owns_driver;  // Impl がドライバを所有しているか
+    std::unique_ptr<ISpiDriver> owned;   // 自前生成時のみ所有（注入時は空）
+    ISpiDriver*                 driver;  // 実際に使う非所有ビュー
 
     explicit Impl(const std::string& path)
-        : driver(new SpiDriver(path)), owns_driver(true) {}
+        : owned(std::make_unique<SpiDriver>(path)), driver(owned.get()) {}
 
     explicit Impl(ISpiDriver* drv)
-        : driver(drv), owns_driver(false) {}
+        : driver(drv) {}
 
-    ~Impl() { if (owns_driver) delete driver; }
-
+    // owned (unique_ptr) によりデストラクタで自動解放。手動 delete / owns_driver は不要。
     Impl(const Impl&)            = delete;
     Impl& operator=(const Impl&) = delete;
 };
