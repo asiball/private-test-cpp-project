@@ -316,17 +316,18 @@ jobs:
           cmake -B build-tidy -S . \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCMAKE_BUILD_TYPE=Debug
+          # --checks と --warnings-as-errors は .clang-tidy を単一情報源とし CI では指定しない
           clang-tidy \
             -p build-tidy/ \
-            --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
-            --warnings-as-errors='bugprone-*' \
             spi-hal/src/spi_driver.cpp \
+            spi-hal/src/kernel_spi_driver.cpp \
             i2c-hal/src/i2c_driver.cpp \
             gpio/src/gpio_line.cpp \
             libsensor/src/sensor.cpp \
             libsensor/src/ads1115.cpp \
             libadxl345/src/adxl345.cpp \
-            cli/src/main.cpp
+            cli/src/main.cpp \
+            examples/ads1115_alert_demo.cpp
 
   docs:
     runs-on: ubuntu-24.04
