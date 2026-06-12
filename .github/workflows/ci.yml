@@ -246,6 +246,8 @@ jobs:
           cmake --build build/test-libsensor-cov -j$(nproc)
           ./build/test-libsensor-cov/test_sensor \
             --gtest_output=xml:test-results/libsensor-unit.xml
+          ./build/test-libsensor-cov/test_ads1115 \
+            --gtest_output=xml:test-results/ads1115-unit.xml
 
       - name: Run libadxl345 tests (coverage)
         run: |
@@ -289,6 +291,7 @@ jobs:
             --print-summary
 
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -508,6 +511,9 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           ./build/test-libsensor-asan/test_sensor \
             --gtest_output=xml:test-results/libsensor-asan.xml
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-libsensor-asan/test_ads1115 \
+            --gtest_output=xml:test-results/ads1115-asan.xml
 
       - name: Libadxl345 unit tests (ASAN+UBSAN)
         run: |
