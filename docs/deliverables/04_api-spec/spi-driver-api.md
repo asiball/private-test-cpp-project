@@ -28,7 +28,7 @@ struct ISpiDriver::Config {
 
 | フィールド | 型 | 説明 |
 |---|---|---|
-| `speed_hz` | `uint32_t` | クロック周波数。最大 2,000,000（2MHz）|
+| `speed_hz` | `uint32_t` | クロック周波数 [Hz]。実装は値を検証せず `SPI_IOC_WR_MAX_SPEED_HZ` にそのまま渡す（上限はドライバ/デバイス依存。本ライブラリは固定上限を設けない）|
 | `bits_per_word` | `uint8_t` | ワードビット幅。通常 8 |
 | `mode` | `uint8_t` | SPI モード。0〜3（MODE 0 = CPOL=0, CPHA=0）|
 
@@ -85,7 +85,7 @@ SpiDriver& operator=(const SpiDriver&) = delete;
 | 戻り値 | 条件 |
 |---|---|
 | `true` | オープン成功 |
-| `false` | デバイスが存在しない、権限不足、ioctl 失敗 |
+| `false` | デバイスが存在しない、権限不足、ioctl 失敗、**または既にオープン済み**（二重 open は拒否する）|
 
 > `[[nodiscard]]` 指定のため、戻り値を無視するとコンパイル警告が出る。
 
@@ -117,14 +117,19 @@ void close() noexcept;
 | `rx` | `uint8_t*` | 受信バッファ（len バイト）|
 | `len` | `size_t` | 転送バイト数 |
 
-| 戻り値 | 条件 |
-|---|---|
-| `>= 0` | 転送成功。転送バイト数を返す |
-| `-1` | エラー（`last_errno()` で原因を確認）|
+| 戻り値 | 条件 | `last_errno()` |
+|---|---|---|
+| `>= 0` | 転送成功。転送バイト数を返す | — |
+| `0` | `len == 0`（バスアクセスせず即 0 を返す）| — |
+| `-1` | 未オープン | `EBADF` |
+| `-1` | `tx` または `rx` が NULL | `EINVAL` |
+| `-1` | `len > UINT32_MAX`（ハードウェアの len フィールドに収まらない）| `EOVERFLOW` |
+| `-1` | ioctl 失敗 | ioctl の `errno` |
 
 **リトライ仕様**:
 - `EAGAIN` が返った場合のみリトライ（一時的なリソース不足）
-- 最大3回試みて失敗した場合は `-1` を返す
+- 計 3 回試行する（初回 + 再試行 2 回）。間に 100µs, 200µs の指数バックオフを入れる
+- 3 回とも `EAGAIN` で失敗した場合は `-1`（`last_errno()` = `EAGAIN`）を返す
 
 > `[[nodiscard]]` 指定のため、戻り値を無視するとコンパイル警告が出る。
 
@@ -153,6 +158,34 @@ void close() noexcept;
 
 **説明**: 直近のエラーで設定された `errno` 値を返す。
 エラーが発生していない場合は `0` を返す。
+
+---
+
+## 2A. KernelSpiDriver クラス（自作カーネルドライバ経由）
+
+`ISpiDriver` の第 3 の実装。Linux 標準の `spidev` ではなく、本プロジェクトの自作
+カーネルモジュール（`/dev/my_spi_dev`）を介して SPI 転送を行う。`SpiDriver` と同じ
+`ISpiDriver` インターフェースを実装するため、`Sensor` 等からは差し替え可能。
+
+```cpp
+#include <kernel_spi_driver.hpp>
+explicit KernelSpiDriver(const std::string& device_path = "/dev/my_spi_dev");
+```
+
+`SpiDriver` との契約差分:
+
+| 項目 | `SpiDriver`（spidev） | `KernelSpiDriver`（自作ドライバ）|
+|---|---|---|
+| デバイスパス既定 | なし（必須引数）| `"/dev/my_spi_dev"`（既定値あり）|
+| 設定 ioctl | `SPI_IOC_WR_*` | `MY_SPI_IOC_CONFIG`（speed/bits/mode を一括）|
+| 転送 ioctl | `SPI_IOC_MESSAGE(1)` | `MY_SPI_IOC_TRANSFER` |
+| 転送上限 | `len > UINT32_MAX` で `EOVERFLOW` | 同上（カーネル側は 4096 バイト上限。超過は ioctl が `EINVAL`）|
+| EAGAIN リトライ | あり（計 3 回）| なし |
+
+`open()` / `close()` / `transfer()` / `is_open()` / `last_errno()` のシグネチャと
+戻り値・errno 規約は §1.2 / §2.4 と同一（`transfer()` のエッジケース表も共通）。
+カーネル側 ioctl の詳細は
+[05_interface-spec/kernel-module-if.md](../05_interface-spec/kernel-module-if.md) を参照。
 
 ---
 
@@ -214,5 +247,6 @@ int main()
 
 | バージョン | 変更内容 |
 |---|---|
+| v1.1.0 | KernelSpiDriver（§2A）を追記。`transfer()` のエッジケース表・`open()` の二重 open 拒否・`speed_hz` の上限なし仕様・EAGAIN バックオフを明記 |
 | v1.0.1 | `EAGAIN` 時に最大3回リトライする仕様を追加（CHG-002）|
 | v1.0.0 | 初版。`open`, `close`, `transfer`, `is_open`, `last_errno` |

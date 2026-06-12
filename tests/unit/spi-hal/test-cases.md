@@ -188,3 +188,13 @@
 | 期待 | false |
 | 種別 | 異常系（実機のみ） |
 | 実装 | `test_kernel_spi_driver.cpp:KernelSpiDriverOpen.DoubleOpenWithoutCloseReturnsFalse` |
+
+### UT-KDRV-011 `len > UINT32_MAX` の `transfer()` は -1（EOVERFLOW）
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | オープン済み（64bit `size_t` 環境。32bit はスキップ）|
+| 入力 | `transfer(tx, rx, (size_t)UINT32_MAX + 1)` |
+| 期待 | -1、`last_errno() == EOVERFLOW` |
+| 種別 | 境界値（実機のみ） |
+| 実装 | `test_kernel_spi_driver.cpp:KernelSpiDriverTransfer.OverflowLenReturnsMinusOne` |

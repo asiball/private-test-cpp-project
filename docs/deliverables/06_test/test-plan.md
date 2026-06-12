@@ -36,7 +36,7 @@
 
 | スイート | テストケース仕様 | 実施フェーズ | 自動化 |
 |---|---|---|---|
-| 単体テスト (spi-hal) | [`tests/unit/spi-hal/test-cases.md`](../../../tests/unit/spi-hal/test-cases.md)（UT-DRV-* / UT-KDRV-*） | 実装フェーズ | ○ (CI) |
+| 単体テスト (spi-hal) | [`tests/unit/spi-hal/test-cases.md`](../../../tests/unit/spi-hal/test-cases.md)（UT-DRV-001〜007 / UT-KDRV-001〜011） | 実装フェーズ | ○ (CI) |
 | 単体テスト (i2c-hal) ★任意 | [`tests/unit/i2c-hal/test-cases.md`](../../../tests/unit/i2c-hal/test-cases.md)（UT-I2C-001〜007） | 実装フェーズ | ○ (CI) |
 | 単体テスト (gpio) ★任意 | [`tests/unit/gpio/test-cases.md`](../../../tests/unit/gpio/test-cases.md)（UT-GPIO-001〜005） | 実装フェーズ | ○ (CI) |
 | 単体テスト (libsensor) | [`tests/unit/libsensor/test-cases.md`](../../../tests/unit/libsensor/test-cases.md)（UT-LIB-001〜009 / UT-ADS-001〜012 ★任意） | 実装フェーズ | ○ (CI) |
