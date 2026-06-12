@@ -41,7 +41,7 @@
 | 単体テスト (gpio) ★任意 | [`tests/unit/gpio/test-cases.md`](../../../tests/unit/gpio/test-cases.md)（UT-GPIO-001〜005） | 実装フェーズ | ○ (CI) |
 | 単体テスト (libsensor) | [`tests/unit/libsensor/test-cases.md`](../../../tests/unit/libsensor/test-cases.md)（UT-LIB-001〜009 / UT-ADS-001〜012 ★任意） | 実装フェーズ | ○ (CI) |
 | 単体テスト (libadxl345) | [`tests/unit/libadxl345/test-cases.md`](../../../tests/unit/libadxl345/test-cases.md)（UT-ADXL-001〜011） | 実装フェーズ | ○ (CI) |
-| 結合テスト | [`tests/integration/test-cases.md`](../../../tests/integration/test-cases.md)（IT-001〜005） | テストフェーズ | ○ (CI; 実機なしは自動 skip) |
+| 結合テスト | [`tests/integration/test-cases.md`](../../../tests/integration/test-cases.md)（IT-001〜011: MCP3008 / ADXL345 / ADS1115 / gpio） | テストフェーズ | ○ (CI; 実機なしは自動 skip) |
 | 受け入れテスト | 本ドキュメント 6 章 | 納品前 | ✗ (手動) |
 
 > ★任意コンポーネント（i2c-hal / gpio / ADS1115）のテストも CI の3系統
