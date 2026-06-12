@@ -131,7 +131,7 @@ GitHub Actions（`.github/workflows/ci.yml`）により、以下の工程が自�
 3. **Doxygenによるドキュメント生成**
 4. **gcovrによるテストカバレッジ計測**
 
-パイプラインの構成や各タスクの詳細については、[ビルドガイドの第5節「CI/CDパイプライン」](tooling/build-guide.md#5-cicd%E3%83%91%E3%82%A4%E3%83%97%E3%83%A9%E3%82%A4%E3%83%B3) を参照してください。
+パイプラインの構成や各タスクの詳細については、[ビルドガイドの第5節「CI/CDパイプライン」](tooling/build-guide.md#5-cicd-パイプライン-github-actions) を参照してください。
 
 ---
 

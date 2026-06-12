@@ -6,6 +6,8 @@
 
 ## 動作確認済み組み合わせ一覧
 
+※リリース実績のあるコンポーネントのみ記載（タグ体系は6コンポーネント）
+
 | # | 出荷日 | spi-hal | libsensor | cli | GCC | kernel | ターゲットボード | テスト担当 | CI | 備考 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 3 | 2025-06-01 | v1.0.1 | v1.1.0 | v1.1.0 | 13 (Ubuntu 24.04) | 5.10.x | RPi 3B+ | 山田 | GitHub Actions | 非同期API追加 |
@@ -65,8 +67,8 @@ cmake -B build/libsensor -S libsensor/
 cmake --build build/libsensor
 
 git checkout cli/v1.0.0
-cmake -B build -S . --target device-ctl
-cmake --build build
+cmake -B build -S .
+cmake --build build --target device-ctl
 ```
 
 または、GitHub Actions の該当 Workflow run から Artifacts を直接ダウンロードする（ビルド再現不要）。

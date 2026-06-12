@@ -51,6 +51,8 @@ flowchart LR
 | **cli**（device-ctl） | CLI | ✅ [cli-design](03_detailed-design/cli-design.md) | ✅ [cli-device-ctl-spec](04_api-spec/cli-device-ctl-spec.md)（操作仕様） | — |
 | **kernel**（オプション拡張） | C ドライバ | ✅ [kernel-driver-design](03_detailed-design/kernel-driver-design.md) | — | ✅ [kernel-module-if](05_interface-spec/kernel-module-if.md) |
 | **common**（logger） | 共通基盤 | — | ✅ [common-logger-api](04_api-spec/common-logger-api.md) | — |
+| **examples** | サンプル | — | — | — |
+| **rust** | 移行/Rust版 | — | — | — |
 
 > **C層（Doxygen）は全コンポーネント横断で自動生成**される（`Doxyfile` の `INPUT` に各 `include/` と `cli/src`・`common/include`・`kernel/include` を登録済み）。
 > ヘッダの Doxygen コメントが不足しているとリファレンスが空になるため整備時に補充する。`common/include/logger.hpp` は API-COM-001 と対で Doxygen 化済み。`spi-hal/include/logger.hpp` は同一 API の複製のため未 Doxygen 化のまま残している。
@@ -117,7 +119,7 @@ bash tools/build-docs.sh html
 | 配布物 | 生成元 | 出力先 |
 |---|---|---|
 | PDF | pandoc + xelatex（CJK: Noto Serif CJK JP） | `output/pdf/` |
-| Word (.docx) | pandoc + `tools/docs-reference.docx` | `output/docx/` |
+| Word (.docx) | pandoc + `tools/docs-reference.docx`（未存在時は自動生成される） | `output/docx/` |
 | HTML（APIリファレンス） | Doxygen | `docs/doxygen/html/` |
 
 > 生成物（`output/`・`docs/doxygen/html/`）は `.gitignore` 済み。リポジトリには **Markdown ソースのみ** を置く。

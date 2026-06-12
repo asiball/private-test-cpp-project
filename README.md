@@ -46,9 +46,10 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├── cli/             # device-ctl（CLIツール）
 ├── examples/        # サンプル（ads1115_alert_demo 等）★任意
 ├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
+├── rust/            # Rust版コンポーネント（Cargoワークスペース: 7クレート）
 ├── tests/
 │   ├── mocks/       #   MockSpiDriver（テスト用）
-│   ├── unit/        #   単体テスト（spi-hal / libsensor）
+│   ├── unit/        #   単体テスト（spi-hal, i2c-hal, gpio, libsensor, libadxl345）
 │   └── integration/ #   結合テスト（実機必須）
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
 ├── tools/           # SBOM 生成スクリプト（generate-sbom.py 等）
@@ -81,6 +82,8 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 | `spi-hal` + `libsensor`(Sensor) | SPI | MCP3008（10bit ADC）| 必須 |
 | `i2c-hal` + `libsensor`(Ads1115) | I2C | ADS1115（16bit ADC）| 任意 |
 | `gpio` | — | GPIO エッジ割り込み（epoll）| 任意 |
+| `libadxl345` | I2C/SPI | ADXL345（3軸加速度センサ） | 任意 |
+| `examples` | — | 動作サンプル（ads1115_alert_demo 等） | 任意 |
 
 ### C 開発者向けの学習ガイド
 
@@ -120,6 +123,9 @@ C 中心の組み込み開発者が C++ へ踏み出すための導入資料を�
 | プラットフォーム | 設定ファイル | 特徴 |
 |---|---|---|
 | GitHub Actions | `.github/workflows/ci.yml` | push/PRで自動実行（ビルド・テスト・カバレッジ・Doxygen） |
+| | `.github/workflows/release.yml` | タグ push でリリース（CHANGELOG 自動生成、GitHub Release 作成） |
+| | `.github/workflows/sbom.yml` | 定期実行で SBOM (SPDX/CycloneDX) を生成・更新 |
+| | `.github/workflows/rust-ci.yml` | Rust 変更時にテスト・Clippy・フォーマット検証を実行 |
 
 ---
 
@@ -142,8 +148,13 @@ C 中心の組み込み開発者が C++ へ踏み出すための導入資料を�
 ```
 docs/
 ├── guides/             ← 学習者向けガイド（このリポジトリの読み方など）
-│   ├── learning-guide.md
-│   └── sbom-guide.md
+│   ├── learning-guide.md      # 総合学習ロードマップ
+│   ├── sbom-guide.md          # SBOM管理ガイド
+│   ├── c-to-cpp-stepping-stones.md # C→C++ステップアップガイド
+│   ├── i2c-and-ads1115.md     # I2C・ADS1115ガイド
+│   ├── gpio-interrupts-epoll.md # GPIO・epollガイド
+│   ├── rust-migration-guide.md # Rust移行設計書・移行ガイド
+│   └── tooling/               # 各種ツール利用手順（11ガイド）
 ├── deliverables/       ← プロジェクト成果物（要件→設計→テスト→納品の順）
 │   ├── README.md          索引（読者別の入口・全コンポーネント対応表）
 │   ├── _templates/        新規文書のひな形
@@ -154,6 +165,7 @@ docs/
 │   ├── 05_interface-spec/ ハードウェア・バス・レジスタの IF 仕様
 │   ├── 06_test/           テスト計画・仕様書
 │   └── 07_delivery/       リリースノート・納品物チェックリスト
+├── adr/                # 意図決定ログ（Architecture Decision Record）
 ├── wiki/               ← 運用情報（リリースマトリックス等）
 └── assets/             ← Doxygen 用 CSS 等
 ```
