@@ -30,7 +30,7 @@ bool SpiDriver::open(const Config& cfg) noexcept
     fd_ = ::open(device_path_.c_str(), O_RDWR);
     if (fd_ < 0) {
         last_errno_ = errno;
-        LOGE("SpiDriver::open failed: %s (%s)", device_path_.c_str(), strerror(last_errno_));
+        LOGE("SpiDriver::open failed: %s (%s)", device_path_.c_str(), errno_str(last_errno_));
         return false;
     }
 
@@ -39,7 +39,7 @@ bool SpiDriver::open(const Config& cfg) noexcept
         ioctl(fd_, SPI_IOC_WR_MAX_SPEED_HZ, &cfg.speed_hz) < 0)
     {
         last_errno_ = errno;
-        LOGE("SpiDriver::open ioctl failed: %s (%s)", device_path_.c_str(), strerror(last_errno_));
+        LOGE("SpiDriver::open ioctl failed: %s (%s)", device_path_.c_str(), errno_str(last_errno_));
         ::close(fd_);
         fd_ = -1;
         return false;
@@ -108,7 +108,7 @@ int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
 
     if (ret < 0) {
         last_errno_ = saved_errno;
-        LOGE("SpiDriver::transfer failed: len=%zu errno=%s", len, strerror(last_errno_));
+        LOGE("SpiDriver::transfer failed: len=%zu errno=%s", len, errno_str(last_errno_));
     } else {
         LOGD("SpiDriver::transfer ok: %d bytes", ret);
     }
