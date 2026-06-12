@@ -1,6 +1,7 @@
 #include "kernel_spi_driver.hpp"
 #include "my_spi_dev.h"
 #include "logger.hpp"
+#include "errno_str.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -30,7 +31,7 @@ bool KernelSpiDriver::open(const Config& cfg) noexcept
     if (fd_ < 0) {
         last_errno_ = errno;
         LOGE("KernelSpiDriver::open failed: %s (%s)",
-             device_path_.c_str(), strerror(last_errno_));
+             device_path_.c_str(), errno_str(last_errno_));
         return false;
     }
 
@@ -42,7 +43,7 @@ bool KernelSpiDriver::open(const Config& cfg) noexcept
     if (ioctl(fd_, MY_SPI_IOC_CONFIG, &kcfg) < 0) {
         last_errno_ = errno;
         LOGE("KernelSpiDriver::open MY_SPI_IOC_CONFIG failed: %s (%s)",
-             device_path_.c_str(), strerror(last_errno_));
+             device_path_.c_str(), errno_str(last_errno_));
         ::close(fd_);
         fd_ = -1;
         return false;
@@ -92,7 +93,7 @@ int KernelSpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexce
     if (ioctl(fd_, MY_SPI_IOC_TRANSFER, &xfer) < 0) {
         last_errno_ = errno;
         LOGE("KernelSpiDriver::transfer MY_SPI_IOC_TRANSFER failed: len=%zu errno=%s",
-             len, strerror(last_errno_));
+             len, errno_str(last_errno_));
         return -1;
     }
 

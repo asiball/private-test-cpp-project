@@ -8,6 +8,8 @@ name: SBOM
 
 on:
   push:
+    # タグ push でも branches push でもトリガされるが、
+    # paths フィルタはタグ push 時に不安定なため、ジョブ側の if 条件で分岐する
     tags:
       - 'spi-hal/v*'
       - 'i2c-hal/v*'
@@ -17,9 +19,6 @@ on:
       - 'cli/v*'
     branches:
       - main
-    paths:
-      - 'tools/sbom-metadata.json'
-      - '**/CMakeLists.txt'
   pull_request:
     branches:
       - main
@@ -44,10 +43,16 @@ jobs:
       - name: Check SBOM matches metadata
         run: python3 tools/generate-sbom.py --verify
 
-  # ── push / tag / manual: regenerate and commit ───────────────────────────────
+  # ── push (tag or branch) / manual: regenerate and commit ────────────────────
   update-sbom:
     name: Regenerate SBOM
-    if: github.event_name != 'pull_request'
+    # タグ push または手動実行のときは常に実行。
+    # ブランチへの push は on.push.branches で受け取るが、
+    # paths フィルタが sbom.yml の on: 側にないため changed-files で代替チェックする。
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/') ||
+      (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

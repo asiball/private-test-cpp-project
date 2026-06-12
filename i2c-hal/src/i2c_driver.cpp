@@ -1,5 +1,6 @@
 #include "i2c_driver.hpp"
 #include "logger.hpp"
+#include "errno_str.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -30,14 +31,14 @@ bool I2cDriver::open(uint16_t addr) noexcept
     fd_ = ::open(device_path_.c_str(), O_RDWR);
     if (fd_ < 0) {
         last_errno_ = errno;
-        LOGE("I2cDriver::open failed: %s (%s)", device_path_.c_str(), strerror(last_errno_));
+        LOGE("I2cDriver::open failed: %s (%s)", device_path_.c_str(), errno_str(last_errno_));
         return false;
     }
 
     // スレーブアドレスを設定（以降の read/write の宛先になる）
     if (ioctl(fd_, I2C_SLAVE, static_cast<unsigned long>(addr)) < 0) {
         last_errno_ = errno;
-        LOGE("I2cDriver::open I2C_SLAVE 0x%02x failed: %s", addr, strerror(last_errno_));
+        LOGE("I2cDriver::open I2C_SLAVE 0x%02x failed: %s", addr, errno_str(last_errno_));
         ::close(fd_);
         fd_ = -1;
         return false;
@@ -76,7 +77,7 @@ int I2cDriver::write(const uint8_t* data, size_t len) noexcept
     ssize_t n = ::write(fd_, data, len);
     if (n < 0) {
         last_errno_ = errno;
-        LOGE("I2cDriver::write failed: len=%zu errno=%s", len, strerror(last_errno_));
+        LOGE("I2cDriver::write failed: len=%zu errno=%s", len, errno_str(last_errno_));
         return -1;
     }
     LOGD("I2cDriver::write ok: %zd bytes", n);
@@ -102,7 +103,7 @@ int I2cDriver::read(uint8_t* data, size_t len) noexcept
     ssize_t n = ::read(fd_, data, len);
     if (n < 0) {
         last_errno_ = errno;
-        LOGE("I2cDriver::read failed: len=%zu errno=%s", len, strerror(last_errno_));
+        LOGE("I2cDriver::read failed: len=%zu errno=%s", len, errno_str(last_errno_));
         return -1;
     }
     LOGD("I2cDriver::read ok: %zd bytes", n);
@@ -152,7 +153,7 @@ int I2cDriver::write_read(const uint8_t* tx, size_t tx_len,
 
     if (ioctl(fd_, I2C_RDWR, &xfer) < 0) {
         last_errno_ = errno;
-        LOGE("I2cDriver::write_read I2C_RDWR failed: %s", strerror(last_errno_));
+        LOGE("I2cDriver::write_read I2C_RDWR failed: %s", errno_str(last_errno_));
         return -1;
     }
     LOGD("I2cDriver::write_read ok: wrote %zu read %zu", tx_len, rx_len);

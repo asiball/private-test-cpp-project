@@ -50,5 +50,5 @@ commit_parsers = [
 ]
 filter_commits = false
 # コンポーネント別タグ（spi-hal/v*, libsensor/v*, cli/v*）をリリース境界として認識
-tag_pattern = "^(spi-hal|libsensor|cli)/v[0-9]"
+tag_pattern = "^(spi-hal|i2c-hal|gpio|libsensor|libadxl345|cli)/v[0-9]"
 sort_commits = "newest"

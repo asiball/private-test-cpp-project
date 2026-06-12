@@ -365,15 +365,16 @@ jobs:
           fetch-depth: 0
 
       - name: Validate PR title format
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          PATTERN='^(feat|fix|docs|refactor|test|ci|chore)(\(.+\))?!?: .+'
+          PATTERN='^(feat|fix|docs|refactor|test|ci|chore|build)(\(.+\))?!?: .+'
           if echo "$TITLE" | grep -qE "$PATTERN"; then
             echo "OK: $TITLE"
           else
             echo "ERROR: PR タイトルが Conventional Commits 形式に合っていません"
             echo "  受け取った値: $TITLE"
-            echo "  期待する形式: feat|fix|docs|refactor|test|ci|chore: <概要>"
+            echo "  期待する形式: feat|fix|docs|refactor|test|ci|chore|build: <概要>"
             echo "  例: feat(libsensor): read_raw_async にタイムアウトを追加"
             exit 1
           fi

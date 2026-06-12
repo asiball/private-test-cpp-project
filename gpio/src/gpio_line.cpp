@@ -1,5 +1,6 @@
 #include "gpio_line.hpp"
 #include "logger.hpp"
+#include "errno_str.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -31,7 +32,7 @@ bool GpioLine::request_edge_events(Edge edge) noexcept
     chip_fd_ = ::open(chip_path_.c_str(), O_RDONLY | O_CLOEXEC);
     if (chip_fd_ < 0) {
         last_errno_ = errno;
-        LOGE("GpioLine::open chip failed: %s (%s)", chip_path_.c_str(), strerror(last_errno_));
+        LOGE("GpioLine::open chip failed: %s (%s)", chip_path_.c_str(), errno_str(last_errno_));
         return false;
     }
 
@@ -60,7 +61,7 @@ bool GpioLine::request_edge_events(Edge edge) noexcept
     if (ioctl(chip_fd_, GPIO_V2_GET_LINE_IOCTL, &req) < 0) {
         last_errno_ = errno;
         LOGE("GpioLine::GPIO_V2_GET_LINE_IOCTL failed: offset=%u (%s)",
-             offset_, strerror(last_errno_));
+             offset_, errno_str(last_errno_));
         ::close(chip_fd_);
         chip_fd_ = -1;
         return false;
@@ -83,7 +84,7 @@ int GpioLine::wait_event(int timeout_ms) noexcept
     int epfd = epoll_create1(EPOLL_CLOEXEC);
     if (epfd < 0) {
         last_errno_ = errno;
-        LOGE("GpioLine::epoll_create1 failed: %s", strerror(last_errno_));
+        LOGE("GpioLine::epoll_create1 failed: %s", errno_str(last_errno_));
         return -1;
     }
 
@@ -93,7 +94,7 @@ int GpioLine::wait_event(int timeout_ms) noexcept
     ev.data.fd = line_fd_;
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, line_fd_, &ev) < 0) {
         last_errno_ = errno;
-        LOGE("GpioLine::epoll_ctl failed: %s", strerror(last_errno_));
+        LOGE("GpioLine::epoll_ctl failed: %s", errno_str(last_errno_));
         ::close(epfd);
         return -1;
     }
@@ -104,7 +105,7 @@ int GpioLine::wait_event(int timeout_ms) noexcept
 
     if (n < 0) {
         last_errno_ = errno;
-        LOGE("GpioLine::epoll_wait failed: %s", strerror(last_errno_));
+        LOGE("GpioLine::epoll_wait failed: %s", errno_str(last_errno_));
         return -1;
     }
     if (n == 0) {
@@ -116,7 +117,7 @@ int GpioLine::wait_event(int timeout_ms) noexcept
     ssize_t r = ::read(line_fd_, &event, sizeof(event));
     if (r < 0) {
         last_errno_ = errno;
-        LOGE("GpioLine::read event failed: %s", strerror(last_errno_));
+        LOGE("GpioLine::read event failed: %s", errno_str(last_errno_));
         return -1;
     }
     LOGD("GpioLine::event id=%u offset=%u", event.id, event.offset);
