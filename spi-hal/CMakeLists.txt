@@ -15,4 +15,7 @@ target_include_directories(spihal
 )
 
 install(TARGETS spihal ARCHIVE DESTINATION lib)
-install(DIRECTORY include/ DESTINATION include/spihal)
+# version.hpp.in はテンプレートのため install しない。生成物 version.hpp は
+# ビルドツリー側に出力されるため（トップ CMakeLists 参照）ここには現れない。
+install(DIRECTORY include/ DESTINATION include/spihal
+        PATTERN "*.in" EXCLUDE)

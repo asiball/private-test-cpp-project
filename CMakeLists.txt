@@ -68,11 +68,14 @@ string(TIMESTAMP EDS_BUILD_DATE "%Y-%m-%d")
 message(STATUS "Version: spi-hal=${EDS_VERSION_SPIHAL} libsensor=${EDS_VERSION_LIBSENSOR} cli=${EDS_VERSION_CLI}")
 message(STATUS "Commit:  ${EDS_GIT_COMMIT}  Date: ${EDS_BUILD_DATE}")
 
-# version.hpp.in → spi-hal/include/version.hpp を生成（spi-hal がある場合のみ）
+# version.hpp.in → ${CMAKE_BINARY_DIR}/generated/version.hpp を生成（spi-hal がある場合のみ）。
+# 生成物はソースツリーではなくビルドツリーへ書き出す。これにより spi-hal の
+# install(DIRECTORY include/) が生成済み version.hpp や version.hpp.in を巻き込んで
+# インストールするのを防ぐ。消費側（cli）は generated/ を include パスに追加する。
 if(EXISTS ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in)
     configure_file(
         ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in
-        ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp
+        ${CMAKE_BINARY_DIR}/generated/version.hpp
         @ONLY
     )
 endif()

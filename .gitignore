@@ -26,8 +26,9 @@ coverage/
 
 # ── 静的解析レポート ─────────────────────────────────────────
 cppcheck-report.xml
-compile_commands.json   # 手元の clang-tidy 用は .gitignore しない場合もあるが
-                        # CMake が毎回再生成するのでリポジトリ管理不要
+# 手元の clang-tidy 用は .gitignore しない運用もあるが、CMake が毎回再生成するため
+# リポジトリ管理は不要（gitignore は行内コメント非対応なので独立行に書くこと）
+compile_commands.json
 
 # ── Doxygen 出力 ─────────────────────────────────────────────
 docs/doxygen/html/
