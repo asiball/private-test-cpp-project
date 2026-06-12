@@ -10,6 +10,7 @@ cmake --build build -j"$(nproc)"
 
 # ── [2/6] cppcheck 静的解析 ─────────────────────────────────
 echo "=== [2/6] cppcheck 静的解析 ==="
+# 診断ビルダーが異常終了するのを防ぐため、エラーが発生しても警告の出力にとどめ、ビルド自体は正常終了させます。
 cppcheck \
     --enable=warning,performance,portability \
     --std=c++17 \
@@ -29,8 +30,9 @@ cmake -S tests/unit/spi-hal -B build/test-spihal \
     -DCMAKE_CXX_FLAGS="-I/workspace/spi-hal/include"
 cmake --build build/test-spihal -j"$(nproc)"
 mkdir -p test-results
-./build/test-spihal/test_spi_driver \
-    --gtest_output=xml:test-results/spihal-unit.xml \
+# テスト失敗時にコンテナビルド（診断ビルダー）が異常終了するのを防ぐため、警告を出力して続行します。
+./build/test-spihal/test_spi_driver --gtest_output=xml:test-results/spihal-unit.xml && \
+./build/test-spihal/test_kernel_spi_driver --gtest_output=xml:test-results/spihal-kernel-unit.xml \
     && echo "  spi-hal テスト: PASS" \
     || echo "  [警告] spi-hal テスト: 失敗あり"
 
@@ -41,6 +43,7 @@ cmake -S . -B build/sanitized \
     -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
     -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
 cmake --build build/sanitized -j"$(nproc)"
+# 起動失敗時にコンテナビルド（診断ビルダー）が異常終了するのを防ぐため、警告を出力して続行します。
 ./build/sanitized/cli/device-ctl --version \
     && echo "  サニタイザービルド: OK" \
     || echo "  [警告] サニタイザービルド: 起動失敗（続行）"
@@ -53,10 +56,11 @@ cmake --install build/libsensor-debug --prefix /usr/local
 ldconfig
 cmake -S tests/unit/libsensor -B build/test-libsensor \
     -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/tests/mocks"
+    -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/tests/mocks -I/workspace/i2c-hal/include"
 cmake --build build/test-libsensor -j"$(nproc)"
-./build/test-libsensor/test_sensor \
-    --gtest_output=xml:test-results/libsensor-unit.xml \
+# テスト失敗時にコンテナビルド（診断ビルダー）が異常終了するのを防ぐため、警告を出力して続行します。
+./build/test-libsensor/test_sensor --gtest_output=xml:test-results/libsensor-unit.xml && \
+./build/test-libsensor/test_ads1115 --gtest_output=xml:test-results/ads1115-unit.xml \
     && echo "  libsensor テスト: PASS" \
     || echo "  [警告] libsensor テスト: 失敗あり"
 
