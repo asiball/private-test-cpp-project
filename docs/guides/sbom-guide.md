@@ -116,6 +116,18 @@ SBOM に記載する対象の原則は以下のとおり。
 | システムライブラリ | **記載**（ライセンス影響があるもの、§3.2〜3.4 参照） | C 標準ライブラリ（§4.2 参照） |
 | ビルドツール | **除外**（gcc, cmake, make 等のコンパイラ・ツール）| — |
 
+#### Rust ワークスペース（`rust/`）の扱い
+
+`rust/` は Cargo ワークスペースの**参照実装**であり、リリース成果物（配布バイナリ）を
+install しない。そのため C++ 側 SBOM（`sbom.spdx` / `sbom.cdx.json`）の**対象外**とする
+（`tools/sbom-metadata.json` の `coverage_policy.exempt_components` に `rust` を明示）。
+
+`--verify` の網羅性チェックはトップ `CMakeLists.txt` の `foreach(_component ...)` のみを
+走査するため、CMake 外の `rust/` は元々検査対象にならない。clap / libc / thiserror など
+約 30 の外部クレートに依存するが、これらは `rust/Cargo.lock` に固定されており、Rust 側の
+SBOM が必要になった場合は `cargo cyclonedx`（または `cargo sbom`）で**別ファイル**として
+生成する（Cargo.lock 由来のため手動メンテ不要。C++ 側の手動メタデータ方式との対比教材）。
+
 ---
 
 ## 4. Linux システムライブラリの扱い方
