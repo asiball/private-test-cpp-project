@@ -110,13 +110,16 @@ TEST(KernelSpiDriverTransfer, ZeroLenReturnsZero) {
 TEST(KernelSpiDriverTransfer, OverflowLenReturnsMinusOne) {
     const char* dev = "/dev/my_spi_dev";
     if (access(dev, F_OK) != 0) GTEST_SKIP() << dev << " not available";
+    // size_t が 32bit の環境では UINT32_MAX+1 が 0 にラップし、長さ超過の拒否を
+    // 検証できないためスキップする。
+    if (sizeof(size_t) <= 4) GTEST_SKIP() << "requires 64-bit size_t";
 
     KernelSpiDriver drv(dev);
     KernelSpiDriver::Config cfg{1000000, 8, 0};
     ASSERT_TRUE(drv.open(cfg));
 
     uint8_t tx[1] = {}, rx[1] = {};
-    size_t huge = static_cast<size_t>(UINT32_MAX) + 1;  // 64bit 環境前提
+    size_t huge = static_cast<size_t>(UINT32_MAX) + 1;
     EXPECT_EQ(drv.transfer(tx, rx, huge), -1);
     EXPECT_EQ(drv.last_errno(), EOVERFLOW);
 }

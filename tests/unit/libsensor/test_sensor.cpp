@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <unistd.h>
 
@@ -109,28 +110,31 @@ TEST(SensorReadVoltage, SetVrefAffectsConversion) {
 TEST(SensorReadRawAsync, NotOpenCallbackReceivesError) {
     Sensor s("/dev/spidevXX.0");   // 存在しないデバイス
 
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool                    done = false;
-    std::optional<uint16_t> received_raw;
-    int                     received_err = 0;
+    // 共有状態を shared_ptr で持ち、コールバックに値コピーキャプチャする。
+    // これにより wait_for がタイムアウトしてテスト関数が先に抜けても、detach
+    // されたワーカーが触れる mtx / cv / 受信変数の寿命が保たれ UB にならない。
+    struct AsyncState {
+        std::mutex              mtx;
+        std::condition_variable cv;
+        bool                    done = false;
+        std::optional<uint16_t> raw;
+        int                     err = 0;
+    };
+    auto state = std::make_shared<AsyncState>();
 
-    // 共有データ (received_raw / received_err / done) は mtx で保護する。
-    // detach されたワーカースレッドのライフタイム vs テスト関数スコープの
-    // 競合 (cv の破棄 vs notify_one) を避けるため、notify_one もロック内で呼ぶ。
-    s.read_raw_async(0, [&](std::optional<uint16_t> raw, int err) {
-        std::lock_guard<std::mutex> lk(mtx);
-        received_raw = raw;
-        received_err = err;
-        done         = true;
-        cv.notify_one();
+    s.read_raw_async(0, [state](std::optional<uint16_t> raw, int err) {
+        std::lock_guard<std::mutex> lk(state->mtx);
+        state->raw  = raw;
+        state->err  = err;
+        state->done = true;
+        state->cv.notify_one();
     });
 
-    std::unique_lock<std::mutex> lk(mtx);
-    cv.wait_for(lk, std::chrono::seconds(3), [&]{ return done; });
-    EXPECT_TRUE(done);
-    EXPECT_FALSE(received_raw.has_value());
-    EXPECT_NE(received_err, 0);
+    std::unique_lock<std::mutex> lk(state->mtx);
+    state->cv.wait_for(lk, std::chrono::seconds(3), [&]{ return state->done; });
+    EXPECT_TRUE(state->done);
+    EXPECT_FALSE(state->raw.has_value());
+    EXPECT_NE(state->err, 0);
 }
 //! [UT-LIB-007]
 

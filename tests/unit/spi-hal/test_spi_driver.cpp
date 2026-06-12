@@ -1,6 +1,7 @@
 #include "spi_driver.hpp"
 #include <gtest/gtest.h>
 #include <cerrno>
+#include <unistd.h>   // access()（gtest 経由の推移的 include に依存しない）
 
 using namespace embedded;
 
