@@ -72,7 +72,7 @@ message(STATUS "Commit:  ${EDS_GIT_COMMIT}  Date: ${EDS_BUILD_DATE}")
 if(EXISTS ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in)
     configure_file(
         ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in
-        ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp
+        ${CMAKE_BINARY_DIR}/generated/version.hpp
         @ONLY
     )
 endif()
