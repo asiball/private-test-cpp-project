@@ -203,13 +203,28 @@ int main(int argc, char* argv[])
     int         argi       = 1;
 
     while (argi < argc && argv[argi][0] == '-') {
-        if (std::strcmp(argv[argi], "-d") == 0 && argi + 1 < argc) {
+        if (std::strcmp(argv[argi], "-d") == 0) {
+            if (argi + 1 >= argc) {
+                std::cerr << "Error: -d にはデバイスパスを指定してください\n";
+                LOG_CLOSE();
+                return EXIT_FAILURE;
+            }
             dev_path = argv[++argi];
-        } else if (std::strcmp(argv[argi], "--vref") == 0 && argi + 1 < argc) {
+        } else if (std::strcmp(argv[argi], "--vref") == 0) {
+            if (argi + 1 >= argc) {
+                std::cerr << "Error: --vref には数値を指定してください\n";
+                LOG_CLOSE();
+                return EXIT_FAILURE;
+            }
             try {
                 vref_volts = std::stod(argv[++argi]);
             } catch (...) {
                 std::cerr << "Error: --vref に数値を指定してください\n";
+                LOG_CLOSE();
+                return EXIT_FAILURE;
+            }
+            if (!(vref_volts > 0.0)) {
+                std::cerr << "Error: --vref には正の値を指定してください\n";
                 LOG_CLOSE();
                 return EXIT_FAILURE;
             }

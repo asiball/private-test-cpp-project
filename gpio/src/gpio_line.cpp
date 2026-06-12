@@ -67,6 +67,10 @@ bool GpioLine::request_edge_events(Edge edge) noexcept
     }
 
     line_fd_ = req.fd;
+    // ライン専用 fd を取得した後はチップ fd は不要。fd を 1 本余分に占有しないよう
+    // ここで閉じる（line_fd_ はチップ fd とは独立に有効なまま）。
+    ::close(chip_fd_);
+    chip_fd_ = -1;
     LOGI("GpioLine::request ok: %s offset=%u edge=%d", chip_path_.c_str(), offset_,
          static_cast<int>(edge));
     return true;
@@ -99,7 +103,11 @@ int GpioLine::wait_event(int timeout_ms) noexcept
     }
 
     struct epoll_event out;
-    int n = epoll_wait(epfd, &out, 1, timeout_ms);
+    // シグナル受信 (EINTR) は中断であってエラーではないためリトライする。
+    int n;
+    do {
+        n = epoll_wait(epfd, &out, 1, timeout_ms);
+    } while (n < 0 && errno == EINTR);
     ::close(epfd);
 
     if (n < 0) {
@@ -117,6 +125,12 @@ int GpioLine::wait_event(int timeout_ms) noexcept
     if (r < 0) {
         last_errno_ = errno;
         LOGE("GpioLine::read event failed: %s", errno_str(last_errno_));
+        return -1;
+    }
+    if (r != static_cast<ssize_t>(sizeof(event))) {
+        // カーネル仕様上は起きないはずだが、ショートリードを成功扱いしない
+        last_errno_ = EIO;
+        LOGE("GpioLine::read event short read: %zd/%zu bytes", r, sizeof(event));
         return -1;
     }
     LOGD("GpioLine::event id=%u offset=%u", event.id, event.offset);
