@@ -348,8 +348,8 @@ if (val) { use(*val); }  // val を確認せず *val を使おうとするとコ
 pub fn read_raw(&mut self, channel: u8) -> Result<u16, SensorError>;
 
 // Option はエラーではなく「値がない」が正常な場合に使う
-// 例: デバイスが未接続のときレジスタ値は存在しない
-pub fn read_reg(&mut self, addr: u8) -> Result<Option<u8>, Adxl345Error>;
+// 例: デバイスからオプションの設定文字列を取得する
+pub fn get_device_name(&self) -> Option<String>;
 ```
 
 **Rust の `Option<T>` は C++ の `std::optional<T>` とほぼ同じ。**

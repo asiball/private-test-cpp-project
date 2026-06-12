@@ -91,16 +91,18 @@ fn main() {
         let _ = io::stdout().flush();
 
         let mut line = String::new();
-        if stdin.lock().read_line(&mut line).is_err() {
-            break;
+        match stdin.lock().read_line(&mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
         }
         match line.trim() {
             "1" => {
                 print!("チャンネル番号 (0–7): ");
                 let _ = io::stdout().flush();
                 let mut ch_str = String::new();
-                if stdin.lock().read_line(&mut ch_str).is_err() {
-                    continue;
+                match stdin.lock().read_line(&mut ch_str) {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {}
                 }
                 let ch: u8 = match ch_str.trim().parse() {
                     Ok(v) => v,

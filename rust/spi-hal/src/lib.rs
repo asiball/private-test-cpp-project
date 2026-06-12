@@ -42,6 +42,13 @@ pub enum SpiError {
         /// 受信バッファ長
         rx: usize,
     },
+
+    /// `tx` と `rx` のバッファ長が u32 の最大値を超過した。
+    #[error("バッファ長が超過しました (32bit 上限超え): {len}")]
+    Overflow {
+        /// バッファ長
+        len: usize,
+    },
 }
 
 /// SPI バス設定。`ISpiDriver::Config` に相当。
@@ -91,6 +98,7 @@ pub trait SpiDriver: Send {
     ///
     /// - [`SpiError::NotOpen`] — `open()` 前に呼んだ
     /// - [`SpiError::LengthMismatch`] — `tx` と `rx` の長さが異なる
+    /// - [`SpiError::Overflow`] — バッファ長が u32 の上限を超過した
     /// - [`SpiError::Transfer`] — ioctl が失敗した（EAGAIN はリトライ後）
     fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), SpiError>;
 
