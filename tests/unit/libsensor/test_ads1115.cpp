@@ -102,6 +102,51 @@ TEST(Ads1115ReadRaw, SendsCorrectConfig) {
     EXPECT_EQ(captured[2], 0x83);
 }
 
+// UT-ADS-008: OS ビットが 1 にならない（変換が完了しない）場合は nullopt を返す
+TEST(Ads1115ReadRaw, ConversionTimeoutReturnsNullopt) {
+    MockI2cDriver mock;
+    EXPECT_CALL(mock, write(_, _)).WillRepeatedly(Return(3));
+    // Config 読み出しでは常に OS=0（変換中）を返し続ける → タイムアウト経路
+    EXPECT_CALL(mock, write_read(_, _, _, _))
+        .WillRepeatedly([](const uint8_t* tx, size_t, uint8_t* rx, size_t rx_len) -> int {
+            if (rx_len < 2) return -1;
+            if (tx[0] == 0x01) {        // Config 読み出し
+                rx[0] = 0x00;           // OS=0 → 変換未完了のまま
+                rx[1] = 0x00;
+            } else {                    // Conversion 読み出し（呼ばれてはならない）
+                rx[0] = 0x12;
+                rx[1] = 0x34;
+            }
+            return static_cast<int>(rx_len);
+        });
+
+    Ads1115 adc(&mock);
+    EXPECT_FALSE(adc.read_raw(0).has_value());
+}
+
+// UT-ADS-009: 全チャネルの MUX ビットが正しく合成される (0x4000 | ch<<12)
+TEST(Ads1115ReadRaw, MuxBitsForAllChannels) {
+    for (uint8_t ch = 0; ch < Ads1115::CHANNEL_COUNT; ++ch) {
+        MockI2cDriver mock;
+        uint8_t captured[3] = {0, 0, 0};
+        EXPECT_CALL(mock, write(_, _))
+            .WillOnce([&](const uint8_t* data, size_t len) -> int {
+                if (len >= 3) std::memcpy(captured, data, 3);
+                return static_cast<int>(len);
+            })
+            .WillRepeatedly(Return(3));
+        EXPECT_CALL(mock, write_read(_, _, _, _))
+            .WillRepeatedly(MakeWriteReadFake(0));
+
+        Ads1115 adc(&mock);
+        (void)adc.read_raw(ch);
+        // Config 上位バイト: OS(0x80) | MUX(0x40 | ch<<4) | PGA上位 ...
+        uint16_t config = static_cast<uint16_t>((captured[1] << 8) | captured[2]);
+        uint16_t mux = (config >> 12) & 0x07;
+        EXPECT_EQ(mux, static_cast<uint16_t>(0x04 | ch));  // 単電源ベース 0b100 | ch
+    }
+}
+
 // UT-ADS-007: コピー禁止確認
 TEST(Ads1115Copyable, IsNotCopyConstructible) {
     EXPECT_FALSE(std::is_copy_constructible<Ads1115>::value);

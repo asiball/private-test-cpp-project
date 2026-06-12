@@ -39,8 +39,9 @@ constexpr double full_scale(Ads1115::Gain g) {
     return 2.048;
 }
 
-constexpr int    MAX_CONVERSION_POLLS = 16;   // OS ビットのポーリング上限
-constexpr useconds_t POLL_INTERVAL_US = 500;  // ポーリング間隔
+// 128SPS の変換時間 ≈ 7.8ms。16 × 1ms = 16ms で十分な余裕を確保する。
+constexpr int    MAX_CONVERSION_POLLS = 16;    // OS ビットのポーリング上限
+constexpr useconds_t POLL_INTERVAL_US = 1000;  // ポーリング間隔
 }
 
 struct Ads1115::Impl {
@@ -142,15 +143,21 @@ std::optional<int16_t> Ads1115::read_raw(uint8_t channel) noexcept
 
     // 変換完了まで待つ: Config の OS ビット（bit15）が 1 に戻れば完了。
     //（割り込み駆動にしたい場合は enable_conversion_ready_pin() + GPIO を使う）
+    bool completed = false;
     for (int i = 0; i < MAX_CONVERSION_POLLS; ++i) {
         uint16_t cfg = 0;
         if (!impl_->read_reg16(REG_CONFIG, cfg)) {
             return std::nullopt;
         }
         if (cfg & CFG_OS_SINGLE) {
+            completed = true;
             break;  // 変換完了
         }
         usleep(POLL_INTERVAL_US);
+    }
+    if (!completed) {
+        // 変換が完了しなかった: 古い変換結果を成功として返さず失敗とする
+        return std::nullopt;
     }
 
     uint16_t raw = 0;
