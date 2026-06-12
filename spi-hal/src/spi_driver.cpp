@@ -7,6 +7,8 @@
 #include <linux/spi/spidev.h>
 #include <cerrno>
 #include <cstring>
+#include <thread>
+#include <chrono>
 
 namespace embedded {
 
@@ -89,12 +91,13 @@ int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
     tr.speed_hz      = 0;
     tr.bits_per_word = 0;
 
-    int ret;
-    // EAGAIN は一時的なリソース不足。最大3回リトライする
+    int ret = -1;
+    // EAGAIN は一時的なリソース不足。最大3回リトライし、指数バックオフ（100us, 200us, 400us）で回復を待つ
     for (int retry = 0; retry < 3; ++retry) {
         ret = ioctl(fd_, SPI_IOC_MESSAGE(1), &tr);
         if (ret >= 0 || errno != EAGAIN) break;
         LOGW("SpiDriver::transfer EAGAIN retry %d/3", retry + 1);
+        std::this_thread::sleep_for(std::chrono::microseconds(100 << retry));
     }
 
     if (ret < 0) {
