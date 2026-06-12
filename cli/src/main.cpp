@@ -249,15 +249,35 @@ int main(int argc, char* argv[])
               << ", Vref=" << std::fixed << std::setprecision(2)
               << vref_volts << " V)\n";
 
+    // Sensor / SpiDriver はスレッドセーフではないため、監視スレッドは
+    // メインスレッドが使う sensor とは別の Sensor（別 fd）を使う。これで
+    // last_errno_ 等への同時アクセス（データレース）を避ける。
+    embedded::Sensor monitor_sensor(dev_path, vref_volts);
+    bool monitor_enabled = monitor_sensor.open();
+    if (!monitor_enabled) {
+        LOGW("monitor sensor open failed; background monitor disabled");
+        std::cerr << "警告: 監視用デバイスを開けませんでした。バックグラウンド監視は無効です。\n";
+    }
+
     MonitorState monitor_state;
-    std::thread  monitor_thread(monitor_thread_fn, std::ref(sensor),
-                                std::ref(monitor_state));
+    std::thread  monitor_thread;
+    if (monitor_enabled) {
+        monitor_thread = std::thread(monitor_thread_fn, std::ref(monitor_sensor),
+                                     std::ref(monitor_state));
+    }
 
     run_loop(sensor, async_mode, monitor_state);
 
-    monitor_state.stop.store(true);
+    // 終了通知は lost wakeup を避けるため mutex 保持下でフラグを立ててから notify する
+    // （述語評価とブロックの隙間に通知が落ちると join が最大 1 分ブロックしうる）。
+    {
+        std::lock_guard<std::mutex> lk(monitor_state.mtx);
+        monitor_state.stop.store(true);
+    }
     monitor_state.cv.notify_all();
-    monitor_thread.join();
+    if (monitor_thread.joinable()) {
+        monitor_thread.join();
+    }
 
     std::cout << "終了します。\n";
     LOG_CLOSE();
