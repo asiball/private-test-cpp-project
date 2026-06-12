@@ -25,12 +25,18 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
+#include <linux/compat.h>   /* compat_ptr_ioctl（32bit ユーザー空間対応） */
 
 #include "include/my_spi_dev.h"
 
 #define DRIVER_NAME   "my_spi_driver"
 #define DEVICE_NAME   "my_spi_dev"
 #define MY_SPI_MAX_TRANSFER_SIZE  4096
+
+/* CPOL/CPHA を表す下位 2 ビットのマスク（古いカーネルでの未定義に備えフォールバック） */
+#ifndef SPI_MODE_X_MASK
+#define SPI_MODE_X_MASK (SPI_CPOL | SPI_CPHA)
+#endif
 
 /* デバイスごとのプライベートデータ */
 struct my_spi_priv {
@@ -69,18 +75,42 @@ static long my_spi_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     switch (cmd) {
     case MY_SPI_IOC_CONFIG: {
         struct my_spi_config cfg;
+        u32 old_speed;
+        u8  old_bits;
+        u32 old_mode;
+
         if (copy_from_user(&cfg, uarg, sizeof(cfg))) {
             ret = -EFAULT;
             break;
         }
 
-        priv->spi->max_speed_hz = cfg.speed_hz;
+        /* mode は CPOL/CPHA（下位 2 ビット）のみ受け付ける。これ以外のビットを
+         * ユーザー空間から注入させない（3WIRE / LOOP 等の不正設定の防止）。 */
+        if (cfg.mode & ~SPI_MODE_X_MASK) {
+            ret = -EINVAL;
+            break;
+        }
+
+        /* spi_setup 失敗時に元へ戻すため旧設定を退避する */
+        old_speed = priv->spi->max_speed_hz;
+        old_bits  = priv->spi->bits_per_word;
+        old_mode  = priv->spi->mode;
+
+        priv->spi->max_speed_hz  = cfg.speed_hz;
         priv->spi->bits_per_word = cfg.bits_per_word;
-        priv->spi->mode = (u8)cfg.mode;
+        /* Device Tree 由来のモードフラグ（SPI_CS_HIGH / SPI_LSB_FIRST 等）を
+         * 保持し、CPOL/CPHA のみ差し替える（丸ごと上書きしない）。 */
+        priv->spi->mode = (priv->spi->mode & ~SPI_MODE_X_MASK) |
+                          (cfg.mode & SPI_MODE_X_MASK);
 
         ret = spi_setup(priv->spi);
         if (ret < 0) {
-            pr_err(DRIVER_NAME ": spi_setup failed: %d\n", ret);
+            pr_err(DRIVER_NAME ": spi_setup failed: %d (rolling back)\n", ret);
+            /* 不正設定をデバイスに残さないよう旧値へ復元する（best-effort） */
+            priv->spi->max_speed_hz  = old_speed;
+            priv->spi->bits_per_word = old_bits;
+            priv->spi->mode          = old_mode;
+            spi_setup(priv->spi);
             break;
         }
         priv->cfg = cfg;
@@ -154,6 +184,11 @@ static const struct file_operations my_spi_fops = {
     .open           = my_spi_open,
     .release        = my_spi_release,
     .unlocked_ioctl = my_spi_ioctl,
+    /* 64bit カーネル + 32bit ユーザー空間（RPi OS 32bit + 64bit カーネル等）でも
+     * ioctl を機能させる。my_spi_transfer の tx_buf/rx_buf は固定幅 uint64_t の
+     * ため引数構造体はポインタ幅に依存せず、compat_ptr_ioctl で素通しできる
+     * （kernel 5.4+）。 */
+    .compat_ioctl   = compat_ptr_ioctl,
 };
 
 /* ---- SPI ドライバ probe/remove ------------------------------------ */

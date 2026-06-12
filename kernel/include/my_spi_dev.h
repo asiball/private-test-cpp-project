@@ -31,7 +31,12 @@ struct my_spi_config {
  * @brief SPI フルデュプレクス転送パラメータ
  *
  * tx_buf/rx_buf にはユーザー空間のポインタを uint64_t にキャストして渡す。
- * 32/64 ビット環境の互換性のため uint64_t を使用する。
+ * ポインタ幅に依存しないよう固定幅 uint64_t を使う。これにより 64bit カーネル +
+ * 32bit ユーザー空間でも引数構造体のレイアウトが一致する（ドライバ側は
+ * file_operations.compat_ioctl = compat_ptr_ioctl で 32bit ioctl を受ける）。
+ * @note x86 32bit ユーザー空間では uint64_t のアライメントが 4 のため本構造体の
+ *       サイズが 64bit カーネルと食い違いうる（ARM32 は 8 で一致）。本教材の
+ *       対象は ARM(RPi) のため許容する。
  */
 struct my_spi_transfer {
     uint64_t tx_buf; /**< 送信バッファのユーザー空間アドレス */
