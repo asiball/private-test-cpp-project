@@ -2,6 +2,7 @@
 #include "ispi_driver.hpp"
 #include "spi_driver.hpp"
 
+#include <cerrno>
 #include <memory>
 #include <thread>
 
@@ -90,6 +91,13 @@ std::optional<double> Sensor::read_voltage(uint8_t channel) noexcept
 
 void Sensor::read_raw_async(uint8_t channel, ReadCallback cb)
 {
+    // 無効チャネルはスレッドを起こすまでもなく即時失敗を通知する。
+    // （ドライバの last_errno() は更新されないため、ここで EINVAL を明示する。
+    //  さもないと「以前の無関係な errno」や 0 が渡り、契約 (nullopt なら errno) と矛盾する）
+    if (channel >= CHANNEL_COUNT) {
+        cb(std::nullopt, EINVAL);
+        return;
+    }
     // Sensor オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
     // （detach しているため）。長期稼働デーモンでは shared_ptr + enable_shared_from_this を検討。
     std::thread([this, channel, cb]() {
