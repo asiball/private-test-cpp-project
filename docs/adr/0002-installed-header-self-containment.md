@@ -53,30 +53,31 @@ CI が気づけないのは、テストが install 済み**ライブラリ**に�
 
 ## 決定（Decision）
 
-当面は **「install したヘッダの単独利用は未サポート。利用はソースツリー（モノレポ）前提」** とし、
-本 ADR と README に明記する（暫定方針）。理由:
+**本命案（find_package 対応）を採用し、実装済み**（issue #47、#20 とセットで実施）。
+具体的には `install(EXPORT)` + `<pkg>Config.cmake` を整備し（共通化ヘルパ `cmake/EdsPackage.cmake`）、
+利用者は `find_package(sensor)` + `target_link_libraries(app eds::sensor)` で include パスと
+コンポーネント間依存（`find_dependency(spihal)` 等）を継承する。あわせて公開ヘッダの
+クロスコンポーネント include を相対パスから**単純名**へ統一し、インストール済みヘッダを自己完結化した。
 
-- 恒久対応の本命は **`install(EXPORT)` + `xxxConfig.cmake` を整備し、利用者が
-  `find_package(spihal)` + `target_link_libraries` で include パスを継承する**形だが、
-  これは公開ヘッダを単純名 include へ統一する変更を伴い、スタンドアロンテストの include 解決
-  （現行は `-I` 手渡し）と衝突する。
-- スタンドアロンテスト側の `-I` 手渡しを廃止する **テストの CMake ツリー統合（issue #20）と
-  セットで決める**のが効率的であり、コンポーネントの独立リリース（SOVERSION / タグ）が本格運用
-  される前に判断する。
-
-したがって本 ADR では現状を**正しく文書化**するに留め、find_package 対応は #20 と合わせて別途行う。
+> **当初の暫定判断（履歴）**: 本 ADR 初版では「install ヘッダの単独利用は未サポート、利用は
+> モノレポ前提」を暫定方針としていた。これは単純名 include 化が当時のスタンドアロンテストの
+> `-I` 手渡しと衝突するためだったが、テストの CMake ツリー統合（#20: `-DBUILD_TESTING=ON` /
+> `CMakePresets.json`）を正経路としたことで衝突が解消し、本命案を採用できた。レガシー standalone
+> テストには CI で `-I spi-hal/include` を補って両立させている。
 
 ## 影響（Consequences）
 
-- 利用者は「ヘッダを install して `-I include` だけで使う」ことはできない。モノレポをチェックアウトし、
-  トップレベル CMake でビルドする（または各コンポーネントの include ディレクトリを個別に `-I` する）。
-- この制限は学習用テンプレートとしては許容するが、**実案件のテンプレートとして配布物の利用ストーリーを
-  成立させたい場合は find_package 対応（#47 本命案 / #20）を実施する**こと。
-- 新コンポーネント追加時も、公開ヘッダのクロスコンポーネント include は当面この規約（相対パス、
-  落とし穴 #1）を踏襲する。
+- 利用者は `cmake --install` した成果物を **`find_package` で利用できる**。include パスと依存は
+  自動継承され、公開ヘッダは単純名で include できる（`-I` の手渡し不要）。
+- 配布物（install 成果物）が自己完結し、「顧客・メンバへ共有・引き継ぐテンプレート」としての
+  利用ストーリーが成立する。
+- **新コンポーネント追加時は、公開ヘッダのクロスコンポーネント include を単純名で書き**、
+  `cmake/EdsPackage.cmake` の `eds_install_package()` で find_package 対応する（CLAUDE.md
+  新コンポーネントチェックリスト参照）。相対パス（旧規約）は使わない。
 
-## 代替案（検討したが採用しなかった）
+## 代替案（検討した案）
 
-1. **find_package 対応（本命・恒久）**: `install(EXPORT)` + Config.cmake。#20 とセットで実施する想定のため今回は見送り。
+1. **find_package 対応（本命・恒久）**: `install(EXPORT)` + Config.cmake。**← 採用（#47 で実装）**。
 2. **install 時にヘッダを単一ディレクトリへフラット集約**し相対 include を単純名へ書換: 暫定策だが
    ソース/インストールで include 規約が二重になり保守が増えるため不採用。
+3. **現状維持（install ヘッダ未サポートと明記）**: 初版の暫定方針。#20 の完了により不要となり不採用。
