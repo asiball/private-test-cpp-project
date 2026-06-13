@@ -181,3 +181,23 @@ ADS1115 のレジスタ仕様は
 | 期待 | コピー構築 / 代入とも false |
 | 種別 | 正常系 |
 | 実装 | `test_ads1115.cpp:Ads1115Copyable.IsNotCopyConstructible` |
+
+### UT-ADS-008 変換タイムアウト時は `std::nullopt`
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock が Config 読み出しで常に OS=0（変換未完了）を返す |
+| 入力 | `read_raw(0)` |
+| 期待 | `std::nullopt`（古い変換結果を成功として返さない） |
+| 種別 | 異常系 |
+| 実装 | `test_ads1115.cpp:Ads1115ReadRaw.ConversionTimeoutReturnsNullopt` |
+
+### UT-ADS-009 全チャネルの MUX ビット合成
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock が write 引数をキャプチャ |
+| 入力 | `read_raw(ch)`（ch=0..CHANNEL_COUNT-1） |
+| 期待 | Config bits14:12 が `0b100 \| ch`（単電源ベース + チャネル） |
+| 種別 | プロトコル確認 |
+| 実装 | `test_ads1115.cpp:Ads1115ReadRaw.MuxBitsForAllChannels` |
