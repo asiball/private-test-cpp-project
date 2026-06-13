@@ -6,23 +6,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(adxl345 SHARED src/adxl345.cpp)
 
+target_include_directories(adxl345
+    PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include/libadxl345>
+)
+
+set(_adxl345_deps "")
 if(TARGET spihal)
-    # モノレポビルド: spi-hal サブディレクトリが先に処理されている場合はリンク
-    target_link_libraries(adxl345 PRIVATE spihal)
+    # モノレポビルド: spihal を PUBLIC リンク（adxl345.hpp が ispi_driver.hpp を include）
+    target_link_libraries(adxl345 PUBLIC spihal)
+    set(_adxl345_deps spihal)
 else()
     # スタンドアロンビルド（cmake -S libadxl345/）: SPI HAL のソースをそのままコンパイル
     target_sources(adxl345 PRIVATE ../spi-hal/src/spi_driver.cpp)
+    target_include_directories(adxl345
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../spi-hal/include>)
 endif()
-
-target_include_directories(adxl345
-    PUBLIC  include
-            ../spi-hal/include
-)
 
 set_target_properties(adxl345 PROPERTIES
     VERSION   1.1.0
     SOVERSION 1
 )
 
-install(TARGETS adxl345 LIBRARY DESTINATION lib)
+if(COMMAND eds_install_package)
+    eds_install_package(PACKAGE adxl345 TARGET adxl345
+        VERSION ${PROJECT_VERSION} INCLUDE_DIR libadxl345
+        DEPENDENCIES ${_adxl345_deps})
+else()
+    install(TARGETS adxl345 LIBRARY DESTINATION lib)
+endif()
 install(DIRECTORY include/ DESTINATION include/libadxl345)

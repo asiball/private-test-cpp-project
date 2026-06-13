@@ -98,7 +98,7 @@ jobs:
           sudo ldconfig
           cmake -S tests/unit/libsensor -B build/test-libsensor \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/tests/mocks"
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/spi-hal/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/tests/mocks"
           cmake --build build/test-libsensor -j$(nproc)
           ./build/test-libsensor/test_sensor \
             --gtest_output=xml:test-results/libsensor-unit.xml
@@ -113,7 +113,7 @@ jobs:
           sudo ldconfig
           cmake -S tests/unit/libadxl345 -B build/test-libadxl345 \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libadxl345/include -I${{ github.workspace }}/tests/mocks"
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libadxl345/include -I${{ github.workspace }}/spi-hal/include -I${{ github.workspace }}/tests/mocks"
           cmake --build build/test-libadxl345 -j$(nproc)
           ./build/test-libadxl345/test_adxl345 \
             --gtest_output=xml:test-results/libadxl345-unit.xml
@@ -325,7 +325,7 @@ jobs:
           # tests/unit/libsensor は test_ads1115 も含むため i2c-hal/include が必要
           cmake -S tests/unit/libsensor -B build/test-libsensor-cov \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/spi-hal/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/tests/mocks" \
             -DCMAKE_EXE_LINKER_FLAGS="--coverage"
           cmake --build build/test-libsensor-cov -j$(nproc)
           ./build/test-libsensor-cov/test_sensor \
@@ -337,7 +337,7 @@ jobs:
         run: |
           cmake -S tests/unit/libadxl345 -B build/test-libadxl345-cov \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libadxl345/include -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libadxl345/include -I${{ github.workspace }}/spi-hal/include -I${{ github.workspace }}/tests/mocks" \
             -DCMAKE_EXE_LINKER_FLAGS="--coverage"
           cmake --build build/test-libadxl345-cov -j$(nproc)
           ./build/test-libadxl345-cov/test_adxl345 \
@@ -621,6 +621,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
               -I${{ github.workspace }}/libsensor/include \
+              -I${{ github.workspace }}/spi-hal/include \
               -I${{ github.workspace }}/i2c-hal/include \
               -I${{ github.workspace }}/tests/mocks" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
@@ -638,6 +639,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
               -I${{ github.workspace }}/libadxl345/include \
+              -I${{ github.workspace }}/spi-hal/include \
               -I${{ github.workspace }}/tests/mocks" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build/test-libadxl345-asan -j$(nproc)
@@ -706,6 +708,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer \
               -I${{ github.workspace }}/libsensor/include \
+              -I${{ github.workspace }}/spi-hal/include \
               -I${{ github.workspace }}/i2c-hal/include \
               -I${{ github.workspace }}/tests/mocks" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"

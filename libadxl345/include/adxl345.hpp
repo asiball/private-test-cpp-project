@@ -1,9 +1,9 @@
 #pragma once
-// spi-hal は別コンポーネント。相対パスで直接指すのは、各テストを「インストール済み
-// ライブラリ名でリンクするスタンドアロン configure」方式でビルドするため（CLAUDE.md
-// 落とし穴 #1）。この相対 include なら -I を足さずに ISpiDriver を解決できる。
-// モノレポビルドでは CMake の target_include_directories でも解決される（二重に安全）。
-#include "../../spi-hal/include/ispi_driver.hpp"
+// spi-hal は別コンポーネント。単純名で include し、include パスは利用側に委ねる
+// （issue #47: インストール済みヘッダの自己完結性）。
+//   - モノレポ / find_package: adxl345 が spihal を PUBLIC リンクするため伝播。
+//   - レガシー standalone テスト: CI で -I spi-hal/include を渡す（CLAUDE.md 落とし穴 #1/#2）。
+#include "ispi_driver.hpp"
 #include "adxl345_reg.hpp"
 
 #include <cstdint>

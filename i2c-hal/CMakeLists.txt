@@ -9,9 +9,15 @@ add_library(i2chal STATIC
 )
 set_target_properties(i2chal PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(i2chal
-    PUBLIC  include
+    PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include/i2chal>
     PRIVATE ../common/include   # 共有ログマクロ（logger.hpp）
 )
 
-install(TARGETS i2chal ARCHIVE DESTINATION lib)
+if(COMMAND eds_install_package)
+    eds_install_package(PACKAGE i2chal TARGET i2chal
+        VERSION ${PROJECT_VERSION} INCLUDE_DIR i2chal)
+else()
+    install(TARGETS i2chal ARCHIVE DESTINATION lib)
+endif()
 install(DIRECTORY include/ DESTINATION include/i2chal)

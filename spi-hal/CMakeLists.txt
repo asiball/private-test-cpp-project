@@ -10,11 +10,18 @@ add_library(spihal STATIC
 )
 set_target_properties(spihal PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(spihal
-    PUBLIC  include
+    PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include/spihal>
     PRIVATE ../kernel/include   # my_spi_dev.h（カーネルと共有する ioctl 定義）
 )
 
-install(TARGETS spihal ARCHIVE DESTINATION lib)
+# find_package 対応（モノレポビルド時）。単体ビルドでは素の install にフォールバック。
+if(COMMAND eds_install_package)
+    eds_install_package(PACKAGE spihal TARGET spihal
+        VERSION ${PROJECT_VERSION} INCLUDE_DIR spihal)
+else()
+    install(TARGETS spihal ARCHIVE DESTINATION lib)
+endif()
 # version.hpp.in はテンプレートのため install しない。生成物 version.hpp は
 # ビルドツリー側に出力されるため（トップ CMakeLists 参照）ここには現れない。
 install(DIRECTORY include/ DESTINATION include/spihal

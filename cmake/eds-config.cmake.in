@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+@EDS_PACKAGE_DEPENDENCIES@
+
+include("${CMAKE_CURRENT_LIST_DIR}/@EDS_PACKAGE_NAME@Targets.cmake")
+
+check_required_components(@EDS_PACKAGE_NAME@)

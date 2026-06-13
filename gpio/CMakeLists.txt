@@ -9,9 +9,15 @@ add_library(gpio STATIC
 )
 set_target_properties(gpio PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(gpio
-    PUBLIC  include
+    PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include/gpio>
     PRIVATE ../common/include   # 共有ログマクロ（logger.hpp）
 )
 
-install(TARGETS gpio ARCHIVE DESTINATION lib)
+if(COMMAND eds_install_package)
+    eds_install_package(PACKAGE gpio TARGET gpio
+        VERSION ${PROJECT_VERSION} INCLUDE_DIR gpio)
+else()
+    install(TARGETS gpio ARCHIVE DESTINATION lib)
+endif()
 install(DIRECTORY include/ DESTINATION include/gpio)

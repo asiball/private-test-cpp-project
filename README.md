@@ -208,10 +208,31 @@ cmake --build build
 単体テスト・静的解析・Doxygen・サニタイザービルドなどの詳細な手順は
 [ビルドガイド](docs/guides/tooling/build-guide.md) を参照してください。
 
-> **install 済みヘッダの単独利用は未サポート**です。`libsensor` / `libadxl345` の公開ヘッダは
-> 別コンポーネントを相対パスで include する（落とし穴 #1）ため、`cmake --install` した include ツリーは
-> 単独では自己完結しません。利用はモノレポをチェックアウトしてのビルドを前提とします。
-> 経緯と恒久対応（`find_package` 対応）の方針は [ADR 0002](docs/adr/0002-installed-header-self-containment.md) を参照。
+#### 外部プロジェクトから `find_package` で使う
+
+`cmake --install` した成果物は **`find_package` で利用できます**（issue #47）。各ライブラリは
+`<pkg>Config.cmake` を出力し、include パスと依存（`spihal` / `i2chal`）は自動で継承されます。
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
+cmake --install build --prefix /opt/eds   # 任意の prefix へ
+```
+
+```cmake
+# 利用側 CMakeLists.txt（cmake -DCMAKE_PREFIX_PATH=/opt/eds で configure）
+find_package(sensor REQUIRED)      # ほかに adxl345 / ads1115 / mcp9808 / gpio / spihal / i2chal
+add_executable(app main.cpp)
+target_link_libraries(app eds::sensor)   # include パス・依存は伝播
+```
+
+```cpp
+#include "sensor.hpp"     // 単純名で OK（-I 手渡し不要）
+#include "ispi_driver.hpp"
+```
+
+> 経緯（相対 include を単純名へ統一し find_package を整備した判断）は
+> [ADR 0002](docs/adr/0002-installed-header-self-containment.md) を参照。
 
 ### device-ctl の使い方
 
