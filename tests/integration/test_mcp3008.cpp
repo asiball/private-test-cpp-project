@@ -3,6 +3,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
+#include <memory>
 #include <mutex>
 #include <unistd.h>
 
@@ -64,28 +65,32 @@ TEST_F(Mcp3008Test, Stability100ReadsOnCh0) {
 
 // IT-004: read_raw_async() のコールバックが呼ばれ、有効な値を返す
 TEST_F(Mcp3008Test, AsyncReadCallbackIsCalled) {
-    std::mutex              mtx;
-    std::condition_variable cv;
-    bool                    done = false;
-    std::optional<uint16_t> result;
-    int                     cb_err = -1;
+    // 共有状態を shared_ptr で持ち、コールバックに値コピーキャプチャする。
+    // wait_for がタイムアウトしてテスト関数が抜けても、detach されたワーカーが
+    // 触れる mtx / cv / 受信変数の寿命が保たれ UB にならない。
+    struct AsyncState {
+        std::mutex              mtx;
+        std::condition_variable cv;
+        bool                    done = false;
+        std::optional<uint16_t> result;
+        int                     cb_err = -1;
+    };
+    auto state = std::make_shared<AsyncState>();
 
-    // 共有データ (result / cb_err / done) は mtx で保護する。
-    // notify_one もロック内で呼び、detach されたワーカーと cv 破棄の競合を避ける。
-    sensor.read_raw_async(0, [&](std::optional<uint16_t> raw, int err) {
-        std::lock_guard<std::mutex> lk(mtx);
-        result = raw;
-        cb_err = err;
-        done   = true;
-        cv.notify_one();
+    sensor.read_raw_async(0, [state](std::optional<uint16_t> raw, int err) {
+        std::lock_guard<std::mutex> lk(state->mtx);
+        state->result = raw;
+        state->cb_err = err;
+        state->done   = true;
+        state->cv.notify_one();
     });
 
-    std::unique_lock<std::mutex> lk(mtx);
-    cv.wait_for(lk, std::chrono::seconds(3), [&]{ return done; });
-    EXPECT_TRUE(done) << "callback was not called within 3 seconds";
-    EXPECT_EQ(cb_err, 0);
-    ASSERT_TRUE(result.has_value());
-    EXPECT_LE(*result, embedded::Sensor::ADC_MAX);
+    std::unique_lock<std::mutex> lk(state->mtx);
+    state->cv.wait_for(lk, std::chrono::seconds(3), [&]{ return state->done; });
+    EXPECT_TRUE(state->done) << "callback was not called within 3 seconds";
+    EXPECT_EQ(state->cb_err, 0);
+    ASSERT_TRUE(state->result.has_value());
+    EXPECT_LE(*state->result, embedded::Sensor::ADC_MAX);
 }
 
 // IT-005: 無効デバイスでエラー処理
