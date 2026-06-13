@@ -24,6 +24,10 @@
 
 ## 各バージョンの変更概要
 
+> 本表はリリース実績のある `spi-hal` / `libsensor` / `cli` のみを記載する。
+> タグ体系（`release.yml` / `sbom.yml` のトリガ）は `i2c-hal` / `gpio` / `libadxl345`
+> を含む **6 コンポーネント**を対象とするため、これらが初リリースされたら列・節を追加する。
+
 ### spi-hal
 
 | バージョン | 変更内容 | PR | Issue |
@@ -65,8 +69,9 @@ cmake -B build/libsensor -S libsensor/
 cmake --build build/libsensor
 
 git checkout cli/v1.0.0
-cmake -B build -S . --target device-ctl
-cmake --build build
+cmake -B build -S .
+cmake --build build --target device-ctl
 ```
+> `--target` は configure（`cmake -B`）ではなくビルド（`cmake --build`）のオプション。
 
 または、GitHub Actions の該当 Workflow run から Artifacts を直接ダウンロードする（ビルド再現不要）。

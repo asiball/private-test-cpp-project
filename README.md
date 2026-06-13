@@ -46,9 +46,10 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├── cli/             # device-ctl（CLIツール）
 ├── examples/        # サンプル（ads1115_alert_demo 等）★任意
 ├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
+├── rust/            # Rust リライト探求（Cargo ワークスペース・7クレート）★参照実装
 ├── tests/
-│   ├── mocks/       #   MockSpiDriver（テスト用）
-│   ├── unit/        #   単体テスト（spi-hal / libsensor）
+│   ├── mocks/       #   MockSpiDriver / MockI2cDriver（テスト用）
+│   ├── unit/        #   単体テスト（spi-hal / i2c-hal / gpio / libsensor / libadxl345）
 │   └── integration/ #   結合テスト（実機必須）
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
 ├── tools/           # SBOM 生成スクリプト（generate-sbom.py 等）
@@ -79,8 +80,10 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 | コンポーネント | バス | 役割 | 必須/任意 |
 |---|---|---|---|
 | `spi-hal` + `libsensor`(Sensor) | SPI | MCP3008（10bit ADC）| 必須 |
+| `spi-hal` + `libadxl345` | SPI | ADXL345（レジスタ型加速度センサ）| 任意 |
 | `i2c-hal` + `libsensor`(Ads1115) | I2C | ADS1115（16bit ADC）| 任意 |
 | `gpio` | — | GPIO エッジ割り込み（epoll）| 任意 |
+| `examples` | — | 各コンポーネントの使用例デモ（ads1115_alert_demo 等）| 任意 |
 
 ### C 開発者向けの学習ガイド
 
@@ -117,9 +120,12 @@ C 中心の組み込み開発者が C++ へ踏み出すための導入資料を�
         release（git-cliff で CHANGELOG.md 生成 + GitHub Release 作成）
 ```
 
-| プラットフォーム | 設定ファイル | 特徴 |
+| ワークフロー | 設定ファイル | 特徴 |
 |---|---|---|
-| GitHub Actions | `.github/workflows/ci.yml` | push/PRで自動実行（ビルド・テスト・カバレッジ・Doxygen） |
+| CI | `.github/workflows/ci.yml` | push/PRで自動実行（ビルド・テスト・カバレッジ・サニタイザー・lint・Doxygen・mermaid 検証・commit-lint）|
+| Release | `.github/workflows/release.yml` | コンポーネントタグ push で CHANGELOG 生成 + GitHub Release 作成 |
+| SBOM | `.github/workflows/sbom.yml` | メタデータ/CMake 変更・タグ push で SBOM 再生成・検証・リリース添付 |
+| Rust CI | `.github/workflows/rust-ci.yml` | `rust/` の fmt / clippy / test（参照実装の品質チェック）|
 
 ---
 
@@ -143,7 +149,13 @@ C 中心の組み込み開発者が C++ へ踏み出すための導入資料を�
 docs/
 ├── guides/             ← 学習者向けガイド（このリポジトリの読み方など）
 │   ├── learning-guide.md
-│   └── sbom-guide.md
+│   ├── c-to-cpp-stepping-stones.md
+│   ├── i2c-and-ads1115.md
+│   ├── gpio-interrupts-epoll.md
+│   ├── rust-migration-guide.md
+│   ├── sbom-guide.md
+│   └── tooling/           ツール別ガイド（build / cmake / gtest / doxygen / sanitizers 等 11 本）
+├── adr/                ← アーキテクチャ決定記録（ADR 0001 等）
 ├── deliverables/       ← プロジェクト成果物（要件→設計→テスト→納品の順）
 │   ├── README.md          索引（読者別の入口・全コンポーネント対応表）
 │   ├── _templates/        新規文書のひな形
