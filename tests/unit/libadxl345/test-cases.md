@@ -123,3 +123,43 @@
 | 期待 | コピー構築 / 代入とも false |
 | 種別 | 正常系 |
 | 実装 | `test_adxl345.cpp:Adxl345Copyable.IsNotCopyConstructible` |
+
+### UT-ADXL-012 `enable_tap_detection()` のレジスタ設定列
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock の write を記録、read は 0 を返す |
+| 入力 | `enable_tap_detection(0x20, 0x10, TAP_AXIS_Z)` |
+| 期待 | THRESH_TAP / DUR / TAP_AXES / INT_MAP(=0) / INT_ENABLE(=SINGLE_TAP) の 5 書き込み |
+| 種別 | 割り込み設定 |
+| 実装 | `test_adxl345.cpp:Adxl345Interrupt.EnableTapDetectionWritesExpectedRegisters` |
+
+### UT-ADXL-013 `enable_free_fall()` のレジスタ設定列
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock の write を記録、read は 0 を返す |
+| 入力 | `enable_free_fall(0x07, 0x28)` |
+| 期待 | THRESH_FF / TIME_FF / INT_MAP(=0) / INT_ENABLE(=FREE_FALL) の 4 書き込み |
+| 種別 | 割り込み設定 |
+| 実装 | `test_adxl345.cpp:Adxl345Interrupt.EnableFreeFallWritesExpectedRegisters` |
+
+### UT-ADXL-014 `disable_interrupts()` が INT_ENABLE=0
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | — |
+| 入力 | `disable_interrupts()` |
+| 期待 | `INT_ENABLE` に 0x00 を書く |
+| 種別 | 割り込み設定 |
+| 実装 | `test_adxl345.cpp:Adxl345Interrupt.DisableInterruptsClearsIntEnable` |
+
+### UT-ADXL-015 `read_interrupt_source()` が INT_SOURCE を読む
+
+| 項目 | 内容 |
+|---|---|
+| 前提 | Mock が INT_SOURCE 読みで SINGLE_TAP を返す |
+| 入力 | `read_interrupt_source()` |
+| 期待 | READ フレーム付き INT_SOURCE を送り、`INT_SINGLE_TAP` ビットが立つ |
+| 種別 | 割り込み読み出し |
+| 実装 | `test_adxl345.cpp:Adxl345Interrupt.ReadInterruptSourceReturnsRegister` |

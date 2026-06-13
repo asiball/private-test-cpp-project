@@ -194,6 +194,88 @@ TEST(Adxl345Data, TransferErrorReturnsNullopt) {
     EXPECT_FALSE(d.read_raw().has_value());
 }
 
+// UT-ADXL-012: enable_tap_detection が閾値/持続/軸/INT_MAP/INT_ENABLE を設定する
+TEST(Adxl345Interrupt, EnableTapDetectionWritesExpectedRegisters) {
+    MockSpiDriver mock;
+    std::vector<std::pair<uint8_t, uint8_t>> writes;
+    EXPECT_CALL(mock, transfer(_, _, 2))
+        .WillRepeatedly([&](const uint8_t* tx, uint8_t* rx, size_t) {
+            if (tx[0] & acc::READ) {
+                rx[1] = 0x00;   // INT_MAP / INT_ENABLE の現在値（update_bits の read 側）
+            } else {
+                writes.emplace_back(tx[0] & acc::ADDR_MASK, tx[1]);
+            }
+            return 2;
+        });
+
+    Adxl345 d(&mock);
+    EXPECT_TRUE(d.enable_tap_detection(0x20, 0x10, Adxl345::TAP_AXIS_Z));
+
+    // THRESH_TAP / DUR / TAP_AXES / INT_MAP / INT_ENABLE の 5 書き込み
+    ASSERT_EQ(writes.size(), 5u);
+    EXPECT_EQ(writes[0], std::make_pair(adxl345::reg::THRESH_TAP, uint8_t{0x20}));
+    EXPECT_EQ(writes[1], std::make_pair(adxl345::reg::DUR,        uint8_t{0x10}));
+    EXPECT_EQ(writes[2], std::make_pair(adxl345::reg::TAP_AXES,   Adxl345::TAP_AXIS_Z));
+    // INT_MAP: SINGLE_TAP ビットは 0（INT1 へ）→ 現在値 0 のまま 0x00
+    EXPECT_EQ(writes[3], std::make_pair(adxl345::reg::INT_MAP,    uint8_t{0x00}));
+    // INT_ENABLE: SINGLE_TAP(0x40) を立てる
+    EXPECT_EQ(writes[4], std::make_pair(adxl345::reg::INT_ENABLE, Adxl345::INT_SINGLE_TAP));
+}
+
+// UT-ADXL-013: enable_free_fall が THRESH_FF/TIME_FF/INT_ENABLE を設定する
+TEST(Adxl345Interrupt, EnableFreeFallWritesExpectedRegisters) {
+    MockSpiDriver mock;
+    std::vector<std::pair<uint8_t, uint8_t>> writes;
+    EXPECT_CALL(mock, transfer(_, _, 2))
+        .WillRepeatedly([&](const uint8_t* tx, uint8_t* rx, size_t) {
+            if (tx[0] & acc::READ) { rx[1] = 0x00; }
+            else { writes.emplace_back(tx[0] & acc::ADDR_MASK, tx[1]); }
+            return 2;
+        });
+
+    Adxl345 d(&mock);
+    EXPECT_TRUE(d.enable_free_fall(0x07, 0x28));
+    ASSERT_EQ(writes.size(), 4u);
+    EXPECT_EQ(writes[0], std::make_pair(adxl345::reg::THRESH_FF, uint8_t{0x07}));
+    EXPECT_EQ(writes[1], std::make_pair(adxl345::reg::TIME_FF,   uint8_t{0x28}));
+    EXPECT_EQ(writes[2], std::make_pair(adxl345::reg::INT_MAP,   uint8_t{0x00}));
+    EXPECT_EQ(writes[3], std::make_pair(adxl345::reg::INT_ENABLE, Adxl345::INT_FREE_FALL));
+}
+
+// UT-ADXL-014: disable_interrupts が INT_ENABLE=0 を書く
+TEST(Adxl345Interrupt, DisableInterruptsClearsIntEnable) {
+    MockSpiDriver mock;
+    uint8_t captured[2] = {0xFF, 0xFF};
+    EXPECT_CALL(mock, transfer(_, _, 2))
+        .WillOnce([&](const uint8_t* tx, uint8_t*, size_t) {
+            captured[0] = tx[0]; captured[1] = tx[1];
+            return 2;
+        });
+
+    Adxl345 d(&mock);
+    EXPECT_TRUE(d.disable_interrupts());
+    EXPECT_EQ(captured[0], acc::WRITE | adxl345::reg::INT_ENABLE);
+    EXPECT_EQ(captured[1], 0x00);
+}
+
+// UT-ADXL-015: read_interrupt_source が INT_SOURCE を読み値を返す
+TEST(Adxl345Interrupt, ReadInterruptSourceReturnsRegister) {
+    MockSpiDriver mock;
+    uint8_t captured0 = 0xFF;
+    EXPECT_CALL(mock, transfer(_, _, 2))
+        .WillOnce([&](const uint8_t* tx, uint8_t* rx, size_t) {
+            captured0 = tx[0];
+            rx[1]     = Adxl345::INT_SINGLE_TAP;   // タップ発生
+            return 2;
+        });
+
+    Adxl345 d(&mock);
+    auto src = d.read_interrupt_source();
+    ASSERT_TRUE(src.has_value());
+    EXPECT_EQ(captured0, acc::READ | adxl345::reg::INT_SOURCE);
+    EXPECT_TRUE(*src & Adxl345::INT_SINGLE_TAP);
+}
+
 // UT-ADXL-011: コピー禁止確認
 TEST(Adxl345Copyable, IsNotCopyConstructible) {
     EXPECT_FALSE(std::is_copy_constructible<Adxl345>::value);

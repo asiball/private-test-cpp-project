@@ -152,4 +152,37 @@ std::optional<Adxl345::AccelG> Adxl345::read_g() noexcept
     };
 }
 
+bool Adxl345::enable_tap_detection(uint8_t threshold, uint8_t duration, uint8_t axes) noexcept
+{
+    // 閾値・持続時間・対象軸を設定 → SINGLE_TAP を INT1 にマップ → 有効化。
+    // どのレジスタをどの順序で触るかをここに隠蔽する（利用者のレジスタ直叩きを不要にする）。
+    if (!write_reg(reg::THRESH_TAP, threshold)) return false;
+    if (!write_reg(reg::DUR, duration))         return false;
+    if (!write_reg(reg::TAP_AXES, axes))        return false;
+    // INT_MAP のビット 0 = INT1 ピンへ出力。SINGLE_TAP を INT1 に割り当てる。
+    if (!update_bits(reg::INT_MAP, adxl345::int_bits::SINGLE_TAP, 0)) return false;
+    // INT_ENABLE で SINGLE_TAP を有効化（他の割り込みは保持）
+    return update_bits(reg::INT_ENABLE, adxl345::int_bits::SINGLE_TAP,
+                       adxl345::int_bits::SINGLE_TAP);
+}
+
+bool Adxl345::enable_free_fall(uint8_t threshold, uint8_t time) noexcept
+{
+    if (!write_reg(reg::THRESH_FF, threshold)) return false;
+    if (!write_reg(reg::TIME_FF, time))        return false;
+    if (!update_bits(reg::INT_MAP, adxl345::int_bits::FREE_FALL, 0)) return false;
+    return update_bits(reg::INT_ENABLE, adxl345::int_bits::FREE_FALL,
+                       adxl345::int_bits::FREE_FALL);
+}
+
+bool Adxl345::disable_interrupts() noexcept
+{
+    return write_reg(reg::INT_ENABLE, 0x00);
+}
+
+std::optional<uint8_t> Adxl345::read_interrupt_source() noexcept
+{
+    return read_reg(reg::INT_SOURCE);
+}
+
 } // namespace embedded
