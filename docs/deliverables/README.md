@@ -63,6 +63,7 @@ flowchart LR
 |---|---|
 | 要件定義書 | [01_requirements/requirements-spec.md](01_requirements/requirements-spec.md) |
 | 基本設計（システム構成） | [02_basic-design/system-architecture.md](02_basic-design/system-architecture.md) |
+| コーディング規約書 | [02_basic-design/coding-standard.md](02_basic-design/coding-standard.md) |
 | テスト計画 | [06_test/test-plan.md](06_test/test-plan.md) |
 | リリースノート | [07_delivery/release-notes/](07_delivery/release-notes/) |
 

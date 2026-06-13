@@ -278,6 +278,13 @@ class Sensor : public std::enable_shared_from_this<Sensor> {
 };
 ```
 
+## 命名規約・書式・規格準拠方針
+
+命名規約（クラス=PascalCase / メソッド・メンバ=snake_case / メンバは末尾 `_` / 定数=UPPER_SNAKE_CASE 等）、
+書式（`.clang-format`）、静的解析、MISRA/CERT 準拠方針は、納品文書の
+[コーディング規約書](../../deliverables/02_basic-design/coding-standard.md) に集約している。
+
 **合わせて読む**:
+- [コーディング規約書（命名・書式・規格準拠方針）](../../deliverables/02_basic-design/coding-standard.md)
 - [サニタイザーガイド（ビルド手順やTips）](sanitizers-guide.md)
 - [詳細設計書 — libsensor](../../deliverables/03_detailed-design/libsensor-design.md)
