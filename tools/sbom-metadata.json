@@ -8,7 +8,8 @@
   },
   "coverage_policy": {
     "_comment": "--verify はトップ CMakeLists.txt の foreach(_component ...) を走査し、各コンポーネントに対応する SBOM package があるか確認する。SBOM 対象外のコンポーネント（デプロイ成果物を install しない学習用デモ等）はここに列挙する。新規コンポーネントを追加したら package を足すか、ここに除外として追記すること。",
-    "exempt_components": ["examples"]
+    "_rust_scope": "rust/ は Cargo ワークスペースの参照実装で、リリース成果物（配布バイナリ）を install しないため C++ SBOM の対象外とする。CMake の foreach 走査外なので --verify は元々検査しないが、意図を明示するため exempt に列挙する。Rust 依存の SBOM が必要になった場合は Cargo.lock から cargo cyclonedx 等で別ファイルとして生成する方針（docs/guides/sbom-guide.md 参照）。",
+    "exempt_components": ["examples", "rust"]
   },
   "packages": [
     {
