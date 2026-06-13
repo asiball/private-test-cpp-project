@@ -110,6 +110,18 @@
       "description": "ADXL345 accelerometer shared library (libadxl345.so). High-level Adxl345 class providing register-map access (read_reg / write_reg / update_bits) and read_raw / read_g over ADXL345 (3-axis SPI accelerometer). Register-type device example contrasting MCP3008. PIMPL idiom, dependency injection on ISpiDriver; static-links spi-hal."
     },
     {
+      "spdx_id": "SPDXRef-Package-libmcp9808",
+      "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libmcp9808",
+      "name": "libmcp9808",
+      "version": "1.1.0",
+      "cdx_type": "library",
+      "supplier": "asiball",
+      "download_location": "git+https://github.com/asiball/private-test-cpp-project.git#libmcp9808",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "MCP9808 temperature sensor shared library (libmcp9808.so). High-level Mcp9808 class reading the ambient temperature register over I2C (0.0625 degC/LSB). Minimal I2C device example following the Ads1115 pattern. PIMPL idiom, dependency injection on II2cDriver; static-links i2c-hal."
+    },
+    {
       "spdx_id": "SPDXRef-Package-device-ctl",
       "bom_ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
       "name": "device-ctl",
@@ -203,6 +215,11 @@
     {"element": "SPDXRef-Package-libadxl345",            "type": "STATIC_LINK",            "related": "SPDXRef-Package-spihal"},
     {"element": "SPDXRef-Package-libadxl345",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
     {"element": "SPDXRef-Package-libadxl345",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libstdcxx"},
-    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-libadxl345"}
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-libadxl345"},
+    {"element": "SPDXRef-Package-root",                  "type": "CONTAINS",               "related": "SPDXRef-Package-libmcp9808"},
+    {"element": "SPDXRef-Package-libmcp9808",            "type": "STATIC_LINK",            "related": "SPDXRef-Package-i2chal"},
+    {"element": "SPDXRef-Package-libmcp9808",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-glibc"},
+    {"element": "SPDXRef-Package-libmcp9808",            "type": "DYNAMIC_LINK",           "related": "SPDXRef-Package-libstdcxx"},
+    {"element": "SPDXRef-Package-googletest",            "type": "TEST_DEPENDENCY_OF",     "related": "SPDXRef-Package-libmcp9808"}
   ]
 }

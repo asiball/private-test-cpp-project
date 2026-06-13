@@ -15,6 +15,7 @@ INPUT                  = spi-hal/include \
                          gpio/include \
                          libsensor/include \
                          libadxl345/include \
+                         libmcp9808/include \
                          common/include \
                          kernel/include \
                          cli/src

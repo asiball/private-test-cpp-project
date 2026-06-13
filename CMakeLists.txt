@@ -84,7 +84,7 @@ endif()
 # 依存順に add_subdirectory する:
 #   - i2c-hal は libsensor(ADS1115) より先に処理する。
 #   - spi-hal は libadxl345 より先に処理する。
-foreach(_component spi-hal i2c-hal gpio libsensor libadxl345 cli examples)
+foreach(_component spi-hal i2c-hal gpio libsensor libadxl345 libmcp9808 cli examples)
     if(EXISTS ${CMAKE_SOURCE_DIR}/${_component}/CMakeLists.txt)
         add_subdirectory(${_component})
     endif()

@@ -4,7 +4,7 @@
   "serialNumber": "urn:uuid:d8e140bb-0db0-5811-8c40-29a4c745fe7d",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-05-31T23:47:14Z",
+    "timestamp": "2026-06-12T15:17:55Z",
     "tools": {
       "components": [
         {
@@ -176,6 +176,25 @@
       "description": "ADXL345 accelerometer shared library (libadxl345.so). High-level Adxl345 class providing register-map access (read_reg / write_reg / update_bits) and read_raw / read_g over ADXL345 (3-axis SPI accelerometer). Register-type device example contrasting MCP3008. PIMPL idiom, dependency injection on ISpiDriver; static-links spi-hal."
     },
     {
+      "type": "library",
+      "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libmcp9808",
+      "supplier": {
+        "name": "asiball"
+      },
+      "name": "libmcp9808",
+      "purl": "pkg:github/asiball/private-test-cpp-project@1.1.0#libmcp9808",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "version": "1.1.0",
+      "copyright": "Copyright (c) 2024 asiball",
+      "description": "MCP9808 temperature sensor shared library (libmcp9808.so). High-level Mcp9808 class reading the ambient temperature register over I2C (0.0625 degC/LSB). Minimal I2C device example following the Ads1115 pattern. PIMPL idiom, dependency injection on II2cDriver; static-links i2c-hal."
+    },
+    {
       "type": "application",
       "bom-ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#cli",
       "supplier": {
@@ -271,6 +290,7 @@
         "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#kernel",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#libadxl345",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#libmcp9808",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#libsensor-ads1115",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
@@ -324,6 +344,14 @@
         "pkg:generic/glibc",
         "pkg:generic/libstdc%2B%2B",
         "pkg:github/asiball/private-test-cpp-project@1.1.0#spi-hal"
+      ]
+    },
+    {
+      "ref": "pkg:github/asiball/private-test-cpp-project@1.1.0#libmcp9808",
+      "dependsOn": [
+        "pkg:generic/glibc",
+        "pkg:generic/libstdc%2B%2B",
+        "pkg:github/asiball/private-test-cpp-project@1.1.0#i2c-hal"
       ]
     },
     {

@@ -43,6 +43,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├── common/          # 共有ユーティリティ（logger.hpp 等）
 ├── libsensor/       # libsensor（MCP3008/SPI: libsensor.so, ADS1115/I2C: libads1115.so ★任意）
 ├── libadxl345/      # libadxl345（動的共有ライブラリ: libadxl345.so / ADXL345・レジスタ型）
+├── libmcp9808/      # libmcp9808（動的共有ライブラリ: libmcp9808.so / MCP9808・I2C 温度センサ）★任意
 ├── cli/             # device-ctl（CLIツール）
 ├── examples/        # サンプル（ads1115_alert_demo 等）★任意
 ├── kernel/          # Linux カーネルドライバ（my_spi_driver.ko）
@@ -82,6 +83,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 | `spi-hal` + `libsensor`(Sensor) | SPI | MCP3008（10bit ADC）| 必須 |
 | `spi-hal` + `libadxl345` | SPI | ADXL345（レジスタ型加速度センサ）| 任意 |
 | `i2c-hal` + `libsensor`(Ads1115) | I2C | ADS1115（16bit ADC）| 任意 |
+| `i2c-hal` + `libmcp9808` | I2C | MCP9808（温度センサ）| 任意 |
 | `gpio` | — | GPIO エッジ割り込み（epoll）| 任意 |
 | `examples` | — | 各コンポーネントの使用例デモ（ads1115_alert_demo 等）| 任意 |
 
