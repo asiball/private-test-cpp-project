@@ -163,10 +163,7 @@ impl SpiDriver for LinuxSpiDriver {
         let tr = SpiIocTransfer {
             tx_buf: tx.as_ptr() as u64,
             rx_buf: rx.as_mut_ptr() as u64,
-            len: u32::try_from(tx.len()).map_err(|_| SpiError::LengthMismatch {
-                tx: tx.len(),
-                rx: rx.len(),
-            })?,
+            len: u32::try_from(tx.len()).map_err(|_| SpiError::Overflow { len: tx.len() })?,
             speed_hz: cfg.speed_hz,
             delay_usecs: 0,
             bits_per_word: cfg.bits_per_word,

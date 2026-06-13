@@ -42,6 +42,13 @@ pub enum SpiError {
         /// 受信バッファ長
         rx: usize,
     },
+
+    /// 転送長が `u32` を超過し、ioctl の len フィールドに収まらない。
+    #[error("転送長が大きすぎます: {len} バイト (上限 {max})", max = u32::MAX)]
+    Overflow {
+        /// 要求された転送長
+        len: usize,
+    },
 }
 
 /// SPI バス設定。`ISpiDriver::Config` に相当。

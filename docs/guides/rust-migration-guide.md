@@ -347,9 +347,11 @@ if (val) { use(*val); }  // val を確認せず *val を使おうとするとコ
 // Some(value) = 値がある、None = 値がない
 pub fn read_raw(&mut self, channel: u8) -> Result<u16, SensorError>;
 
-// Option はエラーではなく「値がない」が正常な場合に使う
-// 例: デバイスが未接続のときレジスタ値は存在しない
-pub fn read_reg(&mut self, addr: u8) -> Result<Option<u8>, Adxl345Error>;
+// 実際の rust/libadxl345 の read_reg は失敗を Result で表すため戻り値は u8:
+pub fn read_reg(&mut self, addr: u8) -> Result<u8, Adxl345Error>;
+
+// Option<T> は「エラーではなく値が無いのが正常」な場合に使う（例示）:
+// fn find_calibration(&self, id: u8) -> Option<i16>;  // 該当無しは None
 ```
 
 **Rust の `Option<T>` は C++ の `std::optional<T>` とほぼ同じ。**

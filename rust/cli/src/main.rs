@@ -91,16 +91,22 @@ fn main() {
         let _ = io::stdout().flush();
 
         let mut line = String::new();
-        if stdin.lock().read_line(&mut line).is_err() {
-            break;
+        // read_line は EOF で Ok(0) を返す。is_err() では検知できず、空行のまま
+        // 不明コマンドを全速で繰り返す無限ビジーループ（CPU 100%）になるため、
+        // Ok(0)（EOF）と読み取りエラーの両方でループを抜ける。
+        match stdin.lock().read_line(&mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
         }
         match line.trim() {
             "1" => {
                 print!("チャンネル番号 (0–7): ");
                 let _ = io::stdout().flush();
                 let mut ch_str = String::new();
-                if stdin.lock().read_line(&mut ch_str).is_err() {
-                    continue;
+                // EOF（Ok(0)）は終了、読み取りエラーも終了（無限ループ回避）。
+                match stdin.lock().read_line(&mut ch_str) {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {}
                 }
                 let ch: u8 = match ch_str.trim().parse() {
                     Ok(v) => v,
