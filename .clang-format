@@ -1,7 +1,14 @@
 ---
-# embedded-device-suite コードスタイル定義
+# embedded-device-suite コードスタイル定義（規約の正本は
+# docs/deliverables/02_basic-design/coding-standard.md）。
+#
 # 適用: clang-format --style=file
-# 確認: clang-format --dry-run --Werror <file>
+# 注意: 既存コードは手書きで関数宣言の縦揃え等を行っており、clang-format 18 の
+#       出力とは細部（宣言整列の一部）で差が残る。本ファイルは「目指すスタイル」を
+#       機械可読化したものであり、現状は参考（advisory）。CI で
+#       --dry-run --Werror をゲートにするには一度 `clang-format -i` で全ファイルを
+#       正規化する必要がある（git blame を汚すため、その実施可否は別途判断）。
+#       詳細・経緯は coding-standard.md / issue #52 を参照。
 
 Language:        Cpp
 Standard:        c++17
@@ -16,21 +23,26 @@ TabWidth:             4
 UseTab:               Never
 ContinuationIndentWidth: 4
 NamespaceIndentation: None
+# public:/private: をクラスと同じ列に置く（既存コードに合わせる）
+AccessModifierOffset: -4
+
+# ── 宣言・代入の整列（既存コードは型名・代入演算子で縦揃えする）────────
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveAssignments:  Consecutive
 
 # ── 行長 ────────────────────────────────────────────────────
 ColumnLimit:     100
 
 # ── 波括弧スタイル ────────────────────────────────────────────
-# 関数・クラス・構造体の { は改行後（Allman）
-# if/for/while の { は同行（K&R）
+# 関数定義の { は改行後（Allman）。クラス/構造体/if/for/while の { は同行（K&R）。
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterClass:          true
+  AfterClass:          false     # class X {  （同行）
   AfterControlStatement: Never   # if (...) { は同行
   AfterEnum:           false
   AfterFunction:       true      # 関数定義の { は改行
   AfterNamespace:      false
-  AfterStruct:         true
+  AfterStruct:         false     # struct X {  （同行）
   BeforeCatch:         false
   BeforeElse:          false
 
