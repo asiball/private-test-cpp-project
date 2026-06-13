@@ -71,6 +71,23 @@ Adxl345& operator=(const Adxl345&) = delete;
 | `read_raw()` | `optional<AccelRaw>` | 3 軸の生値をマルチバイト一括読み出し |
 | `read_g()` | `optional<AccelG>` | 3 軸を [g] で読む（各軸 × `SCALE_G_PER_LSB`）|
 
+### 4.4 割り込み API
+
+ADXL345 はタップ/自由落下等を INT1/INT2 ピンに出力できる。どのレジスタをどの順序で
+設定するかをライブラリ側に隠蔽する（利用者のレジスタ直叩きを不要にする）。`gpio` の
+`GpioLine::wait_event()` と組み合わせると「割り込みで起こされてから要因判別」できる。
+
+| メソッド | 戻り値 | 説明 |
+|---|---|---|
+| `enable_tap_detection(threshold, duration, axes=TAP_AXIS_XYZ)` | `bool` | シングルタップを INT1 に設定・有効化（THRESH_TAP/DUR/TAP_AXES/INT_MAP/INT_ENABLE）|
+| `enable_free_fall(threshold, time)` | `bool` | 自由落下を INT1 に設定・有効化（THRESH_FF/TIME_FF/INT_MAP/INT_ENABLE）|
+| `disable_interrupts()` | `bool` | 全割り込みを無効化（INT_ENABLE=0）|
+| `read_interrupt_source()` | `optional<uint8_t>` | INT_SOURCE(0x30) を読む。`INT_SINGLE_TAP` 等と AND して要因判別 |
+
+割り込みソースのビットマスク定数（クラス静的）: `INT_DATA_READY=0x80` / `INT_SINGLE_TAP=0x40` / `INT_DOUBLE_TAP=0x20` / `INT_FREE_FALL=0x04`。タップ軸: `TAP_AXIS_X/Y/Z`、`TAP_AXIS_XYZ`。
+
+> 典型フロー: `enable_tap_detection()` → INT1 が High → `GpioLine::wait_event()` でエッジ検知 → `read_interrupt_source()` でタップ/ダブルタップ判別。
+
 ---
 
 ## 5. 使用例
@@ -102,4 +119,5 @@ int main()
 
 | バージョン | 変更内容 |
 |---|---|
+| 1.1 | 割り込み API（`enable_tap_detection` / `enable_free_fall` / `disable_interrupts` / `read_interrupt_source`）と割り込みソース・タップ軸の定数を追加 |
 | 1.0 | 初版。レジスタアクセス層 + `read_device_id` / `read_raw` / `read_g` |

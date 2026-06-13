@@ -46,6 +46,18 @@ public:
     /** @brief 3 軸の加速度 [g] */
     struct AccelG { double x; double y; double z; };
 
+    // ── 割り込みソースのビットマスク（read_interrupt_source() の戻り値解釈用）──
+    static constexpr uint8_t INT_DATA_READY = 0x80; ///< データレディ
+    static constexpr uint8_t INT_SINGLE_TAP = 0x40; ///< シングルタップ
+    static constexpr uint8_t INT_DOUBLE_TAP = 0x20; ///< ダブルタップ
+    static constexpr uint8_t INT_FREE_FALL  = 0x04; ///< 自由落下
+
+    // ── タップ検出に使う軸（enable_tap_detection の axes 引数）──
+    static constexpr uint8_t TAP_AXIS_X   = 0x04;
+    static constexpr uint8_t TAP_AXIS_Y   = 0x02;
+    static constexpr uint8_t TAP_AXIS_Z   = 0x01;
+    static constexpr uint8_t TAP_AXIS_XYZ = 0x07; ///< 全軸
+
     /**
      * @brief コンストラクタ（実機用）
      * @param spi_path spidev のデバイスパス（例: "/dev/spidev0.0"）
@@ -151,6 +163,45 @@ public:
      * @snippet test_adxl345.cpp UT-ADXL-007
      */
     [[nodiscard]] std::optional<AccelG> read_g() noexcept;
+
+    // ── 割り込み API ──────────────────────────────────────
+    // ADXL345 はタップ/自由落下等を INT1/INT2 ピンに出力できる。GPIO 割り込み
+    // （gpio ライブラリの GpioLine::wait_event）と組み合わせると、ポーリングせず
+    // 「割り込みで起こされてから read_interrupt_source() で要因を判別」できる。
+    // どのレジスタをどの順序で設定するかをライブラリ側に隠蔽する。
+
+    /**
+     * @brief シングルタップ割り込みを設定・有効化する（INT1 にマップ）
+     * @param threshold タップ閾値（THRESH_TAP, 62.5 mg/LSB）。0 は不可
+     * @param duration  タップとみなす最大持続時間（DUR, 625 us/LSB）。0 は不可
+     * @param axes      検出に使う軸（TAP_AXIS_X|Y|Z の OR。既定は全軸）
+     * @return true: 全レジスタ設定成功 / false: 転送失敗
+     */
+    [[nodiscard]] bool enable_tap_detection(uint8_t threshold, uint8_t duration,
+                                            uint8_t axes = TAP_AXIS_XYZ) noexcept;
+
+    /**
+     * @brief 自由落下割り込みを設定・有効化する（INT1 にマップ）
+     * @param threshold 自由落下閾値（THRESH_FF, 62.5 mg/LSB。推奨 0x05〜0x09）
+     * @param time      自由落下時間（TIME_FF, 5 ms/LSB。推奨 0x14〜0x46）
+     * @return true: 成功 / false: 転送失敗
+     */
+    [[nodiscard]] bool enable_free_fall(uint8_t threshold, uint8_t time) noexcept;
+
+    /**
+     * @brief すべての割り込みを無効化する（INT_ENABLE = 0）
+     * @return true: 成功 / false: 転送失敗
+     */
+    [[nodiscard]] bool disable_interrupts() noexcept;
+
+    /**
+     * @brief 割り込みソース（INT_SOURCE, 0x30）を読む
+     *
+     * 戻り値のビットを @ref INT_SINGLE_TAP / @ref INT_FREE_FALL 等と AND して要因を
+     * 判別する。INT_SOURCE はデータ系を除き読み出しでクリアされる。
+     * @return INT_SOURCE の値。転送失敗時は std::nullopt
+     */
+    [[nodiscard]] std::optional<uint8_t> read_interrupt_source() noexcept;
 
 private:
     struct Impl;
