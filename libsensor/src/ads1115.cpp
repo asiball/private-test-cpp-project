@@ -45,22 +45,21 @@ constexpr useconds_t POLL_INTERVAL_US = 1000;  // ポーリング間隔
 }
 
 struct Ads1115::Impl {
-    II2cDriver* driver;
-    bool        owns_driver;  // Impl がドライバを所有しているか（PIMPL + 不透明ポインタの所有権管理）
+    std::unique_ptr<II2cDriver> owned;   // 自前生成時のみ所有（注入時は空）
+    II2cDriver* driver;                  // 実際に使う非所有ビュー
     uint16_t    addr;
     Ads1115::Gain gain;
     bool        rdy_pin_enabled;
 
     Impl(const std::string& path, uint16_t a)
-        : driver(new I2cDriver(path)), owns_driver(true), addr(a),
+        : owned(std::make_unique<I2cDriver>(path)), driver(owned.get()), addr(a),
           gain(Ads1115::Gain::FSR_2_048V), rdy_pin_enabled(false) {}
 
     Impl(II2cDriver* drv, uint16_t a)
-        : driver(drv), owns_driver(false), addr(a),
+        : driver(drv), addr(a),
           gain(Ads1115::Gain::FSR_2_048V), rdy_pin_enabled(false) {}
 
-    ~Impl() { if (owns_driver) delete driver; }
-
+    // owned (unique_ptr) によりデストラクタで自動解放。手動 delete / owns_driver は不要。
     Impl(const Impl&)            = delete;
     Impl& operator=(const Impl&) = delete;
 

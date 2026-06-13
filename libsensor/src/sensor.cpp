@@ -16,18 +16,17 @@ constexpr uint8_t MCP3008_RESULT_MASK = 0x03;  // rx[1] の上位 2bit (10bit �
 }
 
 struct Sensor::Impl {
-    ISpiDriver* driver;
-    bool        owns_driver;  // Impl がドライバを所有しているか
-    double      vref_volts;
+    std::unique_ptr<ISpiDriver> owned;   // 自前生成時のみ所有（注入時は空）
+    ISpiDriver*                 driver;  // 実際に使う非所有ビュー
+    double                      vref_volts;
 
     explicit Impl(const std::string& path, double v)
-        : driver(new SpiDriver(path)), owns_driver(true), vref_volts(v) {}
+        : owned(std::make_unique<SpiDriver>(path)), driver(owned.get()), vref_volts(v) {}
 
     explicit Impl(ISpiDriver* drv, double v)
-        : driver(drv), owns_driver(false), vref_volts(v) {}
+        : driver(drv), vref_volts(v) {}
 
-    ~Impl() { if (owns_driver) delete driver; }
-
+    // owned (unique_ptr) によりデストラクタで自動解放。手動 delete / owns_driver は不要。
     Impl(const Impl&)            = delete;
     Impl& operator=(const Impl&) = delete;
 };
