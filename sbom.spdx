@@ -5,7 +5,7 @@ DocumentName: embedded-device-suite-sbom
 DocumentNamespace: https://github.com/asiball/private-test-cpp-project/sbom/1.1.0-d8e140bb-0db0-5811-8c40-29a4c745fe7d
 Creator: Tool: tools/generate-sbom.py
 Creator: Organization: asiball ()
-Created: 2026-05-31T23:47:14Z
+Created: 2026-06-12T15:17:55Z
 
 PackageName: embedded-device-suite
 SPDXID: SPDXRef-Package-root
@@ -95,6 +95,17 @@ PackageLicenseDeclared: MIT
 PackageCopyrightText: Copyright (c) 2024 asiball
 PackageComment: ADXL345 accelerometer shared library (libadxl345.so). High-level Adxl345 class providing register-map access (read_reg / write_reg / update_bits) and read_raw / read_g over ADXL345 (3-axis SPI accelerometer). Register-type device example contrasting MCP3008. PIMPL idiom, dependency injection on ISpiDriver; static-links spi-hal.
 
+PackageName: libmcp9808
+SPDXID: SPDXRef-Package-libmcp9808
+PackageVersion: 1.1.0
+PackageSupplier: Organization: asiball ()
+PackageDownloadLocation: git+https://github.com/asiball/private-test-cpp-project.git#libmcp9808
+FilesAnalyzed: false
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageCopyrightText: Copyright (c) 2024 asiball
+PackageComment: MCP9808 temperature sensor shared library (libmcp9808.so). High-level Mcp9808 class reading the ambient temperature register over I2C (0.0625 degC/LSB). Minimal I2C device example following the Ads1115 pattern. PIMPL idiom, dependency injection on II2cDriver; static-links i2c-hal.
+
 PackageName: device-ctl
 SPDXID: SPDXRef-Package-device-ctl
 PackageVersion: 1.1.0
@@ -182,3 +193,8 @@ Relationship: SPDXRef-Package-libadxl345 STATIC_LINK SPDXRef-Package-spihal
 Relationship: SPDXRef-Package-libadxl345 DYNAMIC_LINK SPDXRef-Package-glibc
 Relationship: SPDXRef-Package-libadxl345 DYNAMIC_LINK SPDXRef-Package-libstdcxx
 Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-libadxl345
+Relationship: SPDXRef-Package-root CONTAINS SPDXRef-Package-libmcp9808
+Relationship: SPDXRef-Package-libmcp9808 STATIC_LINK SPDXRef-Package-i2chal
+Relationship: SPDXRef-Package-libmcp9808 DYNAMIC_LINK SPDXRef-Package-glibc
+Relationship: SPDXRef-Package-libmcp9808 DYNAMIC_LINK SPDXRef-Package-libstdcxx
+Relationship: SPDXRef-Package-googletest TEST_DEPENDENCY_OF SPDXRef-Package-libmcp9808

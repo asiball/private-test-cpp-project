@@ -48,6 +48,7 @@ flowchart LR
 | **libsensor**（MCP3008 / SPI） | ライブラリ | ✅ [libsensor-design](03_detailed-design/libsensor-design.md) | ✅ [libsensor-api](04_api-spec/libsensor-api.md) | （MCP3008 は spi-hardware-if 参照） |
 | **libsensor**（ADS1115 / I2C） | ライブラリ | ✅ [libsensor-design §9](03_detailed-design/libsensor-design.md) | ✅ [ads1115-api](04_api-spec/ads1115-api.md) | ✅ [ads1115-register-map](05_interface-spec/ads1115-register-map.md) |
 | **libadxl345** | ライブラリ | ✅ [libadxl345-design](03_detailed-design/libadxl345-design.md) | ✅ [adxl345-api](04_api-spec/adxl345-api.md) | ✅ [adxl345-register-map](05_interface-spec/adxl345-register-map.md) |
+| **libmcp9808** ★任意 | ライブラリ | ⬜ 未作成（演習課題 #48） | ⬜ 未作成 | ⬜ 未作成（MCP9808 データシート参照） |
 | **cli**（device-ctl） | CLI | ✅ [cli-design](03_detailed-design/cli-design.md) | ✅ [cli-device-ctl-spec](04_api-spec/cli-device-ctl-spec.md)（操作仕様） | — |
 | **kernel**（オプション拡張） | C ドライバ | ✅ [kernel-driver-design](03_detailed-design/kernel-driver-design.md) | — | ✅ [kernel-module-if](05_interface-spec/kernel-module-if.md) |
 | **common**（logger） | 共通基盤 | — | ✅ [common-logger-api](04_api-spec/common-logger-api.md) | — |

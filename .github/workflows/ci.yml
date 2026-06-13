@@ -118,6 +118,20 @@ jobs:
           ./build/test-libadxl345/test_adxl345 \
             --gtest_output=xml:test-results/libadxl345-unit.xml
 
+      - name: Libmcp9808 unit tests
+        run: |
+          cmake -S libmcp9808 -B build/libmcp9808-debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/libmcp9808-debug -j$(nproc)
+          sudo cmake --install build/libmcp9808-debug --prefix /usr/local
+          sudo ldconfig
+          # mcp9808.hpp は ii2c_driver.hpp を単純名 include するため i2c-hal/include が必須
+          cmake -S tests/unit/libmcp9808 -B build/test-libmcp9808 \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libmcp9808/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/tests/mocks"
+          cmake --build build/test-libmcp9808 -j$(nproc)
+          ./build/test-libmcp9808/test_mcp9808 \
+            --gtest_output=xml:test-results/libmcp9808-unit.xml
+
       - name: Integration tests (compile + skip check)
         run: |
           # 結合テストは libsensor(sensor/ads1115) / libadxl345 / gpio を install 済みの
@@ -210,6 +224,15 @@ jobs:
           sudo cmake --install build/libadxl345-cov --prefix /usr/local
           sudo ldconfig
 
+      - name: Build libmcp9808 with coverage flags
+        run: |
+          cmake -S libmcp9808 -B build/libmcp9808-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage"
+          cmake --build build/libmcp9808-cov -j$(nproc)
+          sudo cmake --install build/libmcp9808-cov --prefix /usr/local
+          sudo ldconfig
+
       - name: Build i2c-hal with coverage flags
         run: |
           cmake -S i2c-hal -B build/i2chal-cov \
@@ -264,6 +287,16 @@ jobs:
           cmake --build build/test-libadxl345-cov -j$(nproc)
           ./build/test-libadxl345-cov/test_adxl345 \
             --gtest_output=xml:test-results/libadxl345-unit.xml
+
+      - name: Run libmcp9808 tests (coverage)
+        run: |
+          cmake -S tests/unit/libmcp9808 -B build/test-libmcp9808-cov \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -I${{ github.workspace }}/libmcp9808/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+          cmake --build build/test-libmcp9808-cov -j$(nproc)
+          ./build/test-libmcp9808-cov/test_mcp9808 \
+            --gtest_output=xml:test-results/libmcp9808-unit.xml
 
       - name: Run i2c-hal tests (coverage)
         run: |
@@ -325,7 +358,7 @@ jobs:
             --std=c++17 \
             --suppress=missingIncludeSystem \
             --error-exitcode=1 \
-            spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ cli/src/ examples/
+            spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ libmcp9808/src/ cli/src/ examples/
 
       - name: Run clang-tidy
         run: |
@@ -345,6 +378,7 @@ jobs:
             libsensor/src/sensor.cpp \
             libsensor/src/ads1115.cpp \
             libadxl345/src/adxl345.cpp \
+            libmcp9808/src/mcp9808.cpp \
             cli/src/main.cpp \
             examples/ads1115_alert_demo.cpp
 
@@ -501,6 +535,14 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build/gpio-asan -j$(nproc)
           sudo cmake --install build/gpio-asan --prefix /usr/local
+          # libmcp9808 は i2c-hal にリンクするため、i2c-hal install 後にビルドする
+          cmake -S libmcp9808 -B build/libmcp9808-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/libmcp9808-asan -j$(nproc)
+          sudo cmake --install build/libmcp9808-asan --prefix /usr/local
+          sudo ldconfig
 
       - name: SPI HAL unit tests (ASAN+UBSAN)
         run: |
@@ -547,6 +589,20 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           ./build/test-libadxl345-asan/test_adxl345 \
             --gtest_output=xml:test-results/libadxl345-asan.xml
+
+      - name: Libmcp9808 unit tests (ASAN+UBSAN)
+        run: |
+          cmake -S tests/unit/libmcp9808 -B build/test-libmcp9808-asan \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I${{ github.workspace }}/libmcp9808/include \
+              -I${{ github.workspace }}/i2c-hal/include \
+              -I${{ github.workspace }}/tests/mocks" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build/test-libmcp9808-asan -j$(nproc)
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-libmcp9808-asan/test_mcp9808 \
+            --gtest_output=xml:test-results/libmcp9808-asan.xml
 
       - name: I2C HAL unit tests (ASAN+UBSAN)
         run: |

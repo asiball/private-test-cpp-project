@@ -70,6 +70,8 @@ CI設定（`.github/`）まで一貫して追えます。
    - 「ポーリングして待つ」代わりに **epoll でイベントを待つ** 設計です。組み込みらしいイベント駆動の入口として [GPIO 割り込みと epoll](gpio-interrupts-epoll.md) と合わせて読みます。
 8. **[i2c-hal/include/ii2c_driver.hpp](../../i2c-hal/include/ii2c_driver.hpp) / [libsensor/include/ads1115.hpp](../../libsensor/include/ads1115.hpp)（別バスへの引き直し）**
    - SPI とは別の **I2C バス**で同じ「ADC を読む」仕事をする例です。`ISpiDriver` に対する `II2cDriver`、`Sensor` に対する `Ads1115` という対応で、抽象化の枠組みが再利用される様子が分かります（[I2C と ADS1115](i2c-and-ads1115.md)）。
+9. **[libmcp9808/include/mcp9808.hpp](../../libmcp9808/include/mcp9808.hpp) / [libmcp9808/src/mcp9808.cpp](../../libmcp9808/src/mcp9808.cpp)（最小 I2C デバイス）**
+   - `Ads1115` と同じ `II2cDriver` + PIMPL の枠組みで、温度レジスタを 2 バイト読むだけの**最小実装**例。新コンポーネント追加チェックリスト（CLAUDE.md）を一周した題材（issue #48）。
 
 > 全コンポーネントの詳細設計・API・IF 仕様の対応表は [納品ドキュメント索引 §2](../deliverables/README.md#2-コンポーネント別-対応表ナビ兼整備状況) にあります。
 
