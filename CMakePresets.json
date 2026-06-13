@@ -1,0 +1,100 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "17"
+      }
+    },
+    {
+      "name": "tests-base",
+      "hidden": true,
+      "inherits": "base",
+      "description": "トップツリーから全コンポーネント + テストを直接ビルドする経路（issue #20）。include は in-tree target から伝播するため -I 手渡しは不要。",
+      "cacheVariables": {
+        "BUILD_TESTING": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "displayName": "Release (full build, no tests)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": "tests-base",
+      "displayName": "Debug + tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "coverage",
+      "inherits": "tests-base",
+      "displayName": "Coverage (gcov) + tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "--coverage -fprofile-arcs -ftest-coverage"
+      }
+    },
+    {
+      "name": "asan",
+      "inherits": "tests-base",
+      "displayName": "AddressSanitizer + UBSan + tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZERS": "asan"
+      }
+    },
+    {
+      "name": "tsan",
+      "inherits": "tests-base",
+      "displayName": "ThreadSanitizer + tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_SANITIZERS": "tsan"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "release",  "configurePreset": "release" },
+    { "name": "debug",    "configurePreset": "debug" },
+    { "name": "coverage", "configurePreset": "coverage" },
+    { "name": "asan",     "configurePreset": "asan" },
+    { "name": "tsan",     "configurePreset": "tsan" }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
