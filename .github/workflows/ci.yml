@@ -246,6 +246,8 @@ jobs:
           cmake --build build/test-libsensor-cov -j$(nproc)
           ./build/test-libsensor-cov/test_sensor \
             --gtest_output=xml:test-results/libsensor-unit.xml
+          ./build/test-libsensor-cov/test_ads1115 \
+            --gtest_output=xml:test-results/ads1115-unit.xml
 
       - name: Run libadxl345 tests (coverage)
         run: |
@@ -289,10 +291,18 @@ jobs:
             --print-summary
 
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
+
+      - name: Upload coverage test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-test-results
+          path: test-results/
 
   lint:
     runs-on: ubuntu-24.04
@@ -313,20 +323,24 @@ jobs:
 
       - name: Run clang-tidy
         run: |
+          # チェック内容は .clang-tidy を単一の情報源とする（コマンドラインで
+          # --checks を指定すると .clang-tidy が上書きされ、ローカルと CI で
+          # 適用チェックが食い違う）。対象ファイルは cppcheck（ディレクトリ指定）
+          # と揃え、kernel_spi_driver.cpp と examples/ も含める。
           cmake -B build-tidy -S . \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCMAKE_BUILD_TYPE=Debug
           clang-tidy \
             -p build-tidy/ \
-            --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
-            --warnings-as-errors='bugprone-*' \
             spi-hal/src/spi_driver.cpp \
+            spi-hal/src/kernel_spi_driver.cpp \
             i2c-hal/src/i2c_driver.cpp \
             gpio/src/gpio_line.cpp \
             libsensor/src/sensor.cpp \
             libsensor/src/ads1115.cpp \
             libadxl345/src/adxl345.cpp \
-            cli/src/main.cpp
+            cli/src/main.cpp \
+            examples/ads1115_alert_demo.cpp
 
   docs:
     runs-on: ubuntu-24.04
@@ -365,15 +379,18 @@ jobs:
           fetch-depth: 0
 
       - name: Validate PR title format
+        env:
+          # 信頼できない入力は env 経由で渡す（run スクリプトへ直接展開すると
+          # シェルインジェクションになる。GitHub 公式の推奨パターン）。
+          TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          PATTERN='^(feat|fix|docs|refactor|test|ci|chore)(\(.+\))?!?: .+'
+          PATTERN='^(feat|fix|docs|refactor|test|ci|chore|build)(\(.+\))?!?: .+'
           if echo "$TITLE" | grep -qE "$PATTERN"; then
             echo "OK: $TITLE"
           else
             echo "ERROR: PR タイトルが Conventional Commits 形式に合っていません"
             echo "  受け取った値: $TITLE"
-            echo "  期待する形式: feat|fix|docs|refactor|test|ci|chore: <概要>"
+            echo "  期待する形式: feat|fix|docs|refactor|test|ci|chore|build: <概要>"
             echo "  例: feat(libsensor): read_raw_async にタイムアウトを追加"
             exit 1
           fi
@@ -508,6 +525,9 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           ./build/test-libsensor-asan/test_sensor \
             --gtest_output=xml:test-results/libsensor-asan.xml
+          ASAN_OPTIONS=detect_leaks=1 \
+          ./build/test-libsensor-asan/test_ads1115 \
+            --gtest_output=xml:test-results/ads1115-asan.xml
 
       - name: Libadxl345 unit tests (ASAN+UBSAN)
         run: |
