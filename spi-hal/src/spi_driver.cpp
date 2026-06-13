@@ -1,5 +1,6 @@
 #include "spi_driver.hpp"
 #include "logger.hpp"
+#include "spi_transfer_validate.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -61,24 +62,14 @@ void SpiDriver::close() noexcept
 
 int SpiDriver::transfer(const uint8_t* tx, uint8_t* rx, size_t len) noexcept
 {
-    if (fd_ < 0) {
-        last_errno_ = EBADF;
-        LOGE("SpiDriver::transfer called on closed device");
-        return -1;
-    }
-    if (!tx || !rx) {
-        last_errno_ = EINVAL;
-        LOGE("SpiDriver::transfer null pointer: tx=%p rx=%p",
-             static_cast<const void*>(tx), static_cast<void*>(rx));
+    if (int err = detail::validate_spi_transfer(fd_, tx, rx, len); err != 0) {
+        last_errno_ = -err;
+        LOGE("SpiDriver::transfer invalid arguments: len=%zu errno=%s",
+             len, errno_str(last_errno_));
         return -1;
     }
     if (len == 0) {
         return 0;
-    }
-    if (len > static_cast<size_t>(UINT32_MAX)) {
-        last_errno_ = EOVERFLOW;
-        LOGE("SpiDriver::transfer length overflow: %zu", len);
-        return -1;
     }
 
     struct spi_ioc_transfer tr = {};
