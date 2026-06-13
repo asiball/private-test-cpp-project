@@ -120,17 +120,23 @@ jobs:
 
       - name: Integration tests (compile + skip check)
         run: |
-          cmake -S libsensor -B build/libsensor-integ -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build/libsensor-integ -j$(nproc)
-          sudo cmake --install build/libsensor-integ --prefix /usr/local
+          # 結合テストは libsensor(sensor/ads1115) / libadxl345 / gpio を install 済みの
+          # 名前でリンクする。これらは上の各単体テストステップで既に install 済み。
+          # 実機が無い CI では全テストが GTEST_SKIP される（compile + skip 確認）。
           sudo ldconfig
           cmake -S tests/integration -B build/test-integration \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/spi-hal/include"
+            -DCMAKE_CXX_FLAGS="-I${{ github.workspace }}/libsensor/include -I${{ github.workspace }}/spi-hal/include -I${{ github.workspace }}/libadxl345/include -I${{ github.workspace }}/i2c-hal/include -I${{ github.workspace }}/gpio/include"
           cmake --build build/test-integration -j$(nproc)
           mkdir -p test-results
           ./build/test-integration/test_mcp3008 \
             --gtest_output=xml:test-results/integration.xml
+          ./build/test-integration/test_adxl345 \
+            --gtest_output=xml:test-results/integration-adxl345.xml
+          ./build/test-integration/test_ads1115 \
+            --gtest_output=xml:test-results/integration-ads1115.xml
+          ./build/test-integration/test_gpio \
+            --gtest_output=xml:test-results/integration-gpio.xml
 
       - name: Upload test results
         if: always()
