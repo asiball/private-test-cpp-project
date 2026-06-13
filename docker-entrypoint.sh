@@ -29,10 +29,15 @@ cmake -S tests/unit/spi-hal -B build/test-spihal \
     -DCMAKE_CXX_FLAGS="-I/workspace/spi-hal/include"
 cmake --build build/test-spihal -j"$(nproc)"
 mkdir -p test-results
+# テスト実行の失敗は非致命（デモ用途）。ビルド失敗は set -e で致命のまま。
 ./build/test-spihal/test_spi_driver \
     --gtest_output=xml:test-results/spihal-unit.xml \
-    && echo "  spi-hal テスト: PASS" \
-    || echo "  [警告] spi-hal テスト: 失敗あり"
+    && echo "  spi-hal(SpiDriver) テスト: PASS" \
+    || echo "  [警告] spi-hal(SpiDriver) テスト: 失敗あり"
+./build/test-spihal/test_kernel_spi_driver \
+    --gtest_output=xml:test-results/spihal-kernel-unit.xml \
+    && echo "  spi-hal(KernelSpiDriver) テスト: PASS" \
+    || echo "  [警告] spi-hal(KernelSpiDriver) テスト: 失敗あり"
 
 # ── [3b/6] サニタイザービルド (ASAN + UBSAN) ────────────────
 echo "=== [3b/6] サニタイザービルド (ASAN + UBSAN) ==="
@@ -45,20 +50,28 @@ cmake --build build/sanitized -j"$(nproc)"
     && echo "  サニタイザービルド: OK" \
     || echo "  [警告] サニタイザービルド: 起動失敗（続行）"
 
-# ── [4/6] 単体テスト: libsensor ─────────────────────────────
+# ── [4/6] 単体テスト: libsensor (MCP3008 + ADS1115) ─────────
 echo "=== [4/6] 単体テスト (libsensor) ==="
 cmake -S libsensor -B build/libsensor-debug -DCMAKE_BUILD_TYPE=Debug
 cmake --build build/libsensor-debug -j"$(nproc)"
 cmake --install build/libsensor-debug --prefix /usr/local
 ldconfig
+# tests/unit/libsensor は test_ads1115 も含み、ads1115.hpp が ii2c_driver.hpp を
+# 単純名 include するため i2c-hal/include が必須（CI の3系統と揃える。落とし穴 #2）。
 cmake -S tests/unit/libsensor -B build/test-libsensor \
     -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/tests/mocks"
+    -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/i2c-hal/include -I/workspace/tests/mocks"
 cmake --build build/test-libsensor -j"$(nproc)"
+# テスト実行の失敗はコンテナビルドを止めない（デモ用途のため非致命扱い。
+# 一方ビルド/コンパイル失敗は set -e で致命のままにする）。
 ./build/test-libsensor/test_sensor \
     --gtest_output=xml:test-results/libsensor-unit.xml \
-    && echo "  libsensor テスト: PASS" \
-    || echo "  [警告] libsensor テスト: 失敗あり"
+    && echo "  libsensor(MCP3008) テスト: PASS" \
+    || echo "  [警告] libsensor(MCP3008) テスト: 失敗あり"
+./build/test-libsensor/test_ads1115 \
+    --gtest_output=xml:test-results/ads1115-unit.xml \
+    && echo "  libsensor(ADS1115) テスト: PASS" \
+    || echo "  [警告] libsensor(ADS1115) テスト: 失敗あり"
 
 # ── [5/6] Doxygen ───────────────────────────────────────────
 echo "=== [5/6] Doxygen ==="
