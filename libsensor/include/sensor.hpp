@@ -123,14 +123,18 @@ public:
     /**
      * @brief 非同期で ADC 生値を読む
      *
-     * 内部で std::thread を生成してデタッチする。完了時に cb を呼び出す。
+     * 内部で std::thread を生成し、完了時に cb を呼び出す。生成したスレッドは
+     * デタッチせず Sensor が保持し、**デストラクタで join する**。そのため
+     * コールバック完了前に Sensor が破棄されても use-after-free にはならず、
+     * デストラクタが未完了のコールバックを待ち合わせる。
      *
      * @param channel チャネル番号（0〜7）
      * @param cb      完了コールバック
      * @note 同期版の read_raw / read_voltage と異なり、本メソッドは noexcept ではない。
      *       内部で std::thread を生成するため、スレッド生成に失敗すると
      *       std::system_error を送出しうる（同期版は I/O 失敗を std::nullopt で表す）。
-     * @warning Sensor オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
+     * @note 完了したワーカースレッドはデストラクタまで保持されるため、長期稼働
+     *       デーモンで多数発行する場合はスレッドが蓄積しうる（用途に応じて調整）。
      *
      * **テストケース（UT-LIB-007）** — 未オープン時もコールバックが呼ばれる:
      * @snippet test_sensor.cpp UT-LIB-007

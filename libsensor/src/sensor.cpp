@@ -4,7 +4,9 @@
 
 #include <cerrno>
 #include <memory>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 namespace embedded {
 
@@ -20,13 +22,28 @@ struct Sensor::Impl {
     ISpiDriver*                 driver;  // 実際に使う非所有ビュー
     double                      vref_volts;
 
+    // read_raw_async が生成したワーカースレッド。detach せずここに保持し、
+    // デストラクタで join することで「コールバック完了前に Sensor が破棄されて
+    // this がダングリングになる」UAF を構造的に防ぐ（Impl 破棄まで Sensor は生存）。
+    std::mutex                workers_mtx;
+    std::vector<std::thread>  workers;
+
     explicit Impl(const std::string& path, double v)
         : owned(std::make_unique<SpiDriver>(path)), driver(owned.get()), vref_volts(v) {}
 
     explicit Impl(ISpiDriver* drv, double v)
         : driver(drv), vref_volts(v) {}
 
-    // owned (unique_ptr) によりデストラクタで自動解放。手動 delete / owns_driver は不要。
+    ~Impl() {
+        // 走行中のワーカーを全て待ち合わせてから driver / owned を破棄する。
+        // join 中も Impl のメンバ（driver）は生存しているためコールバックは安全。
+        for (auto& t : workers) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+    }
+
     Impl(const Impl&)            = delete;
     Impl& operator=(const Impl&) = delete;
 };
@@ -97,13 +114,16 @@ void Sensor::read_raw_async(uint8_t channel, ReadCallback cb)
         cb(std::nullopt, EINVAL);
         return;
     }
-    // Sensor オブジェクトのライフタイムはコールバック完了まで呼び出し側が保証すること
-    // （detach しているため）。長期稼働デーモンでは shared_ptr + enable_shared_from_this を検討。
-    std::thread([this, channel, cb]() {
+    // ワーカーは detach せず impl_->workers に保持し、~Impl で join する。
+    // これにより Sensor 破棄時にコールバック完了を待ち合わせ、this のダングリング
+    // （UAF）を防ぐ。長期稼働デーモンで多数発行する場合は完了済みスレッドが
+    // 蓄積しうる点に注意（用途に応じ呼び出し側で間引く）。
+    std::lock_guard<std::mutex> lk(impl_->workers_mtx);
+    impl_->workers.emplace_back([this, channel, cb]() {
         auto result = this->read_raw(channel);
         int  err    = result ? 0 : impl_->driver->last_errno();
         cb(result, err);
-    }).detach();
+    });
 }
 
 double Sensor::vref() const noexcept
