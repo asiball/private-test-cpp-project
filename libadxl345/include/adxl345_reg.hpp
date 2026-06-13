@@ -16,7 +16,7 @@
  * @code
  *   bit7  R/W      : 1=読み出し / 0=書き込み           (access::READ / WRITE)
  *   bit6  MB       : 1=連続(マルチバイト)転送           (access::MULTIBYTE)
- *   bit5:0 アドレス : 対象レジスタ(0x00〜0x39)            (access::ADDR_MASK)
+ *   bit5:0 アドレス : 対象レジスタ(0x00〜0x3F)            (access::ADDR_MASK)
  * @endcode
  */
 
