@@ -1,8 +1,23 @@
 # ADR 0002: install したヘッダの自己完結性（クロスコンポーネント include の方針）
 
-- ステータス: Accepted（暫定方針。将来 find_package 対応で見直す）
+- ステータス: Superseded（暫定方針。find_package 対応の実装で解消。下記「更新」参照）
 - 日付: 2026-06-13
 - 関連: [ADR 0001](0001-optional-independent-components.md) / issue #47 / #20
+
+> **更新（2026-06-13, issue #47 / #20）**: 本 ADR の暫定決定（「install したヘッダの
+> 単独利用は未サポート」）は **find_package 対応の実装により解消済み**。
+> - 全ライブラリコンポーネントに `install(EXPORT)` + `<pkg>Config.cmake` を整備
+>   （共通化ヘルパ `cmake/EdsPackage.cmake`）。利用側は
+>   `find_package(sensor)` → `target_link_libraries(app eds::sensor)` で
+>   include パスと依存（`find_dependency(spihal)` 等）を継承できる。
+> - 公開ヘッダ `sensor.hpp` / `adxl345.hpp` のクロスコンポーネント include を
+>   相対パスから**単純名**へ統一（`ads1115.hpp` / `mcp9808.hpp` は元々単純名）。
+> - 衝突する「スタンドアロンテストの `-I` 手渡し」問題は、テストの CMake ツリー統合
+>   （#20: `-DBUILD_TESTING=ON` / `CMakePresets.json`）を正経路とし、残るレガシー
+>   standalone テストには CI で `-I spi-hal/include` を追加して両立させた。
+>
+> 以降の「決定」「影響」節は当時の暫定判断の記録であり、現状の正は上記「更新」。
+> 新コンポーネントの公開ヘッダは**単純名 include**を用いること。
 
 ## 背景（Context）
 

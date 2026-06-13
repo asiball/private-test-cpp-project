@@ -71,10 +71,13 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 - ログは `common/include/logger.hpp` の `LOGI/LOGW/LOGE/LOGD` を使う。
 - **公開 API の `noexcept` は読み出し系まで一貫させる**（例外を投げず `std::optional` / 戻り値で失敗を表すため）。
   例外: 内部で `std::thread` を生成するなど送出しうるものは非 `noexcept`（例: `Sensor::read_raw_async`）。
-- **別コンポーネントのヘッダ include**：`sensor.hpp` / `adxl345.hpp` が
-  `#include "../../spi-hal/include/ispi_driver.hpp"` のように相対パスで指すのは
-  **意図的**（スタンドアロンテストが `-I` 無しで解決できるようにするため。落とし穴 #1）。
-  整理目的で単純名 include に変えると、テストの `-I` を 3 系統すべてに足す必要が出るので注意。
+- **別コンポーネントのヘッダ include は単純名で書く**（issue #47 / ADR 0002 更新）。
+  例: `sensor.hpp` / `adxl345.hpp` は `#include "ispi_driver.hpp"`。include パスは利用側に委ねる：
+  - モノレポ / find_package：当該ライブラリが依存 HAL を **PUBLIC リンク**するため伝播
+    （`find_package(sensor)` → `eds::sensor`、Config が `find_dependency(spihal)`）。
+  - レガシー standalone テスト：CI で当該 HAL の `-I`（例 `-I spi-hal/include`）を渡す。
+    **3 系統すべて**に反映すること（落とし穴 #1/#2）。過去は相対パス `../../spi-hal/include/...`
+    で `-I` を回避していたが、配布物（install 成果物）が自己完結しないため廃止した。
 
 ---
 
@@ -98,6 +101,8 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 ## 新しいコンポーネントを追加するときのチェックリスト
 
 1. ディレクトリを作り `CMakeLists.txt` を置く（独立してビルド/インストールできる単位にする）。
+   - 公開 include は `target_include_directories(<tgt> PUBLIC $<BUILD_INTERFACE:...> $<INSTALL_INTERFACE:include/<dir>>)` で宣言する（生 `include` パスは install(EXPORT) でエラーになる）。
+   - find_package 対応は `cmake/EdsPackage.cmake` の `eds_install_package()` を `if(COMMAND eds_install_package)` ガードで呼ぶ（単体ビルドは素の install にフォールバック）。依存 HAL は **PUBLIC リンク**し、`DEPENDENCIES` に依存パッケージ名を渡す（issue #47）。
 2. トップ `CMakeLists.txt` の `foreach(_component ...)` リストに**依存順で**追加（EXISTS ガードで「あるものだけ」ビルド）。
 3. `tests/unit/<name>/` にテスト + `CMakeLists.txt` + `test-cases.md`（既存の standalone 方式を踏襲）。実機が要るテストは `GTEST_SKIP()`。`test-cases.md` の各 ID は `TEST(Suite, Name)` と 1:1 対応させ、`docs/deliverables/06_test/test-plan.md` §4 のスイート一覧にも 1 行追加する。
    - **target 名は全テストディレクトリで一意にする**（統合経路では同一ツリーで全テストを add するため衝突する。例: 結合テストは `integration_` 前置）。

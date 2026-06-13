@@ -80,6 +80,12 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/spi-hal/include/version.hpp.in)
     )
 endif()
 
+# ── find_package 対応ヘルパ（issue #47）──────────────────────────────────
+# install(EXPORT) + <pkg>Config.cmake 生成を共通化する eds_install_package() を定義。
+# モノレポビルド（このトップレベル経由）でのみ読み込まれ、各コンポーネントは
+# COMMAND ガードで呼ぶため、単体ビルドでは従来どおり素の install になる。
+include(${CMAKE_SOURCE_DIR}/cmake/EdsPackage.cmake)
+
 # ── コンポーネント（各ディレクトリは独立。存在するものだけビルドする）──────
 # 依存順に add_subdirectory する:
 #   - i2c-hal は libsensor(ADS1115) より先に処理する。
