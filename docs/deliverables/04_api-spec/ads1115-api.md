@@ -65,11 +65,13 @@ Ads1115& operator=(const Ads1115&) = delete;
 | `set_gain(g)` | `void` | ゲイン（入力レンジ）を設定する |
 | `gain()` | `Gain` | 現在のゲイン |
 | `full_scale_volts()` | `double` | 現在のゲインでのフルスケール電圧 [V] |
-| `read_raw(channel)` | `optional<int16_t>` | 指定 ch をシングルショット変換し生値を読む。`channel` は 0〜3。失敗時 `nullopt` |
+| `read_raw(channel)` | `optional<int16_t>` | 指定 ch をシングルショット変換し生値を読む。`channel` は 0〜3。変換未完了（タイムアウト）/ 無効チャネル / 未オープン / 転送失敗時は `nullopt` |
 | `read_voltage(channel)` | `optional<double>` | 電圧 [V]（`raw * full_scale_volts() / 32768`）|
+| `start_conversion(channel)` | `bool` | シングルショット変換を**開始のみ**する（結果は読まない）。無効チャネル / 転送失敗で `false` |
+| `read_result()` | `optional<int16_t>` | 直前の変換結果（Conversion レジスタ）を**読むだけ**。変換開始・OS ポーリングはしない |
 | `enable_conversion_ready_pin()` | `bool` | ALERT/RDY を変換完了通知として有効化（GPIO 割り込み連携用）|
 
-> `read_raw()` は内部で Config の OS ビットをポーリングして変換完了を待つ。割り込み駆動にしたい場合は `enable_conversion_ready_pin()` + [GpioLine](gpio-api.md) を使う。
+> `read_raw()` は内部で Config の OS ビットをポーリングして変換完了を待ち、上限内に完了しなければ `nullopt`（古い値を返さない）。割り込み駆動にしたい場合は `enable_conversion_ready_pin()` で ALERT/RDY を構成し、`start_conversion()` → [GpioLine](gpio-api.md) の `wait_event()` でエッジ待ち → `read_result()` の順で読む（`read_raw()` は変換開始と読み出しを兼ねるため、割り込みより先に変換を始めてしまい割り込みモードでは使えない）。
 
 ---
 
@@ -105,3 +107,4 @@ int main()
 | バージョン | 変更内容 |
 |---|---|
 | 1.0 | 初版。`open`/`close`、`set_gain`/`gain`/`full_scale_volts`、`read_raw`/`read_voltage`、`enable_conversion_ready_pin` |
+| 1.1 | 割り込み駆動用に変換開始と読み出しを分離する `start_conversion()` / `read_result()` を追加。`read_raw()` は変換タイムアウト時に古い値を返さず `nullopt` を返すよう修正 |
