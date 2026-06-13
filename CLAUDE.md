@@ -28,7 +28,14 @@
 
 → **テストが新しいヘッダを include するなら、CI の該当ステップに `-I` を足す必要がある。**
 
-### 2. テスト用 include は CI の 3 系統すべてに反映する
+> **別経路（推奨・issue #20 / #21）**: トップレベルから `-DBUILD_TESTING=ON`（または
+> `CMakePresets.json` の `debug` / `coverage` / `asan` / `tsan` プリセット）で configure すると、
+> 全コンポーネント + テストを**同一ツリーで直接ビルド**し `ctest` で実行できる。この経路では
+> include は in-tree target から伝播するため**上記の `-I` 手渡しは不要**（落とし穴 #1/#2 を回避）。
+> CI の `integrated-tests` ジョブがこの経路を matrix で回す。レガシーな per-component +
+> install + standalone 方式（下記の各ジョブ）も当面併存させている。
+
+### 2. テスト用 include は CI の 3 系統すべてに反映する（レガシー standalone 経路）
 `.github/workflows/ci.yml` には同じテストを違うフラグでビルドする系統が複数ある：
 
 | ジョブ / ステップ | フラグ |
@@ -93,8 +100,11 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 1. ディレクトリを作り `CMakeLists.txt` を置く（独立してビルド/インストールできる単位にする）。
 2. トップ `CMakeLists.txt` の `foreach(_component ...)` リストに**依存順で**追加（EXISTS ガードで「あるものだけ」ビルド）。
 3. `tests/unit/<name>/` にテスト + `CMakeLists.txt` + `test-cases.md`（既存の standalone 方式を踏襲）。実機が要るテストは `GTEST_SKIP()`。`test-cases.md` の各 ID は `TEST(Suite, Name)` と 1:1 対応させ、`docs/deliverables/06_test/test-plan.md` §4 のスイート一覧にも 1 行追加する。
-4. `.github/workflows/ci.yml`：ビルド/テストステップ追加、**cppcheck と clang-tidy の対象ファイルに追加**、
-   テスト include を **3 系統すべて**に反映（落とし穴 #2）。
+   - **target 名は全テストディレクトリで一意にする**（統合経路では同一ツリーで全テストを add するため衝突する。例: 結合テストは `integration_` 前置）。
+   - トップ `CMakeLists.txt` の `BUILD_TESTING` ブロックに `add_subdirectory(tests/unit/<name>)` を**対応 target の存在ガード付きで**追加する（統合経路 / issue #20）。
+4. `.github/workflows/ci.yml`：ビルド/テストステップ追加、**cppcheck と clang-tidy の対象ファイルに追加**。
+   - 統合経路（`integrated-tests` ジョブ）は preset で全テストを回すので個別の追記は不要。
+   - レガシー standalone 経路を使う場合のみ、テスト include を **3 系統すべて**に反映（落とし穴 #2）。
 5. `Doxyfile` の `INPUT` にヘッダディレクトリを追加。
 6. `tools/sbom-metadata.json` に packages + relationships を追記し SBOM 再生成（落とし穴 #4）。
 7. リリース対象なら `.github/workflows/release.yml` / `sbom.yml` のタグトリガに `<name>/v*` を追加。
@@ -116,6 +126,11 @@ CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物
 # フルビルド（全コンポーネント、トップレベル）
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 
+# テスト（推奨・統合経路）: 全コンポーネント + テストを同一ツリーでビルドし ctest 実行。
+# -I 手渡し不要（落とし穴 #1/#2 を回避）。preset は debug | coverage | asan | tsan。
+cmake --preset debug && cmake --build --preset debug -j$(nproc) && ctest --preset debug
+# preset を使わない場合: cmake -S . -B build -DBUILD_TESTING=ON && cmake --build build && (cd build && ctest)
+
 # 静的解析（CI lint 相当）
 cppcheck --enable=warning,performance,portability --std=c++17 \
   --suppress=missingIncludeSystem --error-exitcode=1 \
@@ -128,5 +143,5 @@ python3 tools/generate-sbom.py --verify
 bash tools/check-mermaid.sh
 ```
 
-テストは「ライブラリを install → テストを standalone configure（`-I` 付き）」の順で実行する（落とし穴 #1）。
-具体的なコマンドは `.github/workflows/ci.yml` の各ステップが最も正確なリファレンス。
+レガシーな standalone 経路（「ライブラリを install → テストを standalone configure（`-I` 付き）」）も
+併存しており、`.github/workflows/ci.yml` の各ステップが最も正確なリファレンス（落とし穴 #1/#2）。

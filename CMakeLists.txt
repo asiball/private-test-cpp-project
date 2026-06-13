@@ -89,3 +89,44 @@ foreach(_component spi-hal i2c-hal gpio libsensor libadxl345 libmcp9808 cli exam
         add_subdirectory(${_component})
     endif()
 endforeach()
+
+# ── テスト（BUILD_TESTING=ON のとき、同一ツリーのターゲットに直接リンクして
+#    ビルドする経路）────────────────────────────────────────────────────────
+# CI 既定の「各ライブラリを install → テストをスタンドアロン configure（-I 手渡し）」
+# 方式（落とし穴 #1/#2）とは別に、トップツリーから直接テストをビルドする経路を用意する。
+# テストは同一ツリーの target（spihal / sensor / ads1115 …）に直接リンクでき、include は
+# target_link_libraries の PUBLIC/INTERFACE から自動伝播するため CI の -I 列挙が不要になる
+# （issue #20）。install 済みライブラリを名前解決する従来方式も価値があるため両立させる
+# （こちらは BUILD_TESTING を使わず従来どおり）。
+#
+# 各テストディレクトリは「対応コンポーネントの target が存在するときだけ」追加し、
+# コンポーネント削除耐性（ADR 0001）を保つ。
+option(BUILD_TESTING "Build unit/integration tests in-tree (links in-tree targets, no -I handoff)" OFF)
+if(BUILD_TESTING)
+    enable_testing()
+
+    if(TARGET spihal AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/spi-hal/CMakeLists.txt)
+        add_subdirectory(tests/unit/spi-hal)
+    endif()
+    if(TARGET i2chal AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/i2c-hal/CMakeLists.txt)
+        add_subdirectory(tests/unit/i2c-hal)
+    endif()
+    if(TARGET gpio AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/gpio/CMakeLists.txt)
+        add_subdirectory(tests/unit/gpio)
+    endif()
+    # libsensor のテストは test_sensor(sensor) と test_ads1115(ads1115) を含むため両 target を要求
+    if(TARGET sensor AND TARGET ads1115 AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/libsensor/CMakeLists.txt)
+        add_subdirectory(tests/unit/libsensor)
+    endif()
+    if(TARGET adxl345 AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/libadxl345/CMakeLists.txt)
+        add_subdirectory(tests/unit/libadxl345)
+    endif()
+    if(TARGET mcp9808 AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/libmcp9808/CMakeLists.txt)
+        add_subdirectory(tests/unit/libmcp9808)
+    endif()
+    # 結合テストは sensor / adxl345 / ads1115 / gpio をリンクするため全 target を要求
+    if(TARGET sensor AND TARGET adxl345 AND TARGET ads1115 AND TARGET gpio
+       AND EXISTS ${CMAKE_SOURCE_DIR}/tests/integration/CMakeLists.txt)
+        add_subdirectory(tests/integration)
+    endif()
+endif()

@@ -4,7 +4,7 @@
 |---|---|
 | 対象 | Sensor（libsensor）+ SpiDriver（spi-hal）+ Linux spidev + MCP3008 |
 | テストフレームワーク | Google Test |
-| 実行コマンド | `./build/test-integration/test_mcp3008` |
+| 実行コマンド | `./build/test-integration/integration_test_mcp3008`（または統合経路で `ctest --preset debug`） |
 | 実機 | Raspberry Pi 3B+ + MCP3008（SPI0 接続） |
 | 治具 | Vref/Vdd=3.3V、CS=CE0、SCK/MOSI/MISO は SPI0 既定ピン |
 
