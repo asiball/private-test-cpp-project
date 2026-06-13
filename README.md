@@ -206,6 +206,11 @@ cmake --build build
 単体テスト・静的解析・Doxygen・サニタイザービルドなどの詳細な手順は
 [ビルドガイド](docs/guides/tooling/build-guide.md) を参照してください。
 
+> **install 済みヘッダの単独利用は未サポート**です。`libsensor` / `libadxl345` の公開ヘッダは
+> 別コンポーネントを相対パスで include する（落とし穴 #1）ため、`cmake --install` した include ツリーは
+> 単独では自己完結しません。利用はモノレポをチェックアウトしてのビルドを前提とします。
+> 経緯と恒久対応（`find_package` 対応）の方針は [ADR 0002](docs/adr/0002-installed-header-self-containment.md) を参照。
+
 ### device-ctl の使い方
 
 ```bash
