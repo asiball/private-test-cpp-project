@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdio>
+#include <cstring>
 #include <syslog.h>
 
 // NOTE: これは common/include/logger.hpp と同一 API のログマクロ定義です。
@@ -68,3 +69,20 @@
 #define LOGD(fmt, ...)  // RELEASE では no-op
 
 #endif // DEBUG
+
+// スレッドセーフな strerror（非スレッドセーフな strerror() の代替）。
+// 詳細は common/include/logger.hpp の同名関数を参照。GNU 版（char* を返す）と
+// XSI/POSIX 版（int を返す）の両方に戻り値型オーバーロードで対応する。
+namespace logging_detail {
+inline const char* strerror_r_result(int ret, char* buf) {
+    return ret == 0 ? buf : "unknown error";   // POSIX 版: 0 成功
+}
+inline const char* strerror_r_result(const char* msg, char* /*buf*/) {
+    return msg;                                 // GNU 版: メッセージを直接返す
+}
+} // namespace logging_detail
+
+inline const char* errno_str(int err) {
+    static thread_local char buf[128];
+    return logging_detail::strerror_r_result(strerror_r(err, buf, sizeof(buf)), buf);
+}
