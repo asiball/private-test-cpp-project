@@ -51,7 +51,7 @@ PR 作成時に 2 つの検査が走る:
 **1. PR タイトルの形式検査**
 
 ```bash
-PATTERN='^(feat|fix|docs|refactor|test|ci|chore)(\(.+\))?!?: .+'
+PATTERN='^(feat|fix|docs|refactor|test|ci|chore|build)(\(.+\))?!?: .+'
 echo "$TITLE" | grep -qE "$PATTERN" || exit 1
 ```
 
@@ -64,9 +64,7 @@ git log origin/main..HEAD --format="%s" | while IFS= read -r msg; do
 done
 ```
 
-> **注意**：PR タイトルは `build` を含まない 7 種、コミットメッセージは `build` を含む 8 種を受理する。
-> PR タイトルの validator が `build` を弾く設計のため、`build(scope): ...` を PR タイトルに使うと CI が失敗する。
-> 完全に揃えたい場合は `ci.yml` の `Validate PR title format` の正規表現に `build` を追加する。
+> PR タイトル・コミットメッセージともに同じ 8 種（`feat|fix|docs|refactor|test|ci|chore|build`）を受理する。
 
 ### Breaking change
 

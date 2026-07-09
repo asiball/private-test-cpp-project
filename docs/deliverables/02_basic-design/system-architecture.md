@@ -71,6 +71,7 @@ graph TD
 | `i2c-hal` | I2C | I2C 通信の HAL | `libi2chal.a` |
 | `libsensor`（Ads1115） | I2C | ADS1115（16bit ADC） | `libads1115.so` |
 | `libadxl345` | SPI | ADXL345（レジスタ型加速度センサ） | `libadxl345.so` |
+| `libmcp9808` | I2C | MCP9808（16bit 温度センサ） | `libmcp9808.so` |
 | `gpio` | — | GPIO エッジ割り込み（epoll） | `libgpio.a` |
 | `kernel` | SPI | 独自 SPI カーネルドライバ（学習用拡張） | `my_spi_driver.ko` |
 

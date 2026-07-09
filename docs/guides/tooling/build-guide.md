@@ -20,6 +20,7 @@ graph TD
     LS -->|Link| SH["spi-hal / libspihal.a"]
     ADX["libadxl345 / libadxl345.so"] -->|Link| SH
     ADS -->|Link| I2C["i2c-hal / libi2chal.a ★任意"]
+    MCP["libmcp9808 / libmcp9808.so ★任意"] -->|Link| I2C
     SH -->|System Call| KSPI["Linux Kernel: spidev"]
     I2C -->|System Call| KI2C["Linux Kernel: i2c-dev"]
     GP -->|System Call| KGP["Linux Kernel: gpiochip"]
@@ -33,8 +34,9 @@ graph TD
 | `gpio` | `build/gpio/libgpio.a` | ★任意 | GPIO エッジ割り込み（epoll）の静的ライブラリ |
 | `libsensor` | `build/libsensor/libsensor.so`（+ `libads1115.so` ★任意） | 必須 | MCP3008（SPI）/ ADS1115（I2C ★任意）のセンサー処理 |
 | `libadxl345` | `build/libadxl345/libadxl345.so` | 任意 | ADXL345（レジスタ型）加速度センサーの共有ライブラリ |
+| `libmcp9808` | `build/libmcp9808/libmcp9808.so` | ★任意 | MCP9808（I2C 温度センサー）の共有ライブラリ |
 | `cli` | `build/cli/device-ctl` | 必須 | 対話モードを提供するコマンドラインツール |
-| `examples` | `build/examples/ads1115_alert_demo` | ★任意 | ポーリング vs 割り込みの対比デモ |
+| `examples` | `build/examples/ads1115_alert_demo` ほか | ★任意 | ポーリング vs 割り込みの対比デモ（`ads1115_alert_demo` / `adxl345_basic` / `gpio_edge_demo` / `kernel_spi_demo` / `i2c_raw_demo` の 5 バイナリ） |
 
 ---
 
@@ -66,10 +68,12 @@ graph TD
 
     subgraph CICD ["GitHub Actions CI"]
         E --> E1[build-and-test ジョブ]
+        E --> E1b[integrated-tests ジョブ]
         E --> E2[coverage ジョブ]
         E --> E3[lint ジョブ]
         E --> E4[docs ジョブ]
         E --> E5[sanitizer ジョブ]
+        E --> E6[commit-lint ジョブ]
     end
 ```
 
@@ -168,10 +172,11 @@ cmake --build build-tsan
 `.github/workflows/ci.yml` にて定義されており、リポジトリへの Push または Pull Request 作成時に自動実行されます。ローカルの Docker ビルドとは異なり、GitHub 側の Ubuntu Runner を高速化・並列化するために Docker を使わずネイティブ実行しています。
 
 ### 定義されているジョブ一覧
-* **`build-and-test`**: Release ビルドおよび `spi-hal` と `libsensor` のユニットテスト・結合テスト実行
+* **`build-and-test`**: Release ビルドおよび `spi-hal` と `libsensor` のユニットテスト・結合テスト実行（レガシー standalone 経路）
+* **`integrated-tests`**（`build-and-test` に依存）: `cmake --preset {debug,coverage,asan,tsan}` の matrix で、全コンポーネント + テストを同一ツリーでビルドし `ctest` を実行する統合経路（CLAUDE.md 参照）
 * **`coverage`**: `--coverage` フラグ付きでビルド・テストを実行し、`gcovr` で HTML/XML カバレッジレポートを出力
-* **`lint`**: `cppcheck` と `clang-tidy`（warnings-as-errors を有効化）を実行
-* **`docs`**: `Doxygen` を用いて HTML API 仕様書をビルドし保存
+* **`lint`**: `cppcheck` と `clang-tidy`（`.clang-tidy` を単一の情報源とする）を実行
+* **`docs`**: mermaid 図の構文検証（Docker の `mmdc`）と `Doxygen` による HTML API 仕様書のビルド・保存
 * **`sanitizer`**: `ASAN+UBSAN` ジョブと `TSAN` ジョブを並列に動かし、データ競合やメモリ破壊が無いかを自動検査
-* **`commit-lint`**: コミットメッセージおよび PR タイトルが Conventional Commits 規約に準拠しているかをチェック
+* **`commit-lint`**（PR 時のみ）: コミットメッセージおよび PR タイトルが Conventional Commits 規約に準拠しているかをチェック
 

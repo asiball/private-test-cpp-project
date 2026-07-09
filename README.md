@@ -42,7 +42,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├── gpio/            # GPIO 割り込み（静的ライブラリ: libgpio.a）★任意
 ├── common/          # 共有ユーティリティ（logger.hpp 等）
 ├── libsensor/       # libsensor（MCP3008/SPI: libsensor.so, ADS1115/I2C: libads1115.so ★任意）
-├── libadxl345/      # libadxl345（動的共有ライブラリ: libadxl345.so / ADXL345・レジスタ型）
+├── libadxl345/      # libadxl345（動的共有ライブラリ: libadxl345.so / ADXL345・レジスタ型）★任意
 ├── libmcp9808/      # libmcp9808（動的共有ライブラリ: libmcp9808.so / MCP9808・I2C 温度センサ）★任意
 ├── cli/             # device-ctl（CLIツール）
 ├── examples/        # サンプル（ads1115_alert_demo 等）★任意
@@ -50,7 +50,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 ├── rust/            # Rust リライト探求（Cargo ワークスペース・7クレート）★参照実装
 ├── tests/
 │   ├── mocks/       #   MockSpiDriver / MockI2cDriver（テスト用）
-│   ├── unit/        #   単体テスト（spi-hal / i2c-hal / gpio / libsensor / libadxl345）
+│   ├── unit/        #   単体テスト（spi-hal / i2c-hal / gpio / libsensor / libadxl345 / libmcp9808）
 │   └── integration/ #   結合テスト（実機必須）
 ├── docs/            # プロジェクトドキュメント一式（01〜07フェーズ）
 ├── tools/           # SBOM 生成スクリプト（generate-sbom.py 等）
@@ -73,7 +73,7 @@ Linux組み込みデバイス向けモノレポ。ドライバ・共有ライブ
 
 ### 任意コンポーネント（★）と独立性
 
-`i2c-hal/`・`gpio/`・ADS1115（`libsensor` 内の独立ターゲット）・`examples/` は **任意** です。
+`i2c-hal/`・`gpio/`・ADS1115（`libsensor` 内の独立ターゲット）・`libadxl345/`・`libmcp9808/`・`examples/` は **任意** です。
 トップレベル CMake は「存在するものだけ」をビルドするため、不要なコンポーネントをディレクトリごと
 削除しても、残り（SPI/MCP3008/CLI）はそのままビルド・動作します。設計意図は
 [ADR 0001](docs/adr/0001-optional-independent-components.md) を参照。
@@ -114,7 +114,7 @@ C 中心の組み込み開発者が C++ へ踏み出すための導入資料を�
     │   test:unit（GMock・実機不要）→ カバレッジレポート
     │       │
     │       ▼
-    │   docs（Doxygen HTML / PDF）
+    │   docs（mermaid 検証 + Doxygen HTML。PDF は Docker 一括ビルド経路のみ）
     │
     └─ タグ push（spi-hal/vX.Y.Z 等）
             │
@@ -284,7 +284,7 @@ CH0  raw=512  voltage=1.650 V
 | ツール | バージョン |
 |---|---|
 | GCC | 13 以上（C++17対応、CI/開発環境は Ubuntu 24.04 同梱の g++ 13） |
-| CMake | 3.10 以上 |
+| CMake | 3.10 以上（`cmake --preset` を使う統合テスト経路は `CMakePresets.json` が要求する 3.21 以上が必要） |
 | Google Test | 1.14（単体テスト用） |
 | Doxygen | 1.9 以上（ドキュメント生成用） |
 | Python 3 | （generate-sbom.py 等のスクリプト使用時のみ） |

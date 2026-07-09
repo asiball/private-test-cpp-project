@@ -105,8 +105,9 @@ CMakeLists.txt               ← トップレベル（共通設定 + サブデ�
 ├── gpio/CMakeLists.txt      ← 静的ライブラリ libgpio.a     ★任意
 ├── libsensor/CMakeLists.txt ← 共有ライブラリ libsensor.so（+ libads1115.so ★任意）
 ├── libadxl345/CMakeLists.txt← 共有ライブラリ libadxl345.so
+├── libmcp9808/CMakeLists.txt← 共有ライブラリ libmcp9808.so ★任意
 ├── cli/CMakeLists.txt       ← 実行バイナリ device-ctl
-└── examples/CMakeLists.txt  ← サンプル（ads1115_alert_demo）★任意
+└── examples/CMakeLists.txt  ← サンプル（ads1115_alert_demo ほか計 5 バイナリ）★任意
 ```
 
 > 以降の「工夫ポイント」は `libsensor`(SPI 系) を代表例に説明するが、`i2c-hal` / `gpio` /
@@ -132,13 +133,22 @@ configure_file(spi-hal/include/version.hpp.in spi-hal/include/version.hpp @ONLY)
 
 ```cmake
 if(TARGET spihal)
-    # ルート CMakeLists.txt 経由のビルド: spihal はすでに add_subdirectory 済み
-    target_link_libraries(sensor PRIVATE spihal pthread)
+    # モノレポビルド: spihal を PUBLIC リンク。sensor.hpp が ispi_driver.hpp を
+    # include するため、include 要件は INTERFACE（公開）。消費側は find_dependency(spihal)
+    # 経由で解決する。
+    target_link_libraries(sensor PUBLIC spihal)
+    target_link_libraries(sensor PRIVATE pthread)
 else()
     # スタンドアロンビルド (cmake -S libsensor/) の場合は spi-hal のソースを直接コンパイル
     target_sources(sensor PRIVATE ../spi-hal/src/spi_driver.cpp)
 endif()
 ```
+
+依存 HAL（`spihal`）を `PRIVATE` ではなく **`PUBLIC`** でリンクしているのが要点（issue #47 /
+[ADR 0002](../../adr/0002-installed-header-self-containment.md)）。`sensor.hpp` が `ispi_driver.hpp` を
+単純名で include するため、`find_package(sensor)` した利用側にも spi-hal の include パスと
+リンクが伝播する必要があり、`PUBLIC` にしないと利用側で `ispi_driver.hpp` が見つからない。
+`pthread` は `sensor.cpp` 内部でしか使わないため `PRIVATE` のままでよい。
 
 これにより `cmake -S libsensor -B build/libsensor` だけでもライブラリ単体ビルドが可能。
 
