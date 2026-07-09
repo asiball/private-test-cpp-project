@@ -17,7 +17,8 @@ constexpr uint8_t MCP3008_SINGLE_MODE = 0x80;  // SGL/DIFF=1 (single-ended)
 constexpr uint8_t MCP3008_RESULT_MASK = 0x03;  // rx[1] の上位 2bit (10bit の bit9-8)
 
 // MCP3008 の SPI 設定（open() で使用）
-constexpr uint32_t MCP3008_SPI_SPEED_HZ      = 1000000;  // 1 MHz（Vdd=3.3V 時の上限は 1.35 MHz）
+// 1 MHz（データシート保証値は 2.7V:1.35MHz / 5V:3.6MHz。Vdd=3.3V の中間値に対して安全側）
+constexpr uint32_t MCP3008_SPI_SPEED_HZ      = 1000000;
 constexpr uint8_t  MCP3008_SPI_BITS_PER_WORD = 8;
 constexpr uint8_t  MCP3008_SPI_MODE          = 0;         // SPI_MODE_0
 

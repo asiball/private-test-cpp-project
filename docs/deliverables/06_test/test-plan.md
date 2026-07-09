@@ -21,7 +21,15 @@
 |---|---|---|
 | SpiDriver / KernelSpiDriver | 80%以上 | gcov / lcov |
 | Sensor (libsensor) | 80%以上 | gcov / lcov |
+| i2c-hal ★任意 | 80%以上（主要メソッド） | gcov / lcov |
+| gpio ★任意 | 80%以上（主要メソッド） | gcov / lcov |
+| Ads1115 (libsensor) ★任意 | 80%以上（主要メソッド） | gcov / lcov |
+| libadxl345 ★任意 | 80%以上（主要メソッド） | gcov / lcov |
+| libmcp9808 ★任意 | 80%以上（主要メソッド） | gcov / lcov |
 | device-ctl | 対象外 | — |
+
+> 各 ★任意コンポーネントの目標値は個別の `tests/unit/<name>/test-cases.md` の
+> 「カバレッジ目標」欄（いずれも「主要メソッド 80% 以上」）と整合させている。
 
 ## 3. テスト環境
 
@@ -40,12 +48,12 @@
 | 単体テスト (i2c-hal) ★任意 | [`tests/unit/i2c-hal/test-cases.md`](../../../tests/unit/i2c-hal/test-cases.md)（UT-I2C-001〜007） | 実装フェーズ | ○ (CI) |
 | 単体テスト (gpio) ★任意 | [`tests/unit/gpio/test-cases.md`](../../../tests/unit/gpio/test-cases.md)（UT-GPIO-001〜005） | 実装フェーズ | ○ (CI) |
 | 単体テスト (libsensor) | [`tests/unit/libsensor/test-cases.md`](../../../tests/unit/libsensor/test-cases.md)（UT-LIB-001〜009 / UT-ADS-001〜012 ★任意） | 実装フェーズ | ○ (CI) |
-| 単体テスト (libadxl345) | [`tests/unit/libadxl345/test-cases.md`](../../../tests/unit/libadxl345/test-cases.md)（UT-ADXL-001〜015） | 実装フェーズ | ○ (CI) |
+| 単体テスト (libadxl345) ★任意 | [`tests/unit/libadxl345/test-cases.md`](../../../tests/unit/libadxl345/test-cases.md)（UT-ADXL-001〜015） | 実装フェーズ | ○ (CI) |
 | 単体テスト (libmcp9808) ★任意 | [`tests/unit/libmcp9808/test-cases.md`](../../../tests/unit/libmcp9808/test-cases.md)（UT-MCP-001〜008） | 実装フェーズ | ○ (CI) |
 | 結合テスト | [`tests/integration/test-cases.md`](../../../tests/integration/test-cases.md)（IT-001〜011: MCP3008 / ADXL345 / ADS1115 / gpio） | テストフェーズ | ○ (CI; 実機なしは自動 skip) |
 | 受け入れテスト | 本ドキュメント 6 章 | 納品前 | ✗ (手動) |
 
-> ★任意コンポーネント（i2c-hal / gpio / ADS1115）のテストも CI の3系統
+> ★任意コンポーネント（i2c-hal / gpio / ADS1115 / libadxl345 / libmcp9808）のテストも CI の3系統
 > （build-and-test / coverage / sanitizer）で実行される。実機が要るケースは `GTEST_SKIP()` で自動スキップ。
 
 > 各テストケース ID は GTest の `TEST(Suite, Name)` と 1:1 で対応する。

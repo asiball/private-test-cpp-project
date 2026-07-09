@@ -97,7 +97,7 @@ docs/deliverables/
 | 種別 | 接頭辞 | 略号例 |
 |---|---|---|
 | 要件定義 | `REQ` | — |
-| 基本/詳細設計 | `DES` | `DRV`(spi) / `I2C` / `GPIO` / `LIB`(sensor) / `ADXL` / `CLI` / `KRN` |
+| 基本/詳細設計 | `DES` | `DRV`(spi・kernel-driver-design.md も連番 `DES-DRV-002` として同じ略号を使う) / `I2C` / `GPIO` / `LIB`(sensor) / `ADXL` / `CLI` |
 | API仕様 | `API` | 同上 + `ADS`(ads1115) / `COM`(common) |
 | CLI操作仕様 | `OPS` | `CLI` |
 | IF/レジスタ仕様 | `IF` | `SPI` / `I2C` / `GPIO` / `ADS` / `ADXL` / `KRN` |

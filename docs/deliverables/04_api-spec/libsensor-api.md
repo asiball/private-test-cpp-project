@@ -131,6 +131,16 @@ void                 set_vref(double vref) noexcept;
 
 ---
 
+## 2.1 スレッド安全性
+
+`driver->transfer()` の呼び出しから `last_errno()` の読み出しまでは内部の I/O 用ミューテックスで
+直列化されている。そのため `read_raw()` / `read_voltage()` / `read_raw_async()` を複数スレッドから
+同一 `Sensor` インスタンスに対して並行に呼び出してもデータレースにはならない。ただし `open()` /
+`close()` / `set_vref()` を含めた操作順序の一貫性（例: `open()` 完了前に読み出さない）は呼び出し元の
+責務である。
+
+---
+
 ## 3. 使用例
 
 ```cpp

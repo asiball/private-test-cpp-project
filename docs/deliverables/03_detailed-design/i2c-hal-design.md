@@ -45,10 +45,12 @@ classDiagram
 入力: addr（7bit スレーブアドレス）
 処理:
   1. fd_ >= 0 なら二重オープンとして false
-  2. ::open(device_path_, O_RDWR) → fd_
-  3. ioctl(fd_, I2C_SLAVE, addr) でスレーブを設定
+  2. addr > 0x7F（7bit 範囲外）なら last_errno_ = EINVAL, false
+     （ioctl に不正なアドレスをそのまま渡すと誤動作するため open() で弾く）
+  3. ::open(device_path_, O_RDWR) → fd_
+  4. ioctl(fd_, I2C_SLAVE, addr) でスレーブを設定
      失敗時は ::close(fd_) して fd_ = -1, false
-  4. addr_ = addr, true
+  5. addr_ = addr, true
 出力: bool
 ```
 

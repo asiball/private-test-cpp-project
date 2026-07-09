@@ -91,8 +91,10 @@ TEST(SensorOpen, InvalidDeviceReturnsFalse) {
 ### 設定（抜粋: `Doxyfile`）
 
 ```ini
-INPUT                  = spi-hal/include libsensor/include cli/src
-EXAMPLE_PATH           = tests/unit/spi-hal tests/unit/libsensor
+# 抜粋。実際は spi-hal / i2c-hal / gpio / libsensor / libadxl345 / libmcp9808 /
+# common / kernel の include 一式 + cli/src（ほか全コンポーネント）が対象。
+INPUT                  = spi-hal/include libsensor/include libmcp9808/include cli/src
+EXAMPLE_PATH           = tests/unit/spi-hal tests/unit/libsensor tests/unit/libadxl345
 USE_MDFILE_AS_MAINPAGE = README.md
 HTML_EXTRA_STYLESHEET  = docs/assets/doxygen-awesome.css
 HAVE_DOT               = YES
