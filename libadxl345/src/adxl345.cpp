@@ -8,6 +8,13 @@ namespace embedded {
 
 namespace reg = adxl345::reg;
 
+namespace {
+// ADXL345 の SPI 設定（open() で使用）
+constexpr uint32_t ADXL345_SPI_SPEED_HZ      = 1000000;  // 1 MHz（SPI 上限 5MHz に対し安全側）
+constexpr uint8_t  ADXL345_SPI_BITS_PER_WORD = 8;
+constexpr uint8_t  ADXL345_SPI_MODE          = 3;         // SPI_MODE_3 (CPOL=1, CPHA=1)
+}
+
 struct Adxl345::Impl {
     std::unique_ptr<ISpiDriver> owned;   // 自前生成時のみ所有（注入時は空）
     ISpiDriver*                 driver;  // 実際に使う非所有ビュー
@@ -36,9 +43,9 @@ Adxl345::~Adxl345() = default;
 bool Adxl345::open() noexcept
 {
     ISpiDriver::Config cfg;
-    cfg.speed_hz      = 1000000;  // 1 MHz（ADXL345 の SPI 上限 5MHz に対し安全側）
-    cfg.bits_per_word = 8;
-    cfg.mode          = 3;        // SPI_MODE_3 (CPOL=1, CPHA=1)
+    cfg.speed_hz      = ADXL345_SPI_SPEED_HZ;
+    cfg.bits_per_word = ADXL345_SPI_BITS_PER_WORD;
+    cfg.mode          = ADXL345_SPI_MODE;
     if (!impl_->driver->open(cfg)) {
         return false;
     }
@@ -154,6 +161,9 @@ std::optional<Adxl345::AccelG> Adxl345::read_g() noexcept
 
 bool Adxl345::enable_tap_detection(uint8_t threshold, uint8_t duration, uint8_t axes) noexcept
 {
+    // ヘッダの規定どおり threshold / duration の 0 は不可（0 は「検出しない」設定に
+    // 相当し意図しない誤設定であるため、ここで弾く）。
+    if (threshold == 0 || duration == 0) return false;
     // 閾値・持続時間・対象軸を設定 → SINGLE_TAP を INT1 にマップ → 有効化。
     // どのレジスタをどの順序で触るかをここに隠蔽する（利用者のレジスタ直叩きを不要にする）。
     if (!write_reg(reg::THRESH_TAP, threshold)) return false;
@@ -168,6 +178,9 @@ bool Adxl345::enable_tap_detection(uint8_t threshold, uint8_t duration, uint8_t 
 
 bool Adxl345::enable_free_fall(uint8_t threshold, uint8_t time) noexcept
 {
+    // ヘッダの規定どおり threshold / time の 0 は不可（tap detection と同様、
+    // 0 は「検出しない」設定に相当し意図しない誤設定であるため弾く）。
+    if (threshold == 0 || time == 0) return false;
     if (!write_reg(reg::THRESH_FF, threshold)) return false;
     if (!write_reg(reg::TIME_FF, time))        return false;
     if (!update_bits(reg::INT_MAP, adxl345::int_bits::FREE_FALL, 0)) return false;
