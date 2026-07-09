@@ -35,7 +35,8 @@ public:
 
     /**
      * @brief バスをオープンし、通信相手のスレーブアドレスを設定する
-     * @param addr 7bit スレーブアドレス（例: ADS1115 = 0x48）
+     * @param addr 7bit スレーブアドレス（例: ADS1115 = 0x48）。0x00〜0x7F の範囲外は
+     *             last_errno() が EINVAL になり false を返す
      * @return true: 成功 / false: 失敗
      */
     [[nodiscard]] virtual bool open(uint16_t addr) noexcept = 0;

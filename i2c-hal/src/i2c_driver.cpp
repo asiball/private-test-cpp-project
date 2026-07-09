@@ -12,6 +12,12 @@
 
 namespace embedded {
 
+namespace {
+// 7bit I2C スレーブアドレスの最大値（0x00〜0x7F）。これを超える値は
+// I2C_SLAVE ioctl にそのまま渡すと誤動作するため open() で弾く。
+constexpr uint16_t I2C_ADDR_7BIT_MAX = 0x7F;
+}
+
 I2cDriver::I2cDriver(const std::string& device_path)
     : device_path_(device_path), addr_(0), fd_(-1), last_errno_(0)
 {}
@@ -25,6 +31,11 @@ bool I2cDriver::open(uint16_t addr) noexcept
 {
     if (fd_ >= 0) {
         LOGE("I2cDriver::open called while already open: %s", device_path_.c_str());
+        return false;
+    }
+    if (addr > I2C_ADDR_7BIT_MAX) {
+        last_errno_ = EINVAL;
+        LOGE("I2cDriver::open invalid 7bit address: 0x%02x", addr);
         return false;
     }
     fd_ = ::open(device_path_.c_str(), O_RDWR);
