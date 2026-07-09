@@ -64,8 +64,18 @@
 | アドレス | 名称 | R/W | リセット値 | 説明 |
 |---|---|---|---|---|
 | 0x00 | DEVID       | R   | 0xE5 | デバイス ID（固定値。疎通・誤配線検出に使用） |
+| 0x1D | THRESH_TAP  | R/W | 0x00 | タップ閾値（62.5 mg/LSB） |
+| 0x21 | DUR         | R/W | 0x00 | タップ持続時間（625 µs/LSB） |
+| 0x22 | LATENT      | R/W | 0x00 | ダブルタップ待ち時間（1.25 ms/LSB） |
+| 0x23 | WINDOW      | R/W | 0x00 | ダブルタップ窓（1.25 ms/LSB） |
+| 0x28 | THRESH_FF   | R/W | 0x00 | 自由落下閾値（62.5 mg/LSB） |
+| 0x29 | TIME_FF     | R/W | 0x00 | 自由落下時間（5 ms/LSB） |
+| 0x2A | TAP_AXES    | R/W | 0x00 | タップ検出に使う軸 |
 | 0x2C | BW_RATE     | R/W | 0x0A | 出力データレート / 低電力モード |
 | 0x2D | POWER_CTL   | R/W | 0x00 | 電源・測定制御 |
+| 0x2E | INT_ENABLE  | R/W | 0x00 | 割り込み有効化 |
+| 0x2F | INT_MAP     | R/W | 0x00 | 割り込みの INT1/INT2 マッピング（0=INT1, 1=INT2） |
+| 0x30 | INT_SOURCE  | R   | 0x02 | 割り込みソース（読み出しでクリア） |
 | 0x31 | DATA_FORMAT | R/W | 0x00 | データフォーマット（分解能・レンジ等） |
 | 0x32–0x37 | DATAX0..DATAZ1 | R | 0x00 | X/Y/Z 各 16bit（リトルエンディアン, 連続 6 バイト） |
 
@@ -112,6 +122,40 @@
 |---|---|---|
 | 4 | LOW_POWER | 低電力モード |
 | 3:0 | RATE | 出力データレート（既定 0x0A = 100 Hz） |
+
+### 5.4 割り込みビット（INT_ENABLE(0x2E) / INT_MAP(0x2F) / INT_SOURCE(0x30) 共通）
+
+3 レジスタとも同一のビット配置（`int_bits`）を共有する。INT_ENABLE は有効化、INT_MAP は
+INT1/INT2 のどちらへ出力するか（0=INT1, 1=INT2）、INT_SOURCE は読み出しでクリアされる
+発生済みフラグを表す。
+
+| bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+|---|---|---|---|---|---|---|---|---|
+| フィールド | DATA_READY | SINGLE_TAP | DOUBLE_TAP | ACTIVITY | INACTIVITY | FREE_FALL | WATERMARK | OVERRUN |
+
+| ビット | 名称 | 意味 |
+|---|---|---|
+| 7 | DATA_READY | 新規データレディ |
+| 6 | SINGLE_TAP | シングルタップ検出（[`enable_tap_detection()`](../04_api-spec/adxl345-api.md) が使用） |
+| 5 | DOUBLE_TAP | ダブルタップ検出 |
+| 4 | ACTIVITY | アクティビティ検出 |
+| 3 | INACTIVITY | 非アクティビティ検出 |
+| 2 | FREE_FALL | 自由落下検出（[`enable_free_fall()`](../04_api-spec/adxl345-api.md) が使用） |
+| 1 | WATERMARK | FIFO ウォーターマーク |
+| 0 | OVERRUN | オーバーラン |
+
+### 5.5 TAP_AXES (0x2A)
+
+| bit | 7:4 | 3 | 2 | 1 | 0 |
+|---|---|---|---|---|---|
+| フィールド | 0 | SUPPRESS | TAP_X | TAP_Y | TAP_Z |
+
+| ビット | 名称 | 意味 |
+|---|---|---|
+| 3 | SUPPRESS | ダブルタップのサプレス |
+| 2 | TAP_X | X 軸でタップ検出を有効化 |
+| 1 | TAP_Y | Y 軸でタップ検出を有効化 |
+| 0 | TAP_Z | Z 軸でタップ検出を有効化 |
 
 ---
 

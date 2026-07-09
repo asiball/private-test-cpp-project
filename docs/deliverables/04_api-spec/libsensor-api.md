@@ -110,7 +110,10 @@ void read_raw_async(uint8_t channel, ReadCallback cb);
 | `channel` | チャネル番号（0〜7） |
 | `cb` | 完了コールバック。第1引数: raw 値（失敗時 `std::nullopt`）、第2引数: errno（成功時0） |
 
-> **注意**: `Sensor` オブジェクトのライフタイムはコールバック完了まで呼び出し元が保証すること。
+> **注意**: 生成したワーカースレッドは `detach` せず `Sensor` が保持し、**デストラクタが
+> コールバック完了を待ち合わせて `join` する**。そのため呼び出し元が明示的にライフタイムを
+> 保証しなくても use-after-free にはならないが、`Sensor` の破棄（デストラクタ）が
+> 未完了のコールバック分だけブロックしうる点に注意すること。
 >
 > 同期版の `read_raw` / `read_voltage` は `noexcept` だが、本メソッドは内部で `std::thread` を
 > 生成するため **`noexcept` ではない**（スレッド生成失敗時に `std::system_error` を送出しうる）。

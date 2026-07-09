@@ -80,15 +80,26 @@ int r = alert.wait_event(1000);   // 1秒待つ
 ```cpp
 embedded::Ads1115 adc("/dev/i2c-1");
 embedded::GpioLine alert("/dev/gpiochip0", 17);
-adc.open();
-adc.enable_conversion_ready_pin();
-alert.request_edge_events(embedded::GpioLine::Edge::Falling);
+if (!adc.open()) { /* エラー処理 */ }
+if (!adc.enable_conversion_ready_pin()) { /* エラー処理 */ }
+if (!alert.request_edge_events(embedded::GpioLine::Edge::Falling)) { /* エラー処理 */ }
 
 for (;;) {
-    alert.wait_event(1000);   // sleep ではなく「割り込みで起こされる」
-    auto v = adc.read_voltage(0);
+    // read_raw()/read_voltage() は変換開始を兼ねるため割り込みモードでは使えない。
+    // start_conversion() → wait_event()（割り込みで起こされる）→ read_result() の順で読む。
+    if (!adc.start_conversion(0)) { break; }
+    int ev = alert.wait_event(1000);   // sleep ではなく「割り込みで起こされる」
+    if (ev < 0) { break; }             // エラー
+    if (ev == 0) { continue; }         // タイムアウト
+    auto raw = adc.read_result();
+    if (raw) {
+        double v = static_cast<double>(*raw) * adc.full_scale_volts() / 32768.0;
+    }
 }
 ```
+
+> 詳細な分離理由・完全な実装例は [ADS1115 API（API-ADS-001）](ads1115-api.md) §4 および
+> [`examples/ads1115_alert_demo.cpp`](../../../examples/ads1115_alert_demo.cpp) を参照。
 
 ---
 
