@@ -67,7 +67,8 @@ public:
      *
      * @param tx  送信バッファ（len バイト）
      * @param rx  受信バッファ（len バイト）
-     * @param len 転送バイト数（最大 4096）
+     * @param len 転送バイト数。上限はカーネル spidev の bufsiz 設定に依存（既定 4096）。
+     *            超過時はカーネルが EMSGSIZE 等で拒否する
      * @return 転送バイト数。エラー時は -1（last_errno() で原因を確認）
      *
      * **テストケース（UT-KDRV-006）** — 未オープン時は -1 を返す:
