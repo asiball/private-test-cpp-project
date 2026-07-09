@@ -48,8 +48,8 @@ class Sensor {
 
 // libsensor/src/sensor.cpp — 実装の詳細はここだけ
 struct Sensor::Impl {
-    ISpiDriver* driver;
-    bool        owns_driver;
+    std::unique_ptr<ISpiDriver> owned;   // 自前生成時のみ所有（注入時は空）
+    ISpiDriver*                 driver;  // 実際に使う非所有ビュー
     ...
 };
 ```
@@ -244,11 +244,12 @@ EXPECT_CALL(mock, transfer(_, _, _)).WillOnce(Return(5));  // 5バイト成功�
 
 サニタイザーの具体的な使い方やビルドコマンドについては [サニタイザーガイド](sanitizers-guide.md) を参照してください。本設計パターンガイドでは、実行時エラー検出の実例となるC++の非同期設計上の重要な学習ポイントに焦点を当てます。
 
-#### このプロジェクトでの学習ポイント: `read_raw_async()` のスレッド危険性
+#### このプロジェクトでの学習ポイント（歴史的経緯）: `detach` の落とし穴と join への修正
 
-`libsensor/src/sensor.cpp` の `read_raw_async()` を見てほしい:
+`libsensor/src/sensor.cpp` の `read_raw_async()` は、かつて次のような**素朴な `detach` 実装**だった:
 
 ```cpp
+// 旧実装（現在は使われていない・教材としての例）
 std::thread([this, channel, cb]() {
     auto result = this->read_raw(channel);   // this を生ポインタでキャプチャ！
     ...
@@ -257,14 +258,20 @@ std::thread([this, channel, cb]() {
 
 このコードは `Sensor` オブジェクトのライフタイムが「コールバック完了まで保証される」前提で動作する。
 呼び出し側が `Sensor` を先に破棄した場合、use-after-free（ASANが検出）またはデータ競合（TSANが検出）が発生しうる。
+ASAN/TSAN による実行時検出の実例として、この落とし穴は学習価値が高い。
 
-> ⚠️ **本番にそのままコピーしないこと**。本プロジェクトの `read_raw_async()` は「`detach` の落とし穴と
-> サニタイザーで検出する流れ」を見せるための**意図的に素朴な教材実装**である。実運用では下記の
-> `shared_ptr` 方式（または `std::thread` をメンバに保持して破棄時に `join`）を使う。
+> ⚠️ **現在の実装はこの落とし穴を踏んでいない**。`Sensor::Impl` は生成したワーカースレッドを
+> `detach` せず `std::vector<std::thread> workers` に保持し、`~Impl()` で全て `join` する。
+> そのため `Sensor` の破棄はコールバック完了を待ち合わせる形になり、`this` がダングリングになる
+> use-after-free は構造的に発生しない（詳細は
+> [詳細設計書 — libsensor §6](../../deliverables/03_detailed-design/libsensor-design.md#6-read_raw_async-のスレッド設計)）。
+> あわせて `driver->transfer()` 〜 `last_errno()` の読み出しは `Impl::io_mutex` で直列化されており、
+> 同期 API（`read_raw()` 等）との並行呼び出しでもデータ競合は起きない。
 > なお `cli/src/main.cpp` は呼び出し側で `std::condition_variable` を使い、コールバック完了まで
-> 待ってから `Sensor` を破棄しており、この前提を**正しく守った使用例**になっている。
+> 待ってから `Sensor` を破棄しており、こちらも安全な使用例になっている。
 
-組み込み環境などでの実際の非同期実装において、この問題を避けるために `shared_ptr` + `enable_shared_from_this` を使う例を以下に示す:
+上記のような「スレッドをメンバに保持し破棄時に `join` する」方式のほかに、`shared_ptr` +
+`enable_shared_from_this` でライフタイムを延長する設計もよく使われる。参考として示す:
 
 ```cpp
 class Sensor : public std::enable_shared_from_this<Sensor> {
@@ -277,6 +284,10 @@ class Sensor : public std::enable_shared_from_this<Sensor> {
     }
 };
 ```
+
+こちらは `Sensor` の破棄をブロックしない代わりに、`shared_ptr` の共有に伴うオーバーヘッドと
+「誰が最終的に破棄するか」が呼び出しパターンに依存する点がトレードオフになる。
+本プロジェクトでは破棄タイミングが明確な組み込み用途を想定し、`join` 方式を採用している。
 
 ## 命名規約・書式・規格準拠方針
 

@@ -23,7 +23,7 @@
 |---|---|
 | ABI安定性 | PIMPLイディオム（`Sensor::Impl` を `unique_ptr` で保持） |
 | テスト可能性 | `ISpiDriver*` を外部から注入できるコンストラクタを持つ |
-| 非同期対応 | `std::thread` + `detach` で `read_raw_async()` を実装 |
+| 非同期対応 | `std::thread` を生成し、デタッチせず `Impl` が保持してデストラクタで `join` する方式で `read_raw_async()` を実装 |
 | コピー禁止 | ファイルディスクリプタを所有するため `= delete` で禁止 |
 
 ---
@@ -47,8 +47,10 @@ classDiagram
         +set_vref(v) void
     }
     class Impl["Sensor::Impl"] {
+        +owned unique_ptr~ISpiDriver~
         +driver ISpiDriver
-        +owns_driver bool
+        +workers vector~thread~
+        +io_mutex mutex
     }
     class ISpiDriver {
         <<interface>>
@@ -76,8 +78,8 @@ class Sensor {
 
 // sensor.cpp — 実装の詳細はここだけ
 struct Sensor::Impl {
-    ISpiDriver* driver;
-    bool        owns_driver;
+    std::unique_ptr<ISpiDriver> owned;   // 自前生成時のみ所有（注入時は空）
+    ISpiDriver*                 driver;  // 実際に使う非所有ビュー
     ...
 };
 ```
@@ -90,15 +92,16 @@ struct Sensor::Impl {
 
 ### 3.2 所有権の管理
 
-`Impl` は `driver` ポインタの所有権を `owns_driver` フラグで管理する:
+`Impl` は `driver` ポインタの所有権を `std::unique_ptr<ISpiDriver> owned` で管理する:
 
 ```
-Sensor(spi_path) → Impl が SpiDriver を new → owns_driver = true
-Sensor(driver*)  → Impl はドライバを借りる  → owns_driver = false
+Sensor(spi_path) → Impl が SpiDriver を make_unique で生成 → owned が所有、driver = owned.get()
+Sensor(driver*)  → Impl はドライバを借りる               → owned は空、driver = 借用ポインタ
 ```
 
-デストラクタでは `owns_driver == true` の場合のみ `delete` する。
-これにより、実機用・テスト用で同一の Impl 構造体を使いながら所有権を正しく管理できる。
+デストラクタでは `owned` が非 null の場合のみ（`unique_ptr` の通常のセマンティクスで）自動的に解放される。
+これにより、実機用・テスト用で同一の Impl 構造体を使いながら所有権を正しく管理でき、手動 `delete` や
+所有権フラグの管理漏れによるリークを構造的に防いでいる。
 
 ---
 
@@ -174,40 +177,67 @@ MCP3008 はシングルエンド／差動入力に対応した 8ch・10bit SPI A
 ```cpp
 void Sensor::read_raw_async(uint8_t channel, ReadCallback cb)
 {
-    std::thread([this, channel, cb]() {
-        auto result = this->read_raw(channel);
-        int  err    = result ? 0 : impl_->driver->last_errno();
+    if (channel >= CHANNEL_COUNT) {
+        cb(std::nullopt, EINVAL);
+        return;
+    }
+    // ワーカーは detach せず impl_->workers に保持し、~Impl で join する。
+    std::lock_guard<std::mutex> lk(impl_->workers_mtx);
+    impl_->workers.emplace_back([this, channel, cb]() {
+        std::optional<uint16_t> result;
+        int err = 0;
+        {
+            std::lock_guard<std::mutex> io_lk(impl_->io_mutex);
+            result = mcp3008_transfer_locked(impl_->driver, channel);
+            if (!result) {
+                err = impl_->driver->last_errno();
+            }
+        }
         cb(result, err);
-    }).detach();
+    });
 }
 ```
 
-`std::thread::detach()` によりスレッドをデタッチし、呼び出し元はブロックしない。
+生成したワーカースレッドはデタッチせず `Sensor::Impl::workers`（`std::vector<std::thread>`）に
+保持し、`Impl` のデストラクタで全て `join` する。呼び出し元は `read_raw_async()` 呼び出し自体では
+ブロックされないが、`Sensor` の破棄（デストラクタ）は未完了のコールバックを待ち合わせるため
+ブロックしうる。
 
-### 6.2 ライフタイムの注意事項
+### 6.2 ライフタイムの安全性
 
-**重要**: `read_raw_async()` でデタッチしたスレッドは `Sensor` のデストラクタを待たない。
+デタッチ方式（旧実装）では、コールバック完了前に `Sensor` が破棄されると
+ワーカースレッドが保持する `this` がダングリングポインタになり use-after-free を起こしうる
+という問題があった。現在は join 方式に変更しており、この問題は構造的に発生しない。
 
 ```mermaid
 sequenceDiagram
     participant Caller as 呼び出し元
-    participant Thread as デタッチスレッド
-    Caller->>Thread: read_raw_async()（すぐ返る）
-    activate Thread
-    Note over Thread: read_raw() 実行中
-    Note over Caller: Sensor が破棄される !!
-    Thread->>Thread: cb(result, err)
-    Note over Thread: this が dangling pointer !!
-    deactivate Thread
+    participant Sensor
+    participant Worker as ワーカースレッド
+    Caller->>Sensor: read_raw_async()（すぐ返る）
+    Sensor->>Worker: emplace_back(...)（workers に保持）
+    activate Worker
+    Note over Worker: io_mutex を取得して transfer() 実行中
+    Caller->>Sensor: ~Sensor()（→ ~Impl()）
+    Note over Sensor: workers の各スレッドを join して待機
+    Worker->>Worker: cb(result, err)
+    deactivate Worker
+    Note over Sensor: join 完了 → Impl / driver を破棄
+    Sensor-->>Caller: ~Sensor() から復帰
 ```
 
-**対策**: `Sensor` オブジェクトのライフタイムをコールバック完了まで呼び出し元が保証すること。
-長期稼働デーモンでは `shared_ptr + enable_shared_from_this` の採用を検討すること。
+**設計上の帰結**: `Sensor` オブジェクトの生存期間中に発行した `read_raw_async()` のコールバックは、
+`this` が有効な間にのみ実行される（join によって保証される）。そのため呼び出し元がコールバック完了まで
+`Sensor` の生存を明示的に保証する必要はないが、破棄処理（デストラクタ）が完了中のコールバックの
+分だけブロックしうる点、および長期稼働デーモンで大量に発行すると完了済みスレッドが
+`workers` に蓄積しうる点には注意すること。
 
 ### 6.3 スレッドセーフ性
 
-`Sensor` はスレッドセーフではない。複数スレッドから同一インスタンスに `read_raw()`/`read_voltage()` を
-並行して呼び出す場合は呼び出し元でミューテックス管理を行うこと。
+`driver->transfer()` の呼び出しから `last_errno()` の読み出しまでは `Impl::io_mutex` で
+直列化されており、`read_raw()` / `read_voltage()` / `read_raw_async()` を複数スレッドから
+同一インスタンスに対して並行に呼び出してもデータレースにはならない。ただし `open()` / `close()` や
+`set_vref()` を含めた操作順序の一貫性（例: `open()` 完了前に読み出さない）は呼び出し元の責務である。
 
 ---
 
@@ -249,7 +279,7 @@ sequenceDiagram
 
 ### 9.1 クラス構成 / 依存注入
 
-`Impl` は `II2cDriver* driver` / `bool owns_driver` / `uint16_t addr` / `Gain gain` / `bool rdy_pin_enabled` を持つ。`Ads1115(path, addr)` は `I2cDriver` を `new`（所有）、`Ads1115(II2cDriver*, addr)` は借用（テストでは `MockI2cDriver` を注入）。16bit レジスタ I/O はヘルパで行う:
+`Impl` は `std::unique_ptr<II2cDriver> owned` / `II2cDriver* driver` / `uint16_t addr` / `Gain gain` / `bool rdy_pin_enabled` を持つ。`Ads1115(path, addr)` は `I2cDriver` を `make_unique` で生成し `owned` に所有させる、`Ads1115(II2cDriver*, addr)` は `owned` を空にして借用（テストでは `MockI2cDriver` を注入）。所有時の解放は `unique_ptr` のデストラクタに任せるため手動 `delete` は不要。16bit レジスタ I/O はヘルパで行う:
 
 | ヘルパ | 動作 |
 |---|---|
@@ -264,7 +294,7 @@ sequenceDiagram
    OS_SINGLE | (MUX_SINGLE | channel<<12) | pga_bits(gain) | MODE_SINGLE | DR_128SPS | comp_que
    comp_que = rdy_pin_enabled ? COMP_QUE_ONE(0x0000) : COMP_QUE_DISABLE(0x0003)
 2. write_reg16(CONFIG, config)        // OS=1 で変換開始
-3. 変換完了待ち: read_reg16(CONFIG) の OS(bit15)==1 まで（最大16回・500us間隔）
+3. 変換完了待ち: read_reg16(CONFIG) の OS(bit15)==1 まで（最大16回・1ms間隔）
 4. read_reg16(CONVERSION) → (int16_t)
 出力: optional<int16_t>
 ```
