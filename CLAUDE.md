@@ -55,8 +55,11 @@ CI は `/usr/src/googletest` を `cmake` でビルドして `/usr/local` に ins
 ### 4. SBOM は手動メンテ
 新コンポーネントを足したら `tools/sbom-metadata.json` に **packages と relationships を追記** し、
 `python3 tools/generate-sbom.py` で `sbom.spdx` / `sbom.cdx.json` を再生成する。
-CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物の整合**をチェックする
-（ソースツリーとの網羅性は見ない）。スキーマキーは `spdx_id` / `bom_ref` / `cdx_type`。
+CI の `Verify SBOM consistency` は `--verify` で**メタデータと生成物の整合**をチェックする。
+加えて `verify_completeness()` がトップ `CMakeLists.txt` の `foreach(_component ...)` 列挙と
+実在ディレクトリ（`<component>/CMakeLists.txt` の有無）を突き合わせ、ビルド対象なのに
+`sbom-metadata.json` に未登録のコンポーネントを fail させる（`coverage_policy.exempt_components`
+で明示除外したものは除く）。スキーマキーは `spdx_id` / `bom_ref` / `cdx_type`。
 
 ---
 
@@ -139,7 +142,7 @@ cmake --preset debug && cmake --build --preset debug -j$(nproc) && ctest --prese
 # 静的解析（CI lint 相当）
 cppcheck --enable=warning,performance,portability --std=c++17 \
   --suppress=missingIncludeSystem --error-exitcode=1 \
-  spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ cli/src/ examples/
+  spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ libmcp9808/src/ cli/src/ examples/
 
 # SBOM 整合チェック
 python3 tools/generate-sbom.py --verify
