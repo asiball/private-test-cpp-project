@@ -1,4 +1,5 @@
-#pragma once
+#ifndef EDS_COMMON_LOGGER_HPP
+#define EDS_COMMON_LOGGER_HPP
 #include <cstdio>
 #include <cstring>
 #include <syslog.h>
@@ -9,6 +10,8 @@
 //       common/ に依存せず済むよう、あえて同じ内容のコピーを自前で持っています
 //       （docs/deliverables/README.md §2 の注記参照）。
 //       挙動を変更する場合は両ファイルを同時に更新してください。
+//       common/include/logger.hpp と同期を保つこと。ガードマクロ共有により
+//       二重 include 時も安全（先に include された方の内容だけが有効になる）。
 
 // ─────────────────────────────────────────────────────────────
 // ログマクロ
@@ -86,3 +89,5 @@ inline const char* errno_str(int err) {
     static thread_local char buf[128];
     return logging_detail::strerror_r_result(strerror_r(err, buf, sizeof(buf)), buf);
 }
+
+#endif // EDS_COMMON_LOGGER_HPP

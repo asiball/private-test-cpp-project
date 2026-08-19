@@ -15,7 +15,7 @@ cppcheck \
     --std=c++17 \
     --suppress=missingIncludeSystem \
     --error-exitcode=1 \
-    spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ cli/src/ examples/ \
+    spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ libmcp9808/src/ cli/src/ examples/ \
     && echo "  cppcheck: 問題なし" \
     || echo "  [警告] cppcheck: 問題あり（続行）"
 
@@ -60,7 +60,7 @@ ldconfig
 # 単純名 include するため i2c-hal/include が必須（CI の3系統と揃える。落とし穴 #2）。
 cmake -S tests/unit/libsensor -B build/test-libsensor \
     -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/i2c-hal/include -I/workspace/tests/mocks"
+    -DCMAKE_CXX_FLAGS="-I/workspace/libsensor/include -I/workspace/spi-hal/include -I/workspace/i2c-hal/include -I/workspace/tests/mocks"
 cmake --build build/test-libsensor -j"$(nproc)"
 # テスト実行の失敗はコンテナビルドを止めない（デモ用途のため非致命扱い。
 # 一方ビルド/コンパイル失敗は set -e で致命のままにする）。

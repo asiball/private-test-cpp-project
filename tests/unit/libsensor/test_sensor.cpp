@@ -1,5 +1,5 @@
 #include "sensor.hpp"
-#include "../../tests/mocks/mock_spi_driver.hpp"
+#include "../../mocks/mock_spi_driver.hpp"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <condition_variable>

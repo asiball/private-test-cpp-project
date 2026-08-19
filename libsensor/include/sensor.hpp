@@ -30,7 +30,10 @@ namespace embedded {
  *   raw = ((rx[1] & 0x03) << 8) | rx[2];
  * @endcode
  *
- * @note スレッドセーフではない。複数スレッドから使用する場合は呼び出し側で排他制御すること。
+ * @note 内部 I/O（transfer() 呼び出し〜 errno 読み出し）は mutex で直列化されるため、
+ *       read_raw / read_voltage / read_raw_async を複数スレッドから並行に呼んでも
+ *       データレースにはならない。ただし open/close や vref の変更まで含めた
+ *       操作順序の一貫性は呼び出し側の責務（例えば open() 完了前に read するのは避ける）。
  * @note コピー禁止。
  *
  * @code

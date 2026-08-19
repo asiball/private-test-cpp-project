@@ -115,12 +115,15 @@ C++ 側のユニットテスト (`tests/unit/*`) と同じ観点を `cargo test`
 | `gpio/tests/gpio_line_test.rs` | `tests/unit/gpio/test_gpio_line.cpp` (UT-GPIO-001〜005) | 〃 |
 | `gpio/src/lib.rs` 内 `uabi_tests` | (C++ はカーネルヘッダの定数を直接使うため不要) | 手書きの uABI 定数/レイアウトの回帰テスト |
 | `libsensor/tests/mcp3008_test.rs` | `tests/unit/libsensor/test_sensor.cpp` (UT-LIB-001〜009) | モック注入 |
-| `libadxl345/tests/adxl345_test.rs` | `tests/unit/libadxl345/test_adxl345.cpp` (UT-ADXL-001〜011) | モック注入 |
+| `libadxl345/tests/adxl345_test.rs` | `tests/unit/libadxl345/test_adxl345.cpp` (UT-ADXL-001〜011。C++ 側は 012〜015 の割り込みテストまで拡張済みだが未移植) | モック注入 |
 
 ### 探索版としての意図的な簡略化
 
 - **ADS1115**: ドライバ (`libsensor/src/ads1115.rs`) は移植済みだが、専用テスト
-  (C++ の UT-ADS-001〜007 相当) と CLI からの利用は未対応。
+  (C++ の UT-ADS-001〜007 相当。C++ 側は 008〜012 の割り込み連携テストまで拡張済みだが未移植)
+  と CLI からの利用は未対応。
+- **ADXL345 割り込み API**: C++ の `enable_tap_detection` / `enable_free_fall` 等
+  (UT-ADXL-012〜015) は未移植。
 - **`read_raw_async`**: C++ の非同期読み出し API は未移植 (CLI も同期読み出しのみ)。
 - **SBOM**: `tools/sbom-metadata.json` の対象外 (リリース成果物ではないため)。
 

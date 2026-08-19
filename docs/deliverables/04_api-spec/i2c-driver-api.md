@@ -61,16 +61,16 @@ I2cDriver& operator=(const I2cDriver&) = delete;
 [[nodiscard]] bool open(uint16_t addr) noexcept;
 ```
 
-**説明**: `::open(device_path, O_RDWR)` でバスをオープンし、`ioctl(I2C_SLAVE, addr)` で以降の `read`/`write` の宛先となるスレーブアドレスを設定する。
+**説明**: `addr` が 7bit 範囲を超えていないか検証してから `::open(device_path, O_RDWR)` でバスをオープンし、`ioctl(I2C_SLAVE, addr)` で以降の `read`/`write` の宛先となるスレーブアドレスを設定する。
 
 | パラメータ | 説明 |
 |---|---|
-| `addr` | 7bit スレーブアドレス（例: ADS1115 = `0x48`）|
+| `addr` | 7bit スレーブアドレス（`0x00`〜`0x7F`。例: ADS1115 = `0x48`）。範囲外は `ioctl` を呼ばず `EINVAL` で拒否 |
 
 | 戻り値 | 条件 |
 |---|---|
 | `true` | オープン成功 |
-| `false` | 既にオープン済み、デバイスが存在しない、権限不足、`I2C_SLAVE` 失敗 |
+| `false` | 既にオープン済み、`addr` が 7bit 範囲（`0x00`〜`0x7F`）外（`EINVAL`）、デバイスが存在しない、権限不足、`I2C_SLAVE` 失敗 |
 
 ### 2.3 write() / read()
 

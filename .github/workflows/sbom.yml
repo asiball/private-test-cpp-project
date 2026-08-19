@@ -29,6 +29,9 @@ on:
       - main
     paths:
       - 'tools/sbom-metadata.json'
+      - 'tools/generate-sbom.py'
+      - 'sbom.spdx'
+      - 'sbom.cdx.json'
       - '**/CMakeLists.txt'
   workflow_dispatch:
 

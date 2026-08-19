@@ -31,6 +31,14 @@ classDiagram
         +update_bits(addr, mask, value) bool
         +read_raw() optional~AccelRaw~
         +read_g() optional~AccelG~
+        +enable_tap_detection(threshold, duration, axes) bool
+        +enable_free_fall(threshold, time) bool
+        +disable_interrupts() bool
+        +read_interrupt_source() optional~uint8~
+    }
+    class Impl["Adxl345::Impl"] {
+        +owned unique_ptr~ISpiDriver~
+        +driver ISpiDriver
     }
     class ISpiDriver {
         <<interface>>
@@ -84,19 +92,39 @@ return write_reg(addr, updated)
 
 ## 4. 依存注入（DI）/ 所有権
 
-`Impl` が `ISpiDriver* driver` と `bool owns_driver` を持つ。`Adxl345(path)` は内部で `SpiDriver` を `new`（`owns_driver=true`）、`Adxl345(ISpiDriver*)` は借用（`owns_driver=false`）。デストラクタは所有時のみ `delete`。テストでは `MockSpiDriver` を注入し、レジスタ R/W シーケンスを実機なしで検証する。
+`Impl` は `std::unique_ptr<ISpiDriver> owned` と `ISpiDriver* driver` を持つ。`Adxl345(path)` は内部で `SpiDriver` を `make_unique` で生成して `owned` に所有させる（`driver = owned.get()`）、`Adxl345(ISpiDriver*)` は `owned` を空にして借用する（`driver` は借用ポインタ）。所有時の解放は `owned`（`unique_ptr`）のデストラクタに任せるため手動 `delete` は不要。テストでは `MockSpiDriver` を注入し、レジスタ R/W シーケンスを実機なしで検証する。
 
-## 5. エラーハンドリング方針
+## 5. 割り込み API（v1.1）
+
+`libadxl345/include/adxl345_reg.hpp` の `int_bits` / `tap_axes` ビット定義を使い、タップ検出・自由落下検出を INT1 ピンへマッピングする高レベル API を提供する（レジスタ詳細は [IF-ADXL-001](../05_interface-spec/adxl345-register-map.md) §5.4/5.5）。
+
+| メソッド | 動作 |
+|---|---|
+| `enable_tap_detection(threshold, duration, axes = TAP_AXIS_XYZ)` | `THRESH_TAP` / `DUR` / `TAP_AXES` を書き、`INT_MAP` の `SINGLE_TAP` を INT1 に、`INT_ENABLE` の `SINGLE_TAP` を有効化する |
+| `enable_free_fall(threshold, time)` | `THRESH_FF` / `TIME_FF` を書き、`INT_MAP` の `FREE_FALL` を INT1 に、`INT_ENABLE` の `FREE_FALL` を有効化する |
+| `disable_interrupts()` | `INT_ENABLE` に `0x00` を書き、全割り込みを無効化する |
+| `read_interrupt_source()` | `INT_SOURCE(0x30)` を読む。読み出しでハードウェア側がクリアする |
+
+`enable_tap_detection` / `enable_free_fall` は `threshold` / `duration` / `time` に `0` が渡されると
+即座に `false` を返す（転送を行わない）。`0` はセンサ的に「常時トリガ」に近い無効な閾値になり
+誤検出の原因になるため、意図しない `0` 設定を早期に弾く防御的な入力検証である。
+
+いずれも「どのレジスタをどの順序で設定するか」をライブラリ側に隠蔽しており、GPIO 割り込み
+（[DES-GPIO-001](gpio-design.md)）の `GpioLine::wait_event()` と組み合わせると、ポーリングせず
+「割り込みで起こされてから `read_interrupt_source()` で要因を判別」という使い方ができる。
+
+## 6. エラーハンドリング方針
 
 - レジスタ層は転送失敗時に `read_reg`→`nullopt` / `write_reg`→`false`。`open()` は失敗時に close して `false`。
 - 例外は使用しない（SPI ドライバの `noexcept` 設計と整合）。
 
-## 6. スレッド安全性
+## 7. スレッド安全性
 
 スレッドセーフではない。コピー禁止。
 
-## 7. バージョン履歴
+## 8. バージョン履歴
 
 | バージョン | 変更内容 |
 |---|---|
 | 1.0 | 初版 |
+| 1.1 | 割り込み API（`enable_tap_detection` / `enable_free_fall` / `disable_interrupts` / `read_interrupt_source`）を追加。所有権管理を `unique_ptr` に統一 |

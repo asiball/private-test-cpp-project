@@ -15,7 +15,7 @@
 6. [このプロジェクトで実際に発見されたバグと Rust での対処](#6-実際に発見されたバグ)
 7. [移行戦略: 全書き換えか部分移行か](#7-移行戦略)
 8. [ローカルで試す最短手順](#8-ローカルで試す)
-9. [組み込み Rust 完全解説 — Web バックエンドだけではない](#9-組み込み-rust-完全解説webバックエンドだけではない)
+9. [組み込み Rust 完全解説 — Web バックエンドだけではない](#9-組み込み-rust-完全解説--web-バックエンドだけではない)
 
 ---
 
@@ -159,9 +159,9 @@ private:
 ```cpp
 // C++: sensor.cpp (実装 — ヘッダに出ない)
 struct Sensor::Impl {
-    ISpiDriver* driver;
-    bool owns_driver;
-    double vref_volts;
+    std::unique_ptr<ISpiDriver> owned;   // 自前生成時のみ所有（注入時は空）
+    ISpiDriver*                 driver;  // 実際に使う非所有ビュー
+    double                      vref_volts;
     // ... OS 依存ヘッダ、実装詳細
 };
 ```
@@ -184,7 +184,8 @@ pub struct Mcp3008 {
 **効果:**
 - ヘッダファイルが不要 → コンパイル単位の概念自体が変わる
 - `unique_ptr` の `new/delete` も不要 (C では `sensor_new`/`sensor_free` に相当)
-- `owns_driver` フラグも不要 (所有権をコンパイラが追跡)
+- C++ 側も所有/借用を `unique_ptr owned` の有無で表現しており、手動フラグ管理は不要
+  （Rust の `Box<dyn Trait>` は所有権をコンパイラが追跡する点がさらに一歩進んでいる）
 
 ---
 
@@ -470,7 +471,7 @@ RTOS や bare-metal 環境での利用が可能です。
 このリポジトリの `libsensor` / `libadxl345` は `std` を使っていますが、
 `std::thread::sleep` を除けば `no_std` 対応は容易です。
 
-詳細は [§9 組み込み Rust 完全解説](#9-組み込み-rust-完全解説webバックエンドだけではない) を参照してください。
+詳細は [§9 組み込み Rust 完全解説](#9-組み込み-rust-完全解説--web-バックエンドだけではない) を参照してください。
 
 ### 3.5 ツールチェーンの統一
 
@@ -520,9 +521,12 @@ C++ の `std::thread` + `condition_variable` は Rust でも使えますが、
 `async/await` を使う場合は `tokio` や `async-std` などのランタイムが必要です。
 
 ```cpp
-// C++: std::thread でシンプルに非同期読み出し
+// C++: std::thread でシンプルに非同期読み出し。detach せず Impl::workers に
+// 保持し、Sensor のデストラクタで join することで this のダングリングを防ぐ
+// （詳細は libsensor-design.md §6）。
 void Sensor::read_raw_async(uint8_t channel, ReadCallback cb) {
-    std::thread([=]() { cb(read_raw(channel)); }).detach();
+    std::lock_guard<std::mutex> lk(impl_->workers_mtx);
+    impl_->workers.emplace_back([=]() { cb(read_raw(channel)); });
 }
 ```
 

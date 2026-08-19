@@ -435,7 +435,11 @@ jobs:
             libadxl345/src/adxl345.cpp \
             libmcp9808/src/mcp9808.cpp \
             cli/src/main.cpp \
-            examples/ads1115_alert_demo.cpp
+            examples/ads1115_alert_demo.cpp \
+            examples/adxl345_basic.cpp \
+            examples/gpio_edge_demo.cpp \
+            examples/i2c_raw_demo.cpp \
+            examples/kernel_spi_demo.cpp
 
   docs:
     runs-on: ubuntu-24.04

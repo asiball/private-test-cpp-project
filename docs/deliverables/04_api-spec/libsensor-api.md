@@ -110,7 +110,10 @@ void read_raw_async(uint8_t channel, ReadCallback cb);
 | `channel` | チャネル番号（0〜7） |
 | `cb` | 完了コールバック。第1引数: raw 値（失敗時 `std::nullopt`）、第2引数: errno（成功時0） |
 
-> **注意**: `Sensor` オブジェクトのライフタイムはコールバック完了まで呼び出し元が保証すること。
+> **注意**: 生成したワーカースレッドは `detach` せず `Sensor` が保持し、**デストラクタが
+> コールバック完了を待ち合わせて `join` する**。そのため呼び出し元が明示的にライフタイムを
+> 保証しなくても use-after-free にはならないが、`Sensor` の破棄（デストラクタ）が
+> 未完了のコールバック分だけブロックしうる点に注意すること。
 >
 > 同期版の `read_raw` / `read_voltage` は `noexcept` だが、本メソッドは内部で `std::thread` を
 > 生成するため **`noexcept` ではない**（スレッド生成失敗時に `std::system_error` を送出しうる）。
@@ -125,6 +128,16 @@ void                 set_vref(double vref) noexcept;
 ```
 
 **説明**: 電圧換算に使う基準電圧 [V] の取得・変更。
+
+---
+
+## 2.1 スレッド安全性
+
+`driver->transfer()` の呼び出しから `last_errno()` の読み出しまでは内部の I/O 用ミューテックスで
+直列化されている。そのため `read_raw()` / `read_voltage()` / `read_raw_async()` を複数スレッドから
+同一 `Sensor` インスタンスに対して並行に呼び出してもデータレースにはならない。ただし `open()` /
+`close()` / `set_vref()` を含めた操作順序の一貫性（例: `open()` 完了前に読み出さない）は呼び出し元の
+責務である。
 
 ---
 

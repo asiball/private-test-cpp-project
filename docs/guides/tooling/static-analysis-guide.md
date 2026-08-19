@@ -85,16 +85,32 @@ find spi-hal libsensor cli -name '*.cpp' -o -name '*.hpp' \
 
 ```yaml
 - name: Run cppcheck
-  run: cppcheck --enable=... --error-exitcode=1 spi-hal/src/ libsensor/src/ cli/src/
+  run: |
+    cppcheck \
+      --enable=warning,performance,portability \
+      --std=c++17 \
+      --suppress=missingIncludeSystem \
+      --error-exitcode=1 \
+      spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ libmcp9808/src/ cli/src/ examples/
 
 - name: Run clang-tidy
   run: |
-    cmake -B build-tidy -S . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake -B build-tidy -S . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug
     clang-tidy -p build-tidy/ \
-      --checks='-*,bugprone-*,modernize-use-nullptr,modernize-use-override,performance-*' \
-      --warnings-as-errors='bugprone-*' \
-      spi-hal/src/spi_driver.cpp libsensor/src/sensor.cpp cli/src/main.cpp
+      spi-hal/src/spi_driver.cpp spi-hal/src/kernel_spi_driver.cpp \
+      i2c-hal/src/i2c_driver.cpp gpio/src/gpio_line.cpp \
+      libsensor/src/sensor.cpp libsensor/src/ads1115.cpp \
+      libadxl345/src/adxl345.cpp libmcp9808/src/mcp9808.cpp \
+      cli/src/main.cpp \
+      examples/ads1115_alert_demo.cpp examples/adxl345_basic.cpp \
+      examples/gpio_edge_demo.cpp examples/i2c_raw_demo.cpp examples/kernel_spi_demo.cpp
 ```
+
+cppcheck は `src/` を持つ**全コンポーネント + examples**（8 ディレクトリ）を対象にする。
+clang-tidy は `--checks` を CLI で指定せず、**`.clang-tidy` を有効チェックの単一の情報源**とする
+方針（コマンドラインで `--checks` を指定すると `.clang-tidy` の設定が上書きされ、ローカル実行と
+CI で適用チェックが食い違うため）。対象ファイルは cppcheck の対象ディレクトリと揃え、
+`kernel_spi_driver.cpp` と `examples/` の各デモも個別に列挙している（現在 14 ファイル）。
 
 ### 設定ファイル
 

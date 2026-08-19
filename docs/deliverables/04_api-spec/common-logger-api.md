@@ -46,6 +46,26 @@
 
 `syslog.h` は `LOG_INFO` / `LOG_ERR` / `LOG_DEBUG` を整数マクロとして定義済み。同名マクロを定義するとプリプロセッサが再帰展開して壊れるため、衝突しない `LOGI` / `LOGW` / `LOGE` / `LOGD` を使う。
 
+## 4.1 errno_str()
+
+```cpp
+inline const char* errno_str(int err);
+```
+
+**説明**: `strerror()` のスレッドセーフ版。エラーメッセージをスレッドローカルバッファに格納して
+返すため、複数スレッド（例: CLI の監視スレッドと `read_raw_async()` のワーカースレッド）から
+同時に呼び出しても内部バッファが競合しない。`strerror_r` は GNU 版（`char*` を返す）と
+XSI/POSIX 版（`int` を返す）でシグネチャが異なるため、内部でオーバーロード解決により両対応する。
+
+| パラメータ / 戻り値 | 説明 |
+|---|---|
+| `err`（引数） | errno 値 |
+| 戻り値 | エラーメッセージ文字列（呼び出したスレッドのローカルバッファを指す。次回呼び出しまで有効） |
+
+```cpp
+LOGE("SpiDriver::transfer failed: len=%zu errno=%s", len, errno_str(last_errno_));
+```
+
 ## 5. 使用例
 
 ```cpp
@@ -72,4 +92,4 @@ int main()
 
 | バージョン | 変更内容 |
 |---|---|
-| 1.0 | 初版。`LOG_OPEN` / `LOG_CLOSE` / `LOGI` / `LOGW` / `LOGE` / `LOGD` |
+| 1.0 | 初版。`LOG_OPEN` / `LOG_CLOSE` / `LOGI` / `LOGW` / `LOGE` / `LOGD` / `errno_str()` |

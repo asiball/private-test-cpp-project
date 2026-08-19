@@ -56,6 +56,3 @@ Thumbs.db
 
 # ── テスト結果 ───────────────────────────────────────────────
 test-results/
-
-# ── 生成ヘッダ（CMake configure_file の出力）─────────────────
-spi-hal/include/version.hpp

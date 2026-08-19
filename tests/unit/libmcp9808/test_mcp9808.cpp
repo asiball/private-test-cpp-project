@@ -1,5 +1,5 @@
 #include "mcp9808.hpp"
-#include "../../tests/mocks/mock_i2c_driver.hpp"
+#include "../../mocks/mock_i2c_driver.hpp"
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 

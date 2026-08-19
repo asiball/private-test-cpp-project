@@ -60,7 +60,7 @@ while true:
 
 ## 5. 非同期読み出し（do_read_channel, --async）
 
-`read_raw_async()` はデタッチスレッドでコールバックする。CLI 側は `mutex` + `condition_variable` で完了を待ち合わせる。
+`read_raw_async()` はワーカースレッドを `Sensor` 側で保持し（デタッチしない）デストラクタで `join` するが、CLI 側もコールバック完了を早期に検知できるよう `mutex` + `condition_variable` で完了を待ち合わせる。
 
 - 共有データ（`result` / `cb_err` / `done`）は `mtx` で保護。
 - コールバックは**ロック内で `notify_one`** する（デタッチワーカーと `cv` 破棄の競合回避）。

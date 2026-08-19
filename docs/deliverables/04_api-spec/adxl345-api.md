@@ -79,12 +79,16 @@ ADXL345 はタップ/自由落下等を INT1/INT2 ピンに出力できる。ど
 
 | メソッド | 戻り値 | 説明 |
 |---|---|---|
-| `enable_tap_detection(threshold, duration, axes=TAP_AXIS_XYZ)` | `bool` | シングルタップを INT1 に設定・有効化（THRESH_TAP/DUR/TAP_AXES/INT_MAP/INT_ENABLE）|
-| `enable_free_fall(threshold, time)` | `bool` | 自由落下を INT1 に設定・有効化（THRESH_FF/TIME_FF/INT_MAP/INT_ENABLE）|
+| `enable_tap_detection(threshold, duration, axes=TAP_AXIS_XYZ)` | `bool` | シングルタップを INT1 に設定・有効化（THRESH_TAP/DUR/TAP_AXES/INT_MAP/INT_ENABLE）。`threshold`/`duration` に `0` を渡すと転送を行わず `false` |
+| `enable_free_fall(threshold, time)` | `bool` | 自由落下を INT1 に設定・有効化（THRESH_FF/TIME_FF/INT_MAP/INT_ENABLE）。`threshold`/`time` に `0` を渡すと転送を行わず `false` |
 | `disable_interrupts()` | `bool` | 全割り込みを無効化（INT_ENABLE=0）|
 | `read_interrupt_source()` | `optional<uint8_t>` | INT_SOURCE(0x30) を読む。`INT_SINGLE_TAP` 等と AND して要因判別 |
 
 割り込みソースのビットマスク定数（クラス静的）: `INT_DATA_READY=0x80` / `INT_SINGLE_TAP=0x40` / `INT_DOUBLE_TAP=0x20` / `INT_FREE_FALL=0x04`。タップ軸: `TAP_AXIS_X/Y/Z`、`TAP_AXIS_XYZ`。
+
+> **`0` 検証について**: `0` はセンサ的に「常時トリガ」に近い無効な閾値・持続時間になり誤検出の
+> 原因になるため、`enable_tap_detection()` / `enable_free_fall()` は該当引数が `0` の場合に
+> レジスタへの書き込みを行わず即座に `false` を返す（防御的な入力検証）。
 
 > 典型フロー: `enable_tap_detection()` → INT1 が High → `GpioLine::wait_event()` でエッジ検知 → `read_interrupt_source()` でタップ/ダブルタップ判別。
 

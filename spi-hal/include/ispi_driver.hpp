@@ -14,9 +14,9 @@ class ISpiDriver {
 public:
     /** @brief SPI 設定パラメータ */
     struct Config {
-        uint32_t speed_hz;      ///< クロック周波数 [Hz]
-        uint8_t  bits_per_word; ///< ワードビット幅（通常 8）
-        uint8_t  mode;          ///< SPI モード 0〜3
+        uint32_t speed_hz      = 0; ///< クロック周波数 [Hz]
+        uint8_t  bits_per_word = 8; ///< ワードビット幅（通常 8）
+        uint8_t  mode          = 0; ///< SPI モード 0〜3
     };
 
     virtual ~ISpiDriver() = default;

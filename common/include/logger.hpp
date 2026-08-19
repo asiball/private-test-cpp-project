@@ -1,4 +1,5 @@
-#pragma once
+#ifndef EDS_COMMON_LOGGER_HPP
+#define EDS_COMMON_LOGGER_HPP
 #include <cstdio>
 #include <cstring>
 #include <syslog.h>
@@ -19,6 +20,9 @@
  * - RELEASE ビルド（デフォルト）: syslog のみ（LOGD は no-op）
  *
  * 詳細な仕様は docs/deliverables/04_api-spec/common-logger-api.md（API-COM-001）を参照。
+ *
+ * @note spi-hal/include/logger.hpp と同期を保つこと。ガードマクロ共有により
+ *       二重 include 時も安全（先に include された方の内容だけが有効になる）。
  */
 
 /**
@@ -91,3 +95,5 @@ inline const char* errno_str(int err) {
     static thread_local char buf[128];
     return logging_detail::strerror_r_result(strerror_r(err, buf, sizeof(buf)), buf);
 }
+
+#endif // EDS_COMMON_LOGGER_HPP

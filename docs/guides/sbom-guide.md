@@ -252,7 +252,7 @@ git commit -m "docs(sbom): update SBOM for <変更内容>"
 |---|---|
 | PR（`CMakeLists.txt` または `sbom-metadata.json` 変更） | `--verify` モードで整合性チェック。不一致なら CI が失敗しコメントが付く |
 | main へのプッシュ（同ファイル変更） | SBOM を再生成し自動コミット |
-| リリースタグ（`spi-hal/v*`, `libsensor/v*`, `cli/v*`） | SBOM を再生成し GitHub Release にアセットとして添付 |
+| リリースタグ（`spi-hal/v*`, `i2c-hal/v*`, `gpio/v*`, `libsensor/v*`, `libadxl345/v*`, `libmcp9808/v*`, `cli/v*`） | SBOM を再生成し GitHub Release にアセットとして添付 |
 
 ---
 

@@ -108,10 +108,11 @@ int GpioLine::wait_event(int timeout_ms) noexcept
     do {
         n = epoll_wait(epfd, &out, 1, timeout_ms);
     } while (n < 0 && errno == EINTR);
+    const int saved_errno = (n < 0) ? errno : 0;  // ::close が errno を上書きしうるため即退避
     ::close(epfd);
 
     if (n < 0) {
-        last_errno_ = errno;
+        last_errno_ = saved_errno;
         LOGE("GpioLine::epoll_wait failed: %s", errno_str(last_errno_));
         return -1;
     }

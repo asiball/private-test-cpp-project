@@ -53,22 +53,38 @@ classDiagram
 出力: bool（成功/失敗）
 ```
 
-### 3.2 transfer() — リトライシーケンス
+### 3.2 transfer() — 引数検証・リトライシーケンス
 
 ```mermaid
 flowchart TD
-    A["transfer(tx, rx, len)"] --> B["spi_ioc_transfer 構造体を設定"]
+    A["transfer(tx, rx, len)"] --> V["validate_spi_transfer(fd, tx, rx, len)"]
+    V --> V1{"fd < 0？"}
+    V1 -- Yes --> ERR_BADF["return -1（EBADF）"]
+    V1 -- No --> V2{"tx または rx が null？"}
+    V2 -- Yes --> ERR_INVAL["return -1（EINVAL）"]
+    V2 -- No --> V3{"len が uint32_t を超過？"}
+    V3 -- Yes --> ERR_OVERFLOW["return -1（EOVERFLOW）"]
+    V3 -- No --> V4{"len == 0？"}
+    V4 -- Yes --> RET0["return 0"]
+    V4 -- No --> B["spi_ioc_transfer 構造体を設定"]
     B --> C["retry = 0"]
     C --> D["ioctl(SPI_IOC_MESSAGE(1))"]
     D --> E{"成功？"}
     E -- Yes --> F["return n（転送バイト数）"]
     E -- No --> G{"errno == EAGAIN？"}
     G -- No --> H["return -1"]
-    G -- Yes --> I{"retry < 3？"}
+    G -- Yes --> I{"retry < 2？"}
     I -- No --> H
-    I -- Yes --> J["retry++"]
+    I -- Yes --> K["100µs << retry 待機（1 回目 100µs / 2 回目 200µs）"]
+    K --> J["retry++"]
     J --> D
 ```
+
+`retry` は 0 始まりで、`ioctl(SPI_IOC_MESSAGE(1))` は最大 3 回（初回 + `EAGAIN` 時の再試行 2 回）実行される。
+再試行前には指数バックオフ（1 回目は 100µs、2 回目は 200µs）を挟む
+（詳細は [SpiDriver API 仕様書](../04_api-spec/spi-driver-api.md) 参照）。
+引数検証（`validate_spi_transfer`）は `SpiDriver` と `KernelSpiDriver`（[カーネルドライバ設計書](kernel-driver-design.md)）で
+共通の実装（`spi_transfer_validate.hpp`）を使う。
 
 ## 4. エラーハンドリング方針
 

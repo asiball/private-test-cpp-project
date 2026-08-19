@@ -120,8 +120,11 @@ if(BUILD_TESTING)
     if(TARGET gpio AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/gpio/CMakeLists.txt)
         add_subdirectory(tests/unit/gpio)
     endif()
-    # libsensor のテストは test_sensor(sensor) と test_ads1115(ads1115) を含むため両 target を要求
-    if(TARGET sensor AND TARGET ads1115 AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/libsensor/CMakeLists.txt)
+    # libsensor のテストは test_sensor(sensor) を含む。test_ads1115(ads1115) は
+    # i2c-hal 依存のため、ads1115 target の有無は tests/unit/libsensor/CMakeLists.txt
+    # 側で個別に判定する（i2c-hal を外した構成でも MCP3008 側 test_sensor は
+    # 統合経路に残す。issue #20/#21）。
+    if(TARGET sensor AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/libsensor/CMakeLists.txt)
         add_subdirectory(tests/unit/libsensor)
     endif()
     if(TARGET adxl345 AND EXISTS ${CMAKE_SOURCE_DIR}/tests/unit/libadxl345/CMakeLists.txt)

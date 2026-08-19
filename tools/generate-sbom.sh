@@ -5,7 +5,7 @@
 #   ./tools/generate-sbom.sh           # generate/update SBOM files
 #   ./tools/generate-sbom.sh --verify  # verify existing SBOM matches metadata
 #
-# Requirements: Python 3.6+  (no external packages needed)
+# Requirements: Python 3.8+  (walrus operator; no external packages needed)
 # Works locally, in Docker, and in CI without any additional tool installation.
 
 set -euo pipefail

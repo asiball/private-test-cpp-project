@@ -174,15 +174,20 @@ classDiagram
 ```
 入力: tx バッファ, rx バッファ, len バイト数
 処理:
-  1. fd_ < 0 → -1 返却（未オープンガード）
-  2. tx/rx が nullptr → -1 返却（ヌルポインタガード）
-  3. len == 0 → 0 返却（no-op）
-  4. my_spi_transfer 構造体を構築（ポインタを uint64_t にキャスト）
-  5. ioctl(fd_, MY_SPI_IOC_TRANSFER, &xfer)
+  1. fd_ < 0 → -1 返却（未オープンガード、EBADF）
+  2. tx/rx が nullptr → -1 返却（ヌルポインタガード、EINVAL）
+  3. len が uint32_t を超過 → -1 返却（オーバーフローガード、EOVERFLOW）
+  4. len == 0 → 0 返却（no-op）
+  5. my_spi_transfer 構造体を構築（ポインタを uint64_t にキャスト）
+  6. ioctl(fd_, MY_SPI_IOC_TRANSFER, &xfer)
   失敗時: -1 返却、last_errno_ に errno を保存
   成功時: len を返却
 出力: 転送バイト数 or -1
 ```
+
+引数検証（1〜3）は `SpiDriver::transfer()` と共通の実装（`spi_transfer_validate.hpp` の
+`validate_spi_transfer()`）を使う（[SpiDriver API 仕様書](../04_api-spec/spi-driver-api.md) §2A、
+テストケース `UT-KDRV-011`）。
 
 ---
 

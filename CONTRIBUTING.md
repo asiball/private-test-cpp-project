@@ -45,15 +45,29 @@ fix: MockSpiDriver の noexcept 指定が抜けていたのを修正
 # Docker で全ステップを実行（推奨）
 ./docker-build.sh
 
-# cppcheck のみ
+# cppcheck のみ（CI の lint ジョブと同じ対象ディレクトリ）
 cppcheck --enable=warning,performance,portability --std=c++17 \
          --suppress=missingIncludeSystem --error-exitcode=1 \
-         spi-hal/src/ libsensor/src/ cli/src/
+         spi-hal/src/ i2c-hal/src/ gpio/src/ libsensor/src/ libadxl345/src/ libmcp9808/src/ cli/src/ examples/
 
-# clang-tidy（compile_commands.json が必要）
-cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# clang-tidy（compile_commands.json が必要。--checks は指定しない — .clang-tidy が単一の情報源）
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug
 clang-tidy -p build/ spi-hal/src/spi_driver.cpp libsensor/src/sensor.cpp
 ```
+
+最も正確な対象ファイル一覧は [`.github/workflows/ci.yml`](.github/workflows/ci.yml) の `lint` ジョブを参照。
+
+### mermaid 図の検証（pre-push フック）
+
+ドキュメントの mermaid 図は GitHub 上ではクライアント側描画のため、構文エラーが push/PR 時に
+検知されない。push 差分の `.md` だけを検証する pre-push フック（`.githooks`、Docker の
+`minlag/mermaid-cli` を使用）を有効化しておくこと（Docker が無ければ警告してスキップ）:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+手動実行は `bash tools/check-mermaid.sh`。CI（`docs` ジョブ）でも常に実行され、そちらは強制される。
 
 ## コーディング規約
 

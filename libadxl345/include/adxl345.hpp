@@ -175,16 +175,16 @@ public:
      * @param threshold タップ閾値（THRESH_TAP, 62.5 mg/LSB）。0 は不可
      * @param duration  タップとみなす最大持続時間（DUR, 625 us/LSB）。0 は不可
      * @param axes      検出に使う軸（TAP_AXIS_X|Y|Z の OR。既定は全軸）
-     * @return true: 全レジスタ設定成功 / false: 転送失敗
+     * @return true: 全レジスタ設定成功 / false: threshold/duration が 0、または転送失敗
      */
     [[nodiscard]] bool enable_tap_detection(uint8_t threshold, uint8_t duration,
                                             uint8_t axes = TAP_AXIS_XYZ) noexcept;
 
     /**
      * @brief 自由落下割り込みを設定・有効化する（INT1 にマップ）
-     * @param threshold 自由落下閾値（THRESH_FF, 62.5 mg/LSB。推奨 0x05〜0x09）
-     * @param time      自由落下時間（TIME_FF, 5 ms/LSB。推奨 0x14〜0x46）
-     * @return true: 成功 / false: 転送失敗
+     * @param threshold 自由落下閾値（THRESH_FF, 62.5 mg/LSB。推奨 0x05〜0x09）。0 は不可
+     * @param time      自由落下時間（TIME_FF, 5 ms/LSB。推奨 0x14〜0x46）。0 は不可
+     * @return true: 成功 / false: threshold/time が 0、または転送失敗
      */
     [[nodiscard]] bool enable_free_fall(uint8_t threshold, uint8_t time) noexcept;
 
